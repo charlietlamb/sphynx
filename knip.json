@@ -1,0 +1,34 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": ["context/**"],
+  "workspaces": {
+    "apps/web": {
+      "entry": [
+        "src/router.tsx",
+        "src/routes/**/*.ts",
+        "src/routes/**/*.tsx",
+        "vite.config.ts"
+      ],
+      "project": "src/**",
+      "ignore": ["src/routeTree.gen.ts"]
+    },
+    "packages/ui": {
+      "ignore": [
+        "src/components/ui/**",
+        "src/components/blocks/**",
+        "src/hooks/**"
+      ]
+    }
+  },
+  "ignoreDependencies": [
+    "@base-ui/react",
+    "@biomejs/biome",
+    "@phosphor-icons/react",
+    "class-variance-authority",
+    "cmdk",
+    "shadcn"
+  ],
+  "rules": {
+    "catalog": "off"
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Effect Best Practises"
+  short_description: "Readable Effect gen and pipe rules."
+  default_prompt: "Apply the Effect best-practices skill to keep Effect code readable and idiomatic."

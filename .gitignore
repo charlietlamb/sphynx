@@ -1,0 +1,16 @@
+node_modules
+.next
+.output
+.nitro
+.tanstack
+routeTree.gen.ts
+.turbo
+**/.turbo
+out
+dist
+build
+.env
+.env.*
+!.env.example
+.DS_Store
+*.tsbuildinfo

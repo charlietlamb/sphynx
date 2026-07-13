@@ -1,0 +1,4 @@
+interface:
+  display_name: "Effect Composition"
+  short_description: "Choose Effect.gen or pipe by intent."
+  default_prompt: "Use Effect.gen for business logic and pipe for composition."

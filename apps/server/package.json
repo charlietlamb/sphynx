@@ -1,0 +1,25 @@
+{
+  "name": "@sphynx/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --env-file=../../.env --hot run src/server.ts",
+    "build": "tsc --project tsconfig.json --noEmit",
+    "start": "bun --env-file=../../.env run src/server.ts",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test": "bun test --pass-with-no-tests"
+  },
+  "dependencies": {
+    "@effect/platform-bun": "catalog:",
+    "@sphynx/auth": "workspace:*",
+    "@sphynx/db": "workspace:*",
+    "@sphynx/email": "workspace:*",
+    "@sphynx/schema": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,23 @@
+name: sphynx
+
+services:
+  postgres:
+    image: postgres:18.3-alpine
+    container_name: sphynx-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sphynx
+    ports:
+      - "5433:5432"
+    volumes:
+      - sphynx-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sphynx"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  sphynx-postgres-data:

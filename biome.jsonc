@@ -1,0 +1,44 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["ultracite/biome/core"],
+  "files": {
+    // shadcn/ui primitives + preview demo blocks + generated hooks are vendored,
+    // not hand-authored app code — exclude from lint/format.
+    "includes": [
+      "!packages/ui/src/components/ui",
+      "!packages/ui/src/components/blocks",
+      "!packages/ui/src/hooks",
+      "!.agents",
+      "!context"
+    ]
+  },
+  "javascript": {
+    "globals": ["Bun"]
+  },
+  "overrides": [
+    {
+      // The Drizzle schema barrel re-exports tables so drizzle-kit can discover
+      // them from a single entry point — the barrel is intentional here.
+      "includes": ["packages/db/src/schema.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
+    },
+    {
+      // TanStack Start file-based routes use reserved filenames ($ splat,
+      // __root, etc.) that aren't kebab-case by design.
+      "includes": ["apps/web/src/routes/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": "off"
+          }
+        }
+      }
+    }
+  ]
+}
