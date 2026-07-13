@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "PORT=3006 bun --env-file=../../.env vite dev",
     "build": "vite build",
     "start": "node dist/server/server.js",
     "typecheck": "tsc --noEmit",
