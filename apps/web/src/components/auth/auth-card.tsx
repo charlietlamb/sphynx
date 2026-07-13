@@ -41,14 +41,14 @@ export function AuthCard() {
       </p>
 
       <Button
-        aria-label="Continue with GitHub"
-        className="mt-7 size-14 rounded-xl [&_svg]:size-6"
+        className="mt-7 h-14 gap-3 rounded-xl px-6 [&_svg]:size-6"
         onClick={signInWithGithub}
-        size="icon-lg"
+        size="lg"
         type="button"
         variant="outline"
       >
         <GithubIcon />
+        Sign in with GitHub
       </Button>
     </div>
   );
