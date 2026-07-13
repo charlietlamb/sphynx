@@ -2,8 +2,6 @@ import { Auth, AuthLive } from "@sphynx/auth";
 import { AuthConfigLive } from "@sphynx/auth/config";
 import { DatabaseLive } from "@sphynx/db/client";
 import { DatabaseConfigLive } from "@sphynx/db/config";
-import { EmailLive } from "@sphynx/email";
-import { EmailConfigLive } from "@sphynx/email/config";
 import { Context, Effect, Layer } from "effect";
 import { ServerConfig, ServerConfigLive } from "./config";
 import { route } from "./routes";
@@ -37,11 +35,8 @@ const HttpServerLive = Layer.scoped(
 );
 
 const DatabaseLiveLayer = DatabaseLive.pipe(Layer.provide(DatabaseConfigLive));
-const EmailLiveLayer = EmailLive.pipe(Layer.provide(EmailConfigLive));
 const AuthLiveLayer = AuthLive.pipe(
-  Layer.provideMerge(
-    Layer.mergeAll(AuthConfigLive, DatabaseLiveLayer, EmailLiveLayer)
-  )
+  Layer.provideMerge(Layer.mergeAll(AuthConfigLive, DatabaseLiveLayer))
 );
 
 export const main = Layer.launch(HttpServerLive).pipe(

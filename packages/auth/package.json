@@ -15,7 +15,6 @@
   "dependencies": {
     "@better-auth/drizzle-adapter": "catalog:",
     "@sphynx/db": "workspace:*",
-    "@sphynx/email": "workspace:*",
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "effect": "catalog:"

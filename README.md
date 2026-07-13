@@ -17,7 +17,6 @@ The web app runs on port `3006`, the Effect/Bun server on `3003`, and Postgres o
 
 - TanStack Start and React
 - Bun and Effect
-- Better Auth with organizations, GitHub, Google, password, and magic links
+- Better Auth with GitHub and organizations
 - Postgres and Drizzle ORM
-- Resend
 - Shared UI package

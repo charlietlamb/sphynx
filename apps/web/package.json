@@ -24,8 +24,7 @@
     "react-dom": "catalog:",
     "shadcn": "catalog:",
     "sonner": "^2.0.7",
-    "tw-animate-css": "catalog:",
-    "zod": "^4.4.3"
+    "tw-animate-css": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",

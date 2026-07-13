@@ -1,9 +1,8 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { Database } from "@sphynx/db/client";
 import { member, schema } from "@sphynx/db/schema";
-import { Email } from "@sphynx/email";
 import { betterAuth } from "better-auth";
-import { magicLink, organization } from "better-auth/plugins";
+import { organization } from "better-auth/plugins";
 import { asc, eq } from "drizzle-orm";
 import { Context, Effect, Layer, Redacted } from "effect";
 import { AuthConfig } from "./config";
@@ -11,7 +10,6 @@ import { AuthConfig } from "./config";
 const makeAuth = Effect.gen(function* () {
   const config = yield* AuthConfig;
   const db = yield* Database;
-  const email = yield* Email;
 
   const socialProviders: Record<
     string,
@@ -23,13 +21,6 @@ const makeAuth = Effect.gen(function* () {
       clientSecret: Redacted.value(config.github.clientSecret),
     };
   }
-  if (config.google) {
-    socialProviders.google = {
-      clientId: config.google.clientId,
-      clientSecret: Redacted.value(config.google.clientSecret),
-    };
-  }
-
   const findFirstOrganizationId = async (userId: string) => {
     const rows = await db
       .select({ organizationId: member.organizationId })
@@ -64,17 +55,8 @@ const makeAuth = Effect.gen(function* () {
       provider: "pg",
       schema,
     }),
-    emailAndPassword: {
-      enabled: true,
-    },
     socialProviders,
-    plugins: [
-      organization(),
-      magicLink({
-        sendMagicLink: ({ email: to, url }) =>
-          Effect.runPromise(email.sendMagicLink({ email: to, url })),
-      }),
-    ],
+    plugins: [organization()],
     secret: Redacted.value(config.secret),
   });
 });

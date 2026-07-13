@@ -29,7 +29,6 @@ export interface OAuthProviderCredentials {
 
 export interface AuthConfigShape {
   readonly github: OAuthProviderCredentials | undefined;
-  readonly google: OAuthProviderCredentials | undefined;
   readonly secret: Redacted<string>;
   readonly trustedOrigins: readonly string[];
   readonly url: string;
@@ -57,6 +56,5 @@ export const AuthConfigLive = Layer.effect(
       Config.withDefault<readonly string[]>(["http://localhost:3006"])
     ),
     github: oauthProvider("GITHUB").pipe(Config.map(Option.getOrUndefined)),
-    google: oauthProvider("GOOGLE").pipe(Config.map(Option.getOrUndefined)),
   })
 );
