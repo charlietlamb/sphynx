@@ -8,7 +8,7 @@ export function Hero() {
     <div className="flex flex-1 flex-col justify-center px-4 pb-24 sm:px-6">
       <div className="fade-in-0 slide-in-from-bottom-2 max-w-xl animate-in duration-700 ease-out">
         <h1 className="text-balance font-heading text-5xl tracking-tight sm:text-6xl">
-          Review every change with the context it deserves.
+          Unfuck your codebase.
         </h1>
         <p className="mt-5 max-w-lg text-balance text-muted-foreground sm:text-lg">
           Connect your repositories, understand every pull request, and help
