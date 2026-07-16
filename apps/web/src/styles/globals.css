@@ -145,6 +145,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  :root {
+    --diffs-font-family: var(--font-mono);
+    --diffs-header-font-family: var(--font-sans);
+  }
   body {
     @apply bg-background text-foreground;
   }
@@ -172,5 +176,16 @@
   }
   ::-webkit-scrollbar-corner {
     background: transparent;
+  }
+}
+
+@layer base {
+  pre,
+  code,
+  .font-mono {
+    font-feature-settings:
+      "calt" 0,
+      "liga" 0,
+      "dlig" 0;
   }
 }

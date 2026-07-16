@@ -1,16 +1,8 @@
 /// <reference types="vite/client" />
-import { Providers } from "@sphynx/ui/components/providers";
-import { QueryClientProvider } from "@tanstack/react-query";
-import {
-  createRootRoute,
-  type ErrorComponentProps,
-  HeadContent,
-  Outlet,
-  Scripts,
-} from "@tanstack/react-router";
-import type { ReactNode } from "react";
-import { ErrorCard } from "@/components/layout/error-card";
-import { getQueryClient } from "@/lib/query/query-client";
+import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { RootDocument } from "@/components/layout/root-document";
+import { RootErrorComponent } from "@/components/layout/root-error";
+import { RootNotFound } from "@/components/layout/root-not-found";
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 import "@fontsource-variable/fraunces";
@@ -39,45 +31,5 @@ function RootComponent() {
     <RootDocument>
       <Outlet />
     </RootDocument>
-  );
-}
-
-function RootErrorComponent({ error, reset }: ErrorComponentProps) {
-  return (
-    <RootDocument>
-      <ErrorCard
-        description="Something went wrong while loading this page."
-        detail={error.message}
-        onRetry={reset}
-        title="Unexpected error"
-      />
-    </RootDocument>
-  );
-}
-
-function RootNotFound() {
-  return (
-    <RootDocument>
-      <ErrorCard
-        description="We couldn't find the page you were looking for."
-        title="Page not found"
-      />
-    </RootDocument>
-  );
-}
-
-function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
-  return (
-    <html className="font-sans antialiased" lang="en" suppressHydrationWarning>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <QueryClientProvider client={getQueryClient()}>
-          <Providers>{children}</Providers>
-        </QueryClientProvider>
-        <Scripts />
-      </body>
-    </html>
   );
 }

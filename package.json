@@ -10,6 +10,7 @@
   ],
   "catalog": {
     "@base-ui/react": "1.5.0",
+    "@pierre/diffs": "1.2.12",
     "@better-auth/drizzle-adapter": "1.6.13",
     "@biomejs/biome": "2.4.16",
     "@effect/platform": "0.96.1",
@@ -42,6 +43,7 @@
     "husky": "^9.1.7",
     "knip": "6.15.0",
     "next-themes": "0.4.6",
+    "nuqs": "2.9.0",
     "pg": "8.16.3",
     "react": "19.2.4",
     "react-day-picker": "9.14.0",
@@ -66,6 +68,7 @@
     "check": "ultracite check",
     "fix": "ultracite fix",
     "knip": "knip --no-config-hints",
+    "doctor": "react-doctor --yes",
     "test": "turbo run test",
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down",
@@ -81,6 +84,7 @@
     "@types/bun": "catalog:",
     "husky": "catalog:",
     "knip": "catalog:",
+    "react-doctor": "^0.7.7",
     "turbo": "catalog:",
     "typescript": "catalog:",
     "ultracite": "catalog:"

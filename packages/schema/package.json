@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./api": "./src/api.ts"
+    "./api": "./src/api.ts",
+    "./pull-request-comments": "./src/pull-request-comments.ts",
+    "./pull-request-views": "./src/pull-request-views.ts",
+    "./pull-requests": "./src/pull-requests.ts"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json --noEmit",
@@ -12,6 +15,7 @@
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
+    "@effect/platform": "catalog:",
     "effect": "catalog:"
   },
   "devDependencies": {

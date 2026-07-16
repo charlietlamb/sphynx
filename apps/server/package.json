@@ -11,10 +11,12 @@
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
+    "@effect/platform": "catalog:",
     "@effect/platform-bun": "catalog:",
     "@sphynx/auth": "workspace:*",
     "@sphynx/db": "workspace:*",
     "@sphynx/schema": "workspace:*",
+    "drizzle-orm": "catalog:",
     "effect": "catalog:"
   },
   "devDependencies": {

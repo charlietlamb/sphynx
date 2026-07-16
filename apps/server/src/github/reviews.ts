@@ -1,0 +1,455 @@
+import { HttpClient, HttpClientRequest } from "@effect/platform";
+import type {
+  CreateReviewComment,
+  PendingReview,
+  ReplyPayload,
+  ResolveThread,
+  ReviewThread,
+  SubmitReview,
+} from "@sphynx/schema/pull-request-comments";
+import { Unauthorized } from "@sphynx/schema/pull-request-views";
+import {
+  GitHubRateLimited,
+  GitHubUnavailable,
+  type PullRequestRef,
+} from "@sphynx/schema/pull-requests";
+import { Context, Effect, Layer, Schema } from "effect";
+import { isRateLimited, pullPath, resetAt, retryAfter } from "./client";
+import { GitHubConfig } from "./config";
+import {
+  friendlyErrorMessage,
+  type GitHubAuthedError,
+  makeGraphql,
+  PageInfoSchema,
+  paginateConnection,
+  pullRequestNotFound,
+  refAnnotations,
+} from "./graphql";
+
+const REVIEW_THREADS_QUERY = `
+query($owner: String!, $name: String!, $number: Int!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 50, after: $after) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id isResolved isOutdated viewerCanResolve path line startLine diffSide
+          comments(first: 100) {
+            nodes {
+              fullDatabaseId body state createdAt url
+              author { login avatarUrl }
+            }
+          }
+        }
+      }
+    }
+  }
+}`;
+
+const PENDING_REVIEW_QUERY = `
+query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviews(first: 20, states: [PENDING]) {
+        nodes { id viewerDidAuthor comments(first: 1) { totalCount } }
+      }
+    }
+  }
+}`;
+
+const START_REVIEW_MUTATION = `
+mutation($id: ID!) {
+  addPullRequestReview(input: { pullRequestId: $id }) {
+    pullRequestReview { id }
+  }
+}`;
+
+const ADD_THREAD_MUTATION = `
+mutation($input: AddPullRequestReviewThreadInput!) {
+  addPullRequestReviewThread(input: $input) { thread { id } }
+}`;
+
+const RESOLVE_MUTATION = `
+mutation($id: ID!) {
+  resolveReviewThread(input: { threadId: $id }) { thread { id } }
+}`;
+
+const UNRESOLVE_MUTATION = `
+mutation($id: ID!) {
+  unresolveReviewThread(input: { threadId: $id }) { thread { id } }
+}`;
+
+const SUBMIT_REVIEW_MUTATION = `
+mutation($id: ID!, $event: PullRequestReviewEvent!, $body: String) {
+  submitPullRequestReview(input: { pullRequestReviewId: $id, event: $event, body: $body }) {
+    pullRequestReview { id }
+  }
+}`;
+
+const DISCARD_REVIEW_MUTATION = `
+mutation($id: ID!) {
+  deletePullRequestReview(input: { pullRequestReviewId: $id }) {
+    pullRequestReview { id }
+  }
+}`;
+
+const AuthorSchema = Schema.Struct({
+  login: Schema.String,
+  avatarUrl: Schema.String,
+});
+
+const ThreadCommentSchema = Schema.Struct({
+  fullDatabaseId: Schema.NullishOr(Schema.String),
+  body: Schema.String,
+  state: Schema.NullishOr(Schema.String),
+  createdAt: Schema.String,
+  url: Schema.String,
+  author: Schema.NullishOr(AuthorSchema),
+});
+
+const ThreadNodeSchema = Schema.Struct({
+  id: Schema.String,
+  isResolved: Schema.Boolean,
+  isOutdated: Schema.Boolean,
+  viewerCanResolve: Schema.Boolean,
+  path: Schema.String,
+  line: Schema.NullishOr(Schema.Number),
+  startLine: Schema.NullishOr(Schema.Number),
+  diffSide: Schema.NullishOr(Schema.String),
+  comments: Schema.Struct({ nodes: Schema.Array(ThreadCommentSchema) }),
+});
+
+type ThreadNode = typeof ThreadNodeSchema.Type;
+
+const ReviewThreadsSchema = Schema.Struct({
+  reviewThreads: Schema.Struct({
+    pageInfo: PageInfoSchema,
+    nodes: Schema.Array(ThreadNodeSchema),
+  }),
+});
+
+const PendingReviewsSchema = Schema.Struct({
+  reviews: Schema.Struct({
+    nodes: Schema.Array(
+      Schema.Struct({
+        id: Schema.String,
+        viewerDidAuthor: Schema.Boolean,
+        comments: Schema.Struct({ totalCount: Schema.Number }),
+      })
+    ),
+  }),
+});
+
+const StartReviewSchema = Schema.Struct({
+  addPullRequestReview: Schema.NullishOr(
+    Schema.Struct({
+      pullRequestReview: Schema.NullishOr(Schema.Struct({ id: Schema.String })),
+    })
+  ),
+});
+
+const toThread = (node: ThreadNode): ReviewThread | null => {
+  if (node.line === null || node.line === undefined) {
+    return null;
+  }
+  return {
+    id: node.id,
+    path: node.path,
+    line: node.line,
+    side: node.diffSide === "LEFT" ? "deletions" : "additions",
+    startLine: node.startLine ?? null,
+    isResolved: node.isResolved,
+    isOutdated: node.isOutdated,
+    viewerCanResolve: node.viewerCanResolve,
+    comments: node.comments.nodes.map((comment) => ({
+      id: Number(comment.fullDatabaseId ?? 0),
+      body: comment.body,
+      author: comment.author
+        ? { login: comment.author.login, avatarUrl: comment.author.avatarUrl }
+        : null,
+      createdAt: comment.createdAt,
+      githubUrl: comment.url,
+      pending: comment.state === "PENDING",
+    })),
+  };
+};
+
+const githubSide = (side: CreateReviewComment["side"]) =>
+  side === "deletions" ? "LEFT" : "RIGHT";
+
+const makeGitHubReviews = Effect.gen(function* () {
+  const config = yield* GitHubConfig;
+  const client = yield* HttpClient.HttpClient;
+  const github = makeGraphql(config, client);
+
+  const rest = (
+    token: string,
+    path: string,
+    body: Record<string, unknown>
+  ): Effect.Effect<void, GitHubAuthedError | GitHubRateLimited> =>
+    Effect.gen(function* () {
+      const outgoing = HttpClientRequest.post(`${config.apiUrl}${path}`).pipe(
+        HttpClientRequest.bearerToken(token),
+        HttpClientRequest.setHeaders({
+          accept: "application/vnd.github+json",
+          "x-github-api-version": config.apiVersion,
+        }),
+        HttpClientRequest.bodyUnsafeJson(body)
+      );
+      const response = yield* client
+        .execute(outgoing)
+        .pipe(
+          Effect.mapError(
+            () => new GitHubUnavailable({ message: "GitHub is unreachable" })
+          )
+        );
+      if (isRateLimited(response)) {
+        return yield* Effect.fail(
+          new GitHubRateLimited({
+            message: "GitHub rate limit exceeded",
+            retryAfterSeconds: retryAfter(response),
+            resetAt: resetAt(response),
+          })
+        );
+      }
+      if (response.status === 401 || response.status === 403) {
+        return yield* Effect.fail(
+          new Unauthorized({ message: "GitHub rejected the request" })
+        );
+      }
+      if (response.status === 404) {
+        return yield* Effect.fail(pullRequestNotFound());
+      }
+      if (response.status >= 400) {
+        const responseBody = yield* response.json.pipe(
+          Effect.orElseSucceed(() => null)
+        );
+        const message =
+          responseBody &&
+          typeof responseBody === "object" &&
+          "message" in responseBody
+            ? friendlyErrorMessage(String(responseBody.message))
+            : `GitHub rejected the request with ${response.status}`;
+        return yield* Effect.fail(new GitHubUnavailable({ message }));
+      }
+    }).pipe(
+      Effect.timeoutFail({
+        duration: config.timeout,
+        onTimeout: () =>
+          new GitHubUnavailable({ message: "GitHub request timed out" }),
+      })
+    );
+
+  const listReviewThreads = (
+    ref: PullRequestRef,
+    token: string
+  ): Effect.Effect<ReviewThread[], GitHubAuthedError> =>
+    paginateConnection(
+      (after) =>
+        github
+          .pullRequestQuery(
+            token,
+            ReviewThreadsSchema,
+            REVIEW_THREADS_QUERY,
+            ref,
+            {
+              after,
+            }
+          )
+          .pipe(Effect.map((pullRequest) => pullRequest.reviewThreads)),
+      toThread
+    ).pipe(
+      Effect.withSpan("GitHubReviews.listReviewThreads"),
+      Effect.annotateLogs(refAnnotations(ref))
+    );
+
+  const pendingReview = (
+    ref: PullRequestRef,
+    token: string
+  ): Effect.Effect<PendingReview, GitHubAuthedError> =>
+    github
+      .pullRequestQuery(token, PendingReviewsSchema, PENDING_REVIEW_QUERY, ref)
+      .pipe(
+        Effect.map((pullRequest) => {
+          const mine = pullRequest.reviews.nodes.find(
+            (node) => node.viewerDidAuthor
+          );
+          return {
+            pendingId: mine?.id ?? null,
+            commentCount: mine?.comments.totalCount ?? 0,
+          };
+        }),
+        Effect.withSpan("GitHubReviews.pendingReview"),
+        Effect.annotateLogs(refAnnotations(ref))
+      );
+
+  const ensurePendingReview = (ref: PullRequestRef, token: string) =>
+    Effect.gen(function* () {
+      const current = yield* pendingReview(ref, token);
+      if (current.pendingId) {
+        return current.pendingId;
+      }
+      const id = yield* github.pullRequestId(ref, token);
+      const started = yield* github.query(
+        token,
+        StartReviewSchema,
+        START_REVIEW_MUTATION,
+        { id }
+      );
+      const reviewId = started.addPullRequestReview?.pullRequestReview?.id;
+      if (!reviewId) {
+        return yield* Effect.fail(
+          new GitHubUnavailable({ message: "Could not start a review" })
+        );
+      }
+      return reviewId;
+    });
+
+  const createPendingComment = (
+    ref: PullRequestRef,
+    payload: CreateReviewComment,
+    token: string
+  ) =>
+    Effect.gen(function* () {
+      const reviewId = yield* ensurePendingReview(ref, token);
+      yield* github.query(token, Schema.Unknown, ADD_THREAD_MUTATION, {
+        input: {
+          pullRequestReviewId: reviewId,
+          path: payload.path,
+          line: payload.line,
+          side: githubSide(payload.side),
+          body: payload.body,
+          ...(payload.startLine === null
+            ? {}
+            : {
+                startLine: payload.startLine,
+                startSide: githubSide(payload.side),
+              }),
+        },
+      });
+    });
+
+  const createImmediateComment = (
+    ref: PullRequestRef,
+    payload: CreateReviewComment,
+    token: string
+  ) =>
+    rest(token, pullPath(ref, "/comments"), {
+      body: payload.body,
+      commit_id: payload.commitSha,
+      path: payload.path,
+      line: payload.line,
+      side: githubSide(payload.side),
+      ...(payload.startLine === null
+        ? {}
+        : {
+            start_line: payload.startLine,
+            start_side: githubSide(payload.side),
+          }),
+    });
+
+  const createComment = (
+    ref: PullRequestRef,
+    payload: CreateReviewComment,
+    token: string
+  ): Effect.Effect<void, GitHubAuthedError | GitHubRateLimited> =>
+    (payload.pending
+      ? createPendingComment(ref, payload, token)
+      : createImmediateComment(ref, payload, token)
+    ).pipe(
+      Effect.withSpan("GitHubReviews.createComment"),
+      Effect.annotateLogs({
+        ...refAnnotations(ref),
+        "github.pending": payload.pending,
+      })
+    );
+
+  const replyToComment = (
+    ref: PullRequestRef,
+    payload: ReplyPayload,
+    token: string
+  ): Effect.Effect<void, GitHubAuthedError | GitHubRateLimited> =>
+    rest(token, pullPath(ref, `/comments/${payload.commentId}/replies`), {
+      body: payload.body,
+    }).pipe(
+      Effect.withSpan("GitHubReviews.replyToComment"),
+      Effect.annotateLogs({
+        ...refAnnotations(ref),
+        "github.comment_id": payload.commentId,
+      })
+    );
+
+  const resolveThread = (
+    payload: ResolveThread,
+    token: string
+  ): Effect.Effect<void, GitHubAuthedError> =>
+    github
+      .query(
+        token,
+        Schema.Unknown,
+        payload.resolved ? RESOLVE_MUTATION : UNRESOLVE_MUTATION,
+        { id: payload.threadId }
+      )
+      .pipe(
+        Effect.asVoid,
+        Effect.withSpan("GitHubReviews.resolveThread"),
+        Effect.annotateLogs({
+          "github.thread_id": payload.threadId,
+          "github.resolved": payload.resolved,
+        })
+      );
+
+  const submitReview = (
+    ref: PullRequestRef,
+    payload: SubmitReview,
+    token: string
+  ): Effect.Effect<void, GitHubAuthedError> =>
+    Effect.gen(function* () {
+      const reviewId = yield* ensurePendingReview(ref, token);
+      yield* github.query(token, Schema.Unknown, SUBMIT_REVIEW_MUTATION, {
+        id: reviewId,
+        event: payload.event,
+        body: payload.body,
+      });
+    }).pipe(
+      Effect.withSpan("GitHubReviews.submitReview"),
+      Effect.annotateLogs({
+        ...refAnnotations(ref),
+        "github.event": payload.event,
+      })
+    );
+
+  const discardReview = (
+    ref: PullRequestRef,
+    token: string
+  ): Effect.Effect<void, GitHubAuthedError> =>
+    Effect.gen(function* () {
+      const current = yield* pendingReview(ref, token);
+      if (!current.pendingId) {
+        return;
+      }
+      yield* github.query(token, Schema.Unknown, DISCARD_REVIEW_MUTATION, {
+        id: current.pendingId,
+      });
+    }).pipe(
+      Effect.withSpan("GitHubReviews.discardReview"),
+      Effect.annotateLogs(refAnnotations(ref))
+    );
+
+  return {
+    listReviewThreads,
+    pendingReview,
+    createComment,
+    replyToComment,
+    resolveThread,
+    submitReview,
+    discardReview,
+  } as const;
+});
+
+export class GitHubReviews extends Context.Tag("@sphynx/server/GitHubReviews")<
+  GitHubReviews,
+  Effect.Effect.Success<typeof makeGitHubReviews>
+>() {}
+
+export const GitHubReviewsLive = Layer.effect(GitHubReviews, makeGitHubReviews);

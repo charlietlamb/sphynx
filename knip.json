@@ -13,11 +13,7 @@
       "ignore": ["src/routeTree.gen.ts"]
     },
     "packages/ui": {
-      "ignore": [
-        "src/components/ui/**",
-        "src/components/blocks/**",
-        "src/hooks/**"
-      ]
+      "ignore": ["src/components/ui/**", "src/hooks/**"]
     }
   },
   "ignoreDependencies": [

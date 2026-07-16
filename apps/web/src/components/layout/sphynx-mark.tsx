@@ -1,8 +1,10 @@
-export function SphynxMark() {
+import { cn } from "@sphynx/ui/lib/utils";
+
+export function SphynxMark({ className }: { className?: string }) {
   return (
     <svg
       aria-label="Sphynx"
-      className="size-7 text-foreground"
+      className={cn("size-7 text-foreground", className)}
       fill="currentColor"
       role="img"
       viewBox="0 0 32 32"

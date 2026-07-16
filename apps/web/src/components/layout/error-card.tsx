@@ -1,5 +1,5 @@
 import { CopyButton } from "@sphynx/ui/components/copy-button";
-import { buttonVariants } from "@sphynx/ui/components/ui/button";
+import { Button, buttonVariants } from "@sphynx/ui/components/ui/button";
 import { cn } from "@sphynx/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/layout/site-layout";
@@ -37,13 +37,14 @@ export function ErrorCard({
           ) : null}
           <div className="mt-3 flex items-center gap-3">
             {onRetry ? (
-              <button
-                className={cn(buttonVariants({ size: "sm" }), "h-9 px-4")}
+              <Button
+                className="h-9 px-4"
                 onClick={onRetry}
+                size="sm"
                 type="button"
               >
                 Try again
-              </button>
+              </Button>
             ) : null}
             <Link
               className={cn(

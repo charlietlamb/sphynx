@@ -7,7 +7,6 @@ const queryClientOptions = {
       gcTime: 5 * 60_000,
       retry: 1,
       refetchOnWindowFocus: false,
-      placeholderData: <T>(previous: T) => previous,
     },
   },
 };

@@ -11,8 +11,8 @@ export function Hero() {
           Unfuck your codebase.
         </h1>
         <p className="mt-5 max-w-lg text-balance text-muted-foreground sm:text-lg">
-          Connect your repositories, understand every pull request, and help
-          your team ship better code with confidence.
+          An opinionated way to review pull requests in the agentic era. Highly
+          performant and open source.
         </p>
         <div className="mt-8 flex items-center gap-3">
           <Link

@@ -26,11 +26,10 @@ export function FormDialog({
       title={title}
     >
       <form
-        className="grid gap-4"
-        onSubmit={(event) => {
-          event.preventDefault();
+        action={() => {
           onSubmit();
         }}
+        className="grid gap-4"
       >
         {children}
       </form>

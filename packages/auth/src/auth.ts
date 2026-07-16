@@ -13,12 +13,13 @@ const makeAuth = Effect.gen(function* () {
 
   const socialProviders: Record<
     string,
-    { clientId: string; clientSecret: string }
+    { clientId: string; clientSecret: string; scope?: string[] }
   > = {};
   if (config.github) {
     socialProviders.github = {
       clientId: config.github.clientId,
       clientSecret: Redacted.value(config.github.clientSecret),
+      scope: ["read:user", "user:email", "public_repo"],
     };
   }
   const findFirstOrganizationId = async (userId: string) => {
