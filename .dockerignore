@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+**/dist
+**/.output
+**/.nitro
+**/.tanstack
+.git
+.turbo
+**/.turbo
+.env
+.env.*
+docker-compose.yml

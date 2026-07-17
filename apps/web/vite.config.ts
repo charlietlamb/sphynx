@@ -14,6 +14,9 @@ export default defineConfig({
   server: {
     port: 3006,
   },
+  worker: {
+    format: "es",
+  },
   ssr: {
     // Workspace packages ship untranspiled TS/TSX, so bundle them into the SSR
     // build rather than externalizing them.
