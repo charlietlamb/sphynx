@@ -9,9 +9,9 @@ const STATUS_STYLES: Record<
   PullRequestFile["status"],
   { letter: string; className: string }
 > = {
-  added: { letter: "A", className: "text-emerald-600 dark:text-emerald-400" },
+  added: { letter: "A", className: "text-addition" },
   modified: { letter: "M", className: "text-amber-600 dark:text-amber-400" },
-  deleted: { letter: "D", className: "text-destructive" },
+  deleted: { letter: "D", className: "text-deletion" },
   renamed: { letter: "R", className: "text-sky-600 dark:text-sky-400" },
   copied: { letter: "C", className: "text-sky-600 dark:text-sky-400" },
   unknown: { letter: "?", className: "text-muted-foreground" },
@@ -22,6 +22,14 @@ function displayPath(file: PullRequestFile) {
     return `${file.previousPath} → ${file.path}`;
   }
   return file.path;
+}
+
+function splitPath(path: string) {
+  const index = path.lastIndexOf("/");
+  if (index === -1) {
+    return { directory: "", name: path };
+  }
+  return { directory: path.slice(0, index + 1), name: path.slice(index + 1) };
 }
 
 interface FileListProps {
@@ -65,6 +73,7 @@ export function FileList({
           {files.map((file) => {
             const status = STATUS_STYLES[file.status];
             const selected = file.path === selectedPath;
+            const { directory, name } = splitPath(displayPath(file));
             return (
               <button
                 aria-current={selected ? "page" : undefined}
@@ -86,10 +95,15 @@ export function FileList({
                   {status.letter}
                 </span>
                 <span
-                  className="min-w-0 flex-1 truncate font-mono text-xs"
+                  className="flex min-w-0 flex-1 items-baseline font-mono text-xs"
                   title={displayPath(file)}
                 >
-                  {displayPath(file)}
+                  {directory === "" ? null : (
+                    <span className="shrink-[9999] truncate text-muted-foreground">
+                      {directory}
+                    </span>
+                  )}
+                  <span className="min-w-0 truncate">{name}</span>
                 </span>
                 <span className="shrink-0">
                   <DiffStat

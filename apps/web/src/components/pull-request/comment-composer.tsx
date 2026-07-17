@@ -66,7 +66,7 @@ export function CommentComposer({
       className={cn(
         "flex flex-col gap-2.5 font-sans",
         variant === "card" &&
-          "fade-in slide-in-from-top-1 my-2.5 mr-4 ml-1 max-w-3xl animate-in rounded-lg border border-border bg-background p-3.5 shadow-xs duration-200",
+          "fade-in slide-in-from-top-1 my-2.5 mr-4 ml-1 max-w-3xl animate-in rounded-md border border-border bg-background p-3.5 shadow-xs duration-200",
         variant === "inline" && "border-border border-t px-3.5 py-3"
       )}
       onSubmit={(event) => {

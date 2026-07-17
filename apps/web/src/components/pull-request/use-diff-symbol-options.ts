@@ -8,6 +8,7 @@ import {
 } from "@/components/pull-request/diff-symbols";
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
 import type { SymbolIndex } from "@/components/pull-request/symbol-index";
+import { CODE_THEMES, useSettings } from "@/lib/settings";
 
 interface TokenClickProps {
   lineNumber: number;
@@ -87,12 +88,15 @@ export function useDiffSymbolOptions({
   symbolIndex,
 }: DiffSymbolOptionsInput) {
   const { resolvedTheme } = useTheme();
+  const { settings } = useSettings();
+  const codeThemes = CODE_THEMES[settings.codeTheme]?.themes;
   return useMemo(() => {
     let handledClickEvent: unknown = null;
     return {
       diffStyle: "unified" as const,
       expansionLineCount: 20,
       stickyHeaders: true,
+      ...(codeThemes ? { theme: codeThemes } : {}),
       themeType:
         resolvedTheme === "dark" ? ("dark" as const) : ("light" as const),
       useTokenTransformer: true,
@@ -150,5 +154,12 @@ export function useDiffSymbolOptions({
         keepSymbolsStamped(node, symbolIndex);
       },
     };
-  }, [resolvedTheme, symbolIndex, onNavigate, onSelectLine, commenting]);
+  }, [
+    resolvedTheme,
+    codeThemes,
+    symbolIndex,
+    onNavigate,
+    onSelectLine,
+    commenting,
+  ]);
 }

@@ -6,10 +6,8 @@ interface DiffStatProps {
 export function DiffStat({ additions, deletions }: DiffStatProps) {
   return (
     <span className="font-mono text-xs tabular-nums">
-      <span className="text-emerald-600 dark:text-emerald-400">
-        +{additions}
-      </span>{" "}
-      <span className="text-destructive">−{deletions}</span>
+      <span className="text-addition">+{additions}</span>{" "}
+      <span className="text-deletion">−{deletions}</span>
     </span>
   );
 }

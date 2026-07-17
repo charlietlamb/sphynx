@@ -16,6 +16,7 @@
     "@fontsource-variable/geist-mono": "catalog:",
     "@phosphor-icons/react": "catalog:",
     "@pierre/diffs": "catalog:",
+    "@shikijs/themes": "catalog:",
     "@sphynx/schema": "workspace:*",
     "@sphynx/ui": "workspace:*",
     "@tanstack/react-form": "catalog:",

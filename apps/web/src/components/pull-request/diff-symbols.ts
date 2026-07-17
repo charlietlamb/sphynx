@@ -3,6 +3,19 @@ import type { SymbolIndex } from "@/components/pull-request/symbol-index";
 export const DIFF_UNSAFE_CSS = `
 :host {
   --diffs-font-features: "calt" 0, "liga" 0, "dlig" 0;
+  --diffs-light-bg: var(--card);
+  --diffs-dark-bg: var(--card);
+  --diffs-bg-addition: light-dark(
+    color-mix(in lab, var(--card) 92%, #18a46c),
+    color-mix(in lab, var(--card) 87%, #07c480)
+  );
+  --diffs-bg-deletion: light-dark(
+    color-mix(in lab, var(--card) 92%, #d52c36),
+    color-mix(in lab, var(--card) 87%, #ff2e3f)
+  );
+}
+[data-diffs-header] [data-change-icon] {
+  display: none;
 }
 [data-diffs-header] {
   border-bottom: 1px solid var(--border);
@@ -34,14 +47,11 @@ export const DIFF_UNSAFE_CSS = `
   background: var(--background);
   z-index: -1;
 }
-pre {
-  padding-top: 8px;
-}
 [data-separator="line-info"] [data-separator-wrapper] {
   width: 100cqi;
   margin-right: 0;
   background-color: var(--diffs-bg-separator);
-  border-radius: 6px;
+  border-radius: calc(var(--radius) * 0.6);
   overflow: hidden;
 }
 [data-separator="line-info"] [data-expand-button],

@@ -6,10 +6,11 @@ import type {
   PullRequestRef,
 } from "@sphynx/schema/pull-requests";
 import { cn } from "@sphynx/ui/lib/utils";
-import { type Ref, useCallback, useMemo } from "react";
+import { type Ref, useCallback, useMemo, useRef } from "react";
 import { CommentComposer } from "@/components/pull-request/comment-composer";
 import { CommentThread } from "@/components/pull-request/comment-thread";
 import { CARD_CLASSES } from "@/components/pull-request/diff-card-classes";
+import { renderFileLanguagePrefix } from "@/components/pull-request/file-language-badge";
 import {
   enrichWithContents,
   expandableFilePath,
@@ -22,11 +23,12 @@ import {
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
 import { usePullRequestSearch } from "@/components/pull-request/pull-request-search";
 import type { SymbolIndex } from "@/components/pull-request/symbol-index";
+import { useActiveDiffContainer } from "@/components/pull-request/use-active-diff-container";
 import { useDiffSymbolOptions } from "@/components/pull-request/use-diff-symbol-options";
 import type { ReviewCommenting } from "@/components/pull-request/use-review-comments";
 import { useViewedHeader } from "@/components/pull-request/use-viewed-header";
 
-const CARD_LAYOUT = { paddingTop: 8, paddingBottom: 8, gap: 16 };
+const CARD_LAYOUT = { paddingTop: 0, paddingBottom: 8, gap: 16 };
 
 function threadKey(path: string, line: number, side: string) {
   return `${path}|${line}|${side}`;
@@ -74,6 +76,7 @@ function annotationStamp(annotations: readonly CardAnnotation[]) {
 interface DiffCardListProps {
   commenting: ReviewCommenting;
   files: readonly PullRequestFile[];
+  focused: boolean;
   handleRef: Ref<CodeViewHandle<undefined>>;
   headSha: string;
   onNavigate: (definition: DefinitionRef) => void;
@@ -88,6 +91,7 @@ interface DiffCardListProps {
 export function DiffCardList({
   commenting,
   files,
+  focused,
   handleRef,
   headSha,
   onNavigate,
@@ -99,6 +103,9 @@ export function DiffCardList({
   viewedFiles,
 }: DiffCardListProps) {
   const [{ file, line }] = usePullRequestSearch();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const activePath = focused ? (file ?? files[0]?.path ?? null) : null;
+  useActiveDiffContainer(rootRef, activePath);
   const { canComment, changeSelection, openDraft } = commenting;
   const commentingCallbacks = useMemo(
     () =>
@@ -267,10 +274,10 @@ export function DiffCardList({
   const renderHeaderMetadata = useViewedHeader(viewedFiles, onSetViewed);
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-col" ref={rootRef}>
       <CodeView
         className={cn(
-          "min-h-0 w-full overflow-y-auto overscroll-contain",
+          "min-h-0 w-full overflow-y-auto overscroll-contain outline-none",
           CARD_CLASSES
         )}
         items={items}
@@ -278,6 +285,7 @@ export function DiffCardList({
         ref={handleRef}
         renderAnnotation={renderAnnotation}
         renderHeaderMetadata={renderHeaderMetadata}
+        renderHeaderPrefix={renderFileLanguagePrefix}
         selectedLines={selectedLines}
       />
     </div>

@@ -8,6 +8,7 @@ import { cn } from "@sphynx/ui/lib/utils";
 import { useCallback, useMemo } from "react";
 import { scrollToLine } from "@/components/pull-request/code-view-scroll";
 import { CARD_CLASSES } from "@/components/pull-request/diff-card-classes";
+import { renderFileLanguagePrefix } from "@/components/pull-request/file-language-badge";
 import {
   enrichWithContents,
   expandableFilePath,
@@ -22,7 +23,7 @@ import type { SymbolIndex } from "@/components/pull-request/symbol-index";
 import { useDiffSymbolOptions } from "@/components/pull-request/use-diff-symbol-options";
 import { useViewedHeader } from "@/components/pull-request/use-viewed-header";
 
-const PANE_LAYOUT = { paddingTop: 8, paddingBottom: 8, gap: 0 };
+const PANE_LAYOUT = { paddingTop: 0, paddingBottom: 8, gap: 0 };
 
 interface DefinitionPaneProps {
   cursorLine?: number;
@@ -120,13 +121,14 @@ export function DefinitionPane({
   return (
     <CodeView
       className={cn(
-        "h-full min-w-0 overflow-y-auto overscroll-contain",
+        "h-full min-w-0 overflow-y-auto overscroll-contain outline-none",
         CARD_CLASSES
       )}
       items={items}
       options={options}
       ref={attachHandle}
       renderHeaderMetadata={renderHeaderMetadata}
+      renderHeaderPrefix={renderFileLanguagePrefix}
       selectedLines={selectedLines}
     />
   );

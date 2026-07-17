@@ -40,7 +40,7 @@ export function ReviewSubmit({
         Finish review ({pendingReview.commentCount})
       </Button>
       {open ? (
-        <div className="fade-in slide-in-from-top-1 absolute top-full right-0 z-50 mt-2 flex w-80 animate-in flex-col gap-2.5 rounded-lg border border-border bg-background p-3.5 shadow-md duration-150">
+        <div className="fade-in slide-in-from-top-1 absolute top-full right-0 z-50 mt-2 flex w-80 animate-in flex-col gap-2.5 rounded-lg border border-border bg-popover p-3.5 text-popover-foreground shadow-md duration-150">
           <form.Field name="body">
             {(field) => (
               <Textarea

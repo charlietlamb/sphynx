@@ -38,7 +38,7 @@ export function CommentThread({
   };
 
   return (
-    <div className="my-2.5 mr-4 ml-1 max-w-3xl overflow-hidden rounded-lg border border-border bg-background font-sans shadow-xs">
+    <div className="my-2.5 mr-4 ml-1 max-w-3xl overflow-hidden rounded-md border border-border bg-background font-sans shadow-xs">
       {thread.isResolved ? (
         <button
           className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-muted-foreground text-xs hover:bg-muted/40"

@@ -14,21 +14,19 @@ export function SuggestionBlock({
       </div>
       {originalLines.map((line, index) => (
         <div
-          className="whitespace-pre-wrap break-words bg-destructive/10 px-2.5 py-0.5 text-foreground/80"
+          className="whitespace-pre-wrap break-words bg-deletion/10 px-2.5 py-0.5 text-foreground/80"
           key={`original-${index}-${line}`}
         >
-          <span className="mr-2 select-none text-destructive">-</span>
+          <span className="mr-2 select-none text-deletion">-</span>
           {line}
         </div>
       ))}
       {suggestedLines.map((line, index) => (
         <div
-          className="whitespace-pre-wrap break-words bg-emerald-500/10 px-2.5 py-0.5 text-foreground/90"
+          className="whitespace-pre-wrap break-words bg-addition/10 px-2.5 py-0.5 text-foreground/90"
           key={`suggested-${index}-${line}`}
         >
-          <span className="mr-2 select-none text-emerald-600 dark:text-emerald-400">
-            +
-          </span>
+          <span className="mr-2 select-none text-addition">+</span>
           {line}
         </div>
       ))}
