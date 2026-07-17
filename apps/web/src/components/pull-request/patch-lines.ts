@@ -73,6 +73,13 @@ export function patchNewLines(patch: string): number[] {
   return lines;
 }
 
+export function patchHunkStarts(patch: string): number[] {
+  const lines = patchNewLines(patch);
+  return lines.filter(
+    (line, index) => index === 0 || line !== lines[index - 1] + 1
+  );
+}
+
 export function stepPatchLine(
   patch: string,
   current: number | null,

@@ -1,10 +1,14 @@
 import type { PullRequestFile } from "@sphynx/schema/pull-requests";
 import { type RefObject, useMemo } from "react";
+import { toast } from "sonner";
 import {
   type Handle,
+  type ScrollPreset,
   scrollToLine,
 } from "@/components/pull-request/code-view-scroll";
 import {
+  patchHunkStarts,
+  patchLineText,
   patchNewLines,
   stepPatchLine,
 } from "@/components/pull-request/patch-lines";
@@ -15,6 +19,7 @@ import {
 import type { ReviewKeyHandlers } from "@/components/pull-request/use-review-keys";
 import type {
   CommentDraft,
+  LineSelection,
   ReviewState,
   ReviewStore,
 } from "@/components/pull-request/use-review-state";
@@ -23,6 +28,8 @@ import type {
   CursorPlacement,
   useTokenCursor,
 } from "@/components/pull-request/use-token-cursor";
+
+const HALF_PAGE_LINES = 15;
 
 interface MoveTarget {
   current: number | null;
@@ -76,7 +83,8 @@ function adjacentFileTarget(
 function moveDestination(
   files: readonly PullRequestFile[],
   target: MoveTarget,
-  direction: 1 | -1
+  direction: 1 | -1,
+  confined = false
 ) {
   const { path, current, paneKey } = target;
   const file = files.find((candidate) => candidate.path === path);
@@ -90,10 +98,50 @@ function moveDestination(
   if (stepped !== current) {
     return { path, line: stepped };
   }
-  if (paneKey) {
+  if (paneKey || confined) {
     return null;
   }
   return adjacentFileTarget(files, path, direction);
+}
+
+function selectionRange(selection: LineSelection) {
+  return {
+    start: Math.min(selection.start, selection.end),
+    end: Math.max(selection.start, selection.end),
+  };
+}
+
+function yankRange(state: ReviewState, target: MoveTarget) {
+  const active =
+    !target.paneKey && state.lineSelection?.path === target.path
+      ? state.lineSelection
+      : null;
+  if (active) {
+    return selectionRange(active);
+  }
+  return target.current === null
+    ? null
+    : { start: target.current, end: target.current };
+}
+
+function copyLines(
+  path: string,
+  range: { start: number; end: number },
+  lines: readonly string[]
+) {
+  const reference =
+    range.start === range.end
+      ? `${path}:${range.start}`
+      : `${path}:${range.start}-${range.end}`;
+  navigator.clipboard
+    .writeText(`${reference}\n${lines.join("\n")}`)
+    .then(() =>
+      toast.success(
+        lines.length === 1 ? "Copied 1 line" : `Copied ${lines.length} lines`,
+        { description: reference }
+      )
+    )
+    .catch(() => toast.error("Couldn't copy to the clipboard"));
 }
 
 function mainSeedTarget(state: ReviewState, files: readonly PullRequestFile[]) {
@@ -130,6 +178,7 @@ interface ReviewActionsInput {
   selectFile: (path: string) => void;
   setDraft: (draft: CommentDraft | null) => void;
   setLine: (path: string, line: number) => void;
+  setLineSelection: (selection: LineSelection | null) => void;
   setPaneCursor: (key: string, line: number) => void;
   setTrail: (next: DefinitionRef[] | null) => void;
   setViewed: (change: { path: string; viewed: boolean }) => void;
@@ -149,6 +198,7 @@ export function useReviewActions({
   selectFile,
   setDraft,
   setLine,
+  setLineSelection,
   setPaneCursor,
   setTrail,
   setViewed,
@@ -160,10 +210,12 @@ export function useReviewActions({
   const { start: startHints, cancel: cancelHints, onKey: onHintKey } = hints;
   return useMemo(() => {
     const scope = () => columnRefs.current[store.read().focusedColumn];
-    const moveLine = (direction: 1 | -1, at: CursorPlacement = "first") => {
-      const state = store.read();
-      const target = resolveMoveTarget(state);
-      const destination = moveDestination(files, target, direction);
+    const applyMove = (
+      target: MoveTarget,
+      destination: { path: string; line: number } | null,
+      preset: ScrollPreset = "nearest",
+      at: CursorPlacement = "first"
+    ) => {
       if (!destination) {
         return;
       }
@@ -171,14 +223,35 @@ export function useReviewActions({
         setPaneCursor(target.paneKey, destination.line);
       } else {
         setLine(destination.path, destination.line);
+        const active = store.read().lineSelection;
+        if (active && active.path === destination.path) {
+          setLineSelection({ ...active, end: destination.line });
+        }
       }
       scrollToLine(
-        columnHandle(state.focusedColumn),
+        columnHandle(store.read().focusedColumn),
         destination.path,
         destination.line,
-        "nearest"
+        preset
       );
       cursor.placeAt(scope(), at);
+    };
+    const targetPatch = (target: MoveTarget) =>
+      files.find((candidate) => candidate.path === target.path)?.patch ?? null;
+    const selecting = () => store.read().lineSelection !== null;
+    const clearSelection = () => {
+      if (selecting()) {
+        setLineSelection(null);
+      }
+    };
+    const moveLine = (direction: 1 | -1, at: CursorPlacement = "first") => {
+      const target = resolveMoveTarget(store.read());
+      applyMove(
+        target,
+        moveDestination(files, target, direction, selecting()),
+        "nearest",
+        at
+      );
     };
     const hopColumn = (direction: 1 | -1) => {
       const state = store.read();
@@ -207,8 +280,86 @@ export function useReviewActions({
     };
     return {
       onMoveLine: (direction: 1 | -1) => moveLine(direction),
-      onNextFile: () => stepFile(1),
-      onPrevFile: () => stepFile(-1),
+      onJumpEdge: (edge: 1 | -1) => {
+        const target = resolveMoveTarget(store.read());
+        const patch = targetPatch(target);
+        if (!(target.path && patch)) {
+          return;
+        }
+        const lines = patchNewLines(patch);
+        const line = edge === -1 ? lines[0] : lines.at(-1);
+        if (line !== undefined) {
+          applyMove(
+            target,
+            { path: target.path, line },
+            edge === -1 ? "top" : "end"
+          );
+        }
+      },
+      onMoveHunk: (direction: 1 | -1) => {
+        const target = resolveMoveTarget(store.read());
+        const patch = targetPatch(target);
+        if (!(target.path && patch)) {
+          return;
+        }
+        const starts = patchHunkStarts(patch);
+        const current = target.current;
+        const line =
+          direction === 1
+            ? starts.find((start) => current === null || start > current)
+            : starts.findLast((start) => current !== null && start < current);
+        if (line !== undefined) {
+          applyMove(target, { path: target.path, line });
+        }
+      },
+      onMovePage: (direction: 1 | -1) => {
+        const target = resolveMoveTarget(store.read());
+        const patch = targetPatch(target);
+        if (!(target.path && patch)) {
+          return;
+        }
+        const lines = patchNewLines(patch);
+        const index =
+          target.current === null ? -1 : lines.indexOf(target.current);
+        const next =
+          lines[
+            Math.min(
+              Math.max(index + direction * HALF_PAGE_LINES, 0),
+              lines.length - 1
+            )
+          ];
+        if (next !== undefined && next !== target.current) {
+          applyMove(target, { path: target.path, line: next }, "center");
+          return;
+        }
+        if (!(target.paneKey || selecting())) {
+          applyMove(
+            target,
+            adjacentFileTarget(files, target.path, direction),
+            "center"
+          );
+        }
+      },
+      onAlignLine: (preset: "center" | "end" | "top") => {
+        const state = store.read();
+        const target = resolveMoveTarget(state);
+        if (target.path && target.current !== null) {
+          scrollToLine(
+            columnHandle(state.focusedColumn),
+            target.path,
+            target.current,
+            preset
+          );
+        }
+      },
+      onNextFile: () => {
+        clearSelection();
+        stepFile(1);
+      },
+      onPrevFile: () => {
+        clearSelection();
+        stepFile(-1);
+      },
       onPopTrail: () => {
         const { trail } = store.read();
         setTrail(trail.length > 1 ? trail.slice(0, -1) : null);
@@ -293,9 +444,61 @@ export function useReviewActions({
           selectFile(next.path);
         }
       },
+      onToggleVisual: () => {
+        const state = store.read();
+        if (!(focusedIsMain(state) && state.path)) {
+          return;
+        }
+        if (state.lineSelection) {
+          setLineSelection(null);
+          return;
+        }
+        const patch = files.find(
+          (candidate) => candidate.path === state.path
+        )?.patch;
+        const line =
+          state.line ?? (patch ? patchNewLines(patch)[0] : undefined);
+        if (line === undefined) {
+          return;
+        }
+        if (state.line === null) {
+          setLine(state.path, line);
+        }
+        setLineSelection({
+          path: state.path,
+          start: line,
+          end: line,
+          side: "additions",
+        });
+      },
+      onYank: () => {
+        const state = store.read();
+        const target = resolveMoveTarget(state);
+        const patch = targetPatch(target);
+        const range = yankRange(state, target);
+        if (!(target.path && patch && range)) {
+          return;
+        }
+        const lines = patchLineText(patch, range.start, range.end);
+        if (lines.length > 0) {
+          copyLines(target.path, range, lines);
+        }
+        clearSelection();
+      },
+      onClearSelection: () => clearSelection(),
       onComment: () => {
         const state = store.read();
         if (viewedFiles === null) {
+          return;
+        }
+        if (state.lineSelection) {
+          const { start, end } = selectionRange(state.lineSelection);
+          setDraft({
+            path: state.lineSelection.path,
+            line: end,
+            startLine: start === end ? null : start,
+            side: state.lineSelection.side,
+          });
           return;
         }
         if (!(focusedIsMain(state) && state.path && state.line !== null)) {
@@ -326,6 +529,7 @@ export function useReviewActions({
     selectFile,
     setDraft,
     setLine,
+    setLineSelection,
     setPaneCursor,
     setTrail,
     setViewed,

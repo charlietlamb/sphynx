@@ -7,6 +7,7 @@ export type Handle = CodeViewHandle<undefined> | null;
 const SCROLL_PRESETS = {
   anchor: { align: "start", offset: ANCHOR_BAND, behavior: "smooth" },
   center: { align: "center", behavior: "instant" },
+  end: { align: "end", offset: 8, behavior: "instant" },
   nearest: { align: "nearest", behavior: "instant" },
   top: { align: "start", offset: 8, behavior: "instant" },
 } as const;

@@ -187,6 +187,7 @@ export default function DiffWorkspace({
     selectFile: navigation.selectFile,
     setDraft,
     setLine: navigation.setLine,
+    setLineSelection,
     setPaneCursor,
     setTrail: navigation.setTrail,
     setViewed: markViewed,
@@ -197,11 +198,16 @@ export default function DiffWorkspace({
   });
 
   const isDraftOpen = useCallback(() => store.read().draft !== null, [store]);
+  const isSelecting = useCallback(
+    () => store.read().lineSelection !== null,
+    [store]
+  );
   useReviewKeys({
     handlers,
     isDraftOpen,
     isHelpOpen,
     isHintsActive: hints.isActive,
+    isSelecting,
   });
 
   return (
@@ -240,7 +246,7 @@ export default function DiffWorkspace({
             ) : null}
           </div>
         ) : null}
-        <div className="flex min-h-0 min-w-0 flex-1 gap-5">
+        <div className="flex min-h-0 min-w-0 flex-1 gap-4">
           <aside className="h-full w-64 shrink-0">
             <FileList
               files={files}
@@ -272,6 +278,7 @@ export default function DiffWorkspace({
               <DiffCardList
                 commenting={commenting}
                 files={files}
+                focused={focusedColumn === 0}
                 handleRef={navigation.attachMain}
                 headSha={headSha}
                 onNavigate={navigation.openTrail}

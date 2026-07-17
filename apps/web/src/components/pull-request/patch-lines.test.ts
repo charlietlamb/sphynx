@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   definitionScrollLine,
+  patchHunkStarts,
   patchNewLines,
   stepPatchLine,
 } from "./patch-lines";
@@ -83,5 +84,26 @@ describe("stepPatchLine", () => {
     expect(stepPatchLine(PATCH, 41, 1)).toBe(41);
     expect(stepPatchLine(PATCH, null, 1)).toBe(10);
     expect(stepPatchLine(PATCH, null, -1)).toBe(41);
+  });
+});
+
+describe("patchHunkStarts", () => {
+  test("returns the first new line of each hunk", () => {
+    const patch = [
+      "@@ -1,3 +1,4 @@",
+      " a",
+      "+b",
+      " c",
+      " d",
+      "@@ -10,2 +11,3 @@",
+      " x",
+      "+y",
+      " z",
+    ].join("\n");
+    expect(patchHunkStarts(patch)).toEqual([1, 11]);
+  });
+
+  test("returns an empty list for an empty patch", () => {
+    expect(patchHunkStarts("")).toEqual([]);
   });
 });
