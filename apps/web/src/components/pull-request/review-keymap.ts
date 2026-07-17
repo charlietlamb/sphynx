@@ -127,6 +127,10 @@ export const REVIEW_COMMANDS = {
     description: "Mark file viewed and advance",
     run: (h) => h.onMarkViewed(),
   },
+  "toggle-sidebar": {
+    description: "Toggle file sidebar",
+    run: (h) => h.onToggleSidebar(),
+  },
   help: {
     description: "Toggle this help",
     run: (h) => h.onToggleHelp(),
@@ -163,6 +167,7 @@ export const DEFAULT_KEYMAP: Record<string, ReviewCommandId> = {
   v: "visual",
   y: "yank",
   c: "comment",
+  "C-b": "toggle-sidebar",
   "S-Enter": "mark-viewed",
   "?": "help",
 };

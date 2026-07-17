@@ -3,11 +3,13 @@ import { useCallback, useSyncExternalStore } from "react";
 export interface ReviewSettings {
   codeTheme: string;
   mirrorCodeTheme: boolean;
+  sidebarCollapsed: boolean;
 }
 
 const DEFAULT_SETTINGS: ReviewSettings = {
   codeTheme: "pierre",
   mirrorCodeTheme: false,
+  sidebarCollapsed: false,
 };
 
 export const CODE_THEMES: Record<
@@ -105,6 +107,10 @@ function writeSettings(partial: Partial<ReviewSettings>) {
   for (const listener of listeners) {
     listener();
   }
+}
+
+export function toggleSidebarCollapsed() {
+  writeSettings({ sidebarCollapsed: !readSettings().sidebarCollapsed });
 }
 
 function subscribe(listener: () => void) {

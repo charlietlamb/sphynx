@@ -30,6 +30,7 @@ export interface ReviewKeyHandlers {
   onPrevFile: () => void;
   onStartHints: () => void;
   onToggleHelp: () => void;
+  onToggleSidebar: () => void;
   onToggleVisual: () => void;
   onYank: () => void;
 }

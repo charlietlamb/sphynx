@@ -22,6 +22,7 @@ import { ReviewHelp } from "@/components/pull-request/review-help";
 import { ReviewSubmit } from "@/components/pull-request/review-submit";
 import { SymbolHintOverlay } from "@/components/pull-request/symbol-hint-overlay";
 import type { SymbolIndex } from "@/components/pull-request/symbol-index";
+import { useImportGraph } from "@/components/pull-request/use-import-graph";
 import { useReviewActions } from "@/components/pull-request/use-review-actions";
 import { useReviewComments } from "@/components/pull-request/use-review-comments";
 import { useReviewKeys } from "@/components/pull-request/use-review-keys";
@@ -29,7 +30,6 @@ import { useReviewNavigation } from "@/components/pull-request/use-review-naviga
 import { useReviewStore } from "@/components/pull-request/use-review-state";
 import { useSymbolHints } from "@/components/pull-request/use-symbol-hints";
 import { useTokenCursor } from "@/components/pull-request/use-token-cursor";
-import { ViewedProgress } from "@/components/pull-request/viewed-progress";
 
 interface DiffWorkspaceProps {
   files: readonly PullRequestFile[];
@@ -64,6 +64,7 @@ export default function DiffWorkspace({
     ? file
     : null;
   const currentPath = knownFile ?? files[0]?.path;
+  const importGraph = useImportGraph(pullRequestRef, files);
 
   const {
     applyTrail,
@@ -213,7 +214,7 @@ export default function DiffWorkspace({
   return (
     <DiffWorkerPool>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-        {trail.length > 0 || viewedFiles ? (
+        {trail.length > 0 || commenting.pendingReview.pendingId ? (
           <div className="flex items-center gap-4">
             <div className="min-w-0 flex-1">
               {trail.length > 0 ? (
@@ -227,15 +228,6 @@ export default function DiffWorkspace({
                 />
               ) : null}
             </div>
-            {viewedFiles ? (
-              <ViewedProgress
-                total={files.length}
-                viewed={
-                  files.filter((candidate) => viewedFiles.has(candidate.path))
-                    .length
-                }
-              />
-            ) : null}
             {commenting.pendingReview.pendingId ? (
               <ReviewSubmit
                 onDiscard={commenting.discardReview}
@@ -247,11 +239,12 @@ export default function DiffWorkspace({
           </div>
         ) : null}
         <div className="flex min-h-0 min-w-0 flex-1 gap-4">
-          <aside className="h-full w-64 shrink-0">
+          <aside className="h-full shrink-0">
             <FileList
               files={files}
               onMarkAllViewed={markAllViewed}
               onSelect={navigation.selectFile}
+              relations={(currentPath && importGraph.get(currentPath)) || null}
               selectedPath={currentPath}
               viewedFiles={viewedFiles}
             />

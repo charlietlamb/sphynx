@@ -28,6 +28,7 @@ import type {
   CursorPlacement,
   useTokenCursor,
 } from "@/components/pull-request/use-token-cursor";
+import { toggleSidebarCollapsed } from "@/lib/settings";
 
 const HALF_PAGE_LINES = 15;
 
@@ -513,6 +514,7 @@ export function useReviewActions({
       },
       onCancelDraft: () => setDraft(null),
       onToggleHelp: toggleHelp,
+      onToggleSidebar: toggleSidebarCollapsed,
       onStartHints: () => startHints(scope()),
       onCancelHints: cancelHints,
       onHintKey,

@@ -150,12 +150,12 @@ export function usePullRequest(ref: PullRequestRef) {
   return { pullRequest, files };
 }
 
-export function useFileContents(
+export function fileContentsQuery(
   ref: PullRequestRef,
   sha: string,
   path: string | undefined
 ) {
-  const query = useQuery({
+  return queryOptions({
     queryKey: [
       "pull-request",
       ref.owner,
@@ -174,6 +174,14 @@ export function useFileContents(
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
+}
+
+export function useFileContents(
+  ref: PullRequestRef,
+  sha: string,
+  path: string | undefined
+) {
+  const query = useQuery(fileContentsQuery(ref, sha, path));
   return query.data?.content ?? null;
 }
 
