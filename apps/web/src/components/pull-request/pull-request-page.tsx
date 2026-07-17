@@ -12,10 +12,12 @@ import {
   useAccessBlock,
   usePullRequest,
   usePullRequestFreshness,
+  useViewedFiles,
 } from "@/components/pull-request/pull-request-queries";
 import { PullRequestRefresh } from "@/components/pull-request/pull-request-refresh";
 import { ReviewAccessBanner } from "@/components/pull-request/review-access-banner";
 import { buildSymbolIndex } from "@/components/pull-request/symbol-index";
+import { ViewedProgress } from "@/components/pull-request/viewed-progress";
 import { useSession } from "@/lib/auth-client";
 import { useDocumentTitle } from "@/lib/use-document-title";
 
@@ -39,6 +41,7 @@ interface PullRequestPageProps {
 
 export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
   const { pullRequest, files } = usePullRequest(pullRequestRef);
+  const { viewedFiles } = useViewedFiles(pullRequestRef);
   const freshness = usePullRequestFreshness(pullRequestRef);
   const accessBlock = useAccessBlock(pullRequestRef);
   const symbolIndex = useMemo(
@@ -116,6 +119,18 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
           </div>
         ) : (
           <PullRequestHeader
+            progress={
+              viewedFiles && files.data ? (
+                <ViewedProgress
+                  total={files.data.length}
+                  viewed={
+                    files.data.filter((candidate) =>
+                      viewedFiles.has(candidate.path)
+                    ).length
+                  }
+                />
+              ) : null
+            }
             pullRequest={pullRequest.data}
             refresh={
               freshness.hasNewChanges ? (

@@ -8,7 +8,7 @@ import { cn } from "@sphynx/ui/lib/utils";
 import { useCallback, useMemo } from "react";
 import { scrollToLine } from "@/components/pull-request/code-view-scroll";
 import { CARD_CLASSES } from "@/components/pull-request/diff-card-classes";
-import { renderFileLanguagePrefix } from "@/components/pull-request/file-language-badge";
+import { renderFileTypePrefix } from "@/components/pull-request/file-type-icon";
 import {
   enrichWithContents,
   expandableFilePath,
@@ -128,7 +128,7 @@ export function DefinitionPane({
       options={options}
       ref={attachHandle}
       renderHeaderMetadata={renderHeaderMetadata}
-      renderHeaderPrefix={renderFileLanguagePrefix}
+      renderHeaderPrefix={renderFileTypePrefix}
       selectedLines={selectedLines}
     />
   );

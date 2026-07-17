@@ -10,7 +10,7 @@ import { type Ref, useCallback, useMemo, useRef } from "react";
 import { CommentComposer } from "@/components/pull-request/comment-composer";
 import { CommentThread } from "@/components/pull-request/comment-thread";
 import { CARD_CLASSES } from "@/components/pull-request/diff-card-classes";
-import { renderFileLanguagePrefix } from "@/components/pull-request/file-language-badge";
+import { renderFileTypePrefix } from "@/components/pull-request/file-type-icon";
 import {
   enrichWithContents,
   expandableFilePath,
@@ -285,7 +285,7 @@ export function DiffCardList({
         ref={handleRef}
         renderAnnotation={renderAnnotation}
         renderHeaderMetadata={renderHeaderMetadata}
-        renderHeaderPrefix={renderFileLanguagePrefix}
+        renderHeaderPrefix={renderFileTypePrefix}
         selectedLines={selectedLines}
       />
     </div>

@@ -22,11 +22,13 @@ const STATE_TONES: Record<PullRequestSummary["state"], StatusTone> = {
 };
 
 interface PullRequestHeaderProps {
+  progress?: ReactNode;
   pullRequest: PullRequestSummary;
   refresh?: ReactNode;
 }
 
 export function PullRequestHeader({
+  progress,
   pullRequest,
   refresh,
 }: PullRequestHeaderProps) {
@@ -89,6 +91,7 @@ export function PullRequestHeader({
           {stats.commits} commits · {stats.changedFiles} files
         </span>
         <DiffStat additions={stats.additions} deletions={stats.deletions} />
+        {progress ? <span className="ml-auto">{progress}</span> : null}
       </div>
     </header>
   );
