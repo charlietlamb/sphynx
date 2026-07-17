@@ -2,17 +2,21 @@ import type { PullRequestRef } from "@sphynx/schema/pull-requests";
 import { EmptyState } from "@sphynx/ui/components/empty-state";
 import { Button } from "@sphynx/ui/components/ui/button";
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
-import { lazy, type ReactNode, Suspense, useMemo } from "react";
+import { Navigate, useLocation } from "@tanstack/react-router";
+import { lazy, type ReactNode, Suspense, useMemo, useState } from "react";
 import { ErrorCard } from "@/components/layout/error-card";
 import { SiteLayout } from "@/components/layout/site-layout";
 import { PullRequestHeader } from "@/components/pull-request/pull-request-header";
 import {
   toErrorCardProps,
+  useAccessBlock,
   usePullRequest,
   usePullRequestFreshness,
 } from "@/components/pull-request/pull-request-queries";
 import { PullRequestRefresh } from "@/components/pull-request/pull-request-refresh";
+import { ReviewAccessBanner } from "@/components/pull-request/review-access-banner";
 import { buildSymbolIndex } from "@/components/pull-request/symbol-index";
+import { useSession } from "@/lib/auth-client";
 import { useDocumentTitle } from "@/lib/use-document-title";
 
 const loadDiffWorkspace = () =>
@@ -23,7 +27,7 @@ if (typeof window !== "undefined") {
 }
 
 const workspaceSkeleton = (
-  <div className="flex min-h-0 flex-1 gap-5">
+  <div className="flex min-h-0 flex-1 gap-4">
     <Skeleton className="h-full w-64 shrink-0" />
     <Skeleton className="h-full min-w-0 flex-1" />
   </div>
@@ -36,11 +40,19 @@ interface PullRequestPageProps {
 export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
   const { pullRequest, files } = usePullRequest(pullRequestRef);
   const freshness = usePullRequestFreshness(pullRequestRef);
+  const accessBlock = useAccessBlock(pullRequestRef);
   const symbolIndex = useMemo(
     () => buildSymbolIndex(files.data ?? []),
     [files.data]
   );
   useDocumentTitle(pullRequest.data?.title);
+  const { data: session, isPending: sessionPending } = useSession();
+  const currentHref = useLocation({ select: (location) => location.href });
+  const [redirectTarget] = useState(currentHref);
+
+  if (!(sessionPending || session?.user)) {
+    return <Navigate search={{ redirect: redirectTarget }} to="/login" />;
+  }
 
   if (pullRequest.isError) {
     return (
@@ -115,6 +127,10 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
             }
           />
         )}
+        <ReviewAccessBanner
+          blockedMessage={accessBlock}
+          owner={pullRequestRef.owner}
+        />
         {filesContent}
       </div>
     </SiteLayout>

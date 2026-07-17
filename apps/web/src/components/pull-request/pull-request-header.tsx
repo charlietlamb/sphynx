@@ -9,9 +9,11 @@ import { buttonVariants } from "@sphynx/ui/components/ui/button";
 import { cn } from "@sphynx/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { SignInButton } from "@/components/auth/sign-in-button";
+import { UserMenu } from "@/components/auth/user-menu";
+import { GithubIcon } from "@/components/icons/github-icon";
 import { SphynxMark } from "@/components/layout/sphynx-mark";
 import { DiffStat } from "@/components/pull-request/diff-stat";
+import { SettingsDialog } from "@/components/settings/settings-dialog";
 
 const STATE_TONES: Record<PullRequestSummary["state"], StatusTone> = {
   open: "positive",
@@ -34,17 +36,23 @@ export function PullRequestHeader({
 
   return (
     <header className="flex flex-col gap-2 border-border border-b pb-4">
-      <div className="flex items-center gap-2">
-        <Link
-          aria-label="Sphynx home"
-          className="shrink-0 transition-opacity hover:opacity-70"
-          to="/"
-        >
-          <SphynxMark className="size-4" />
-        </Link>
-        <p className="font-mono text-muted-foreground text-xs">
-          {repository.owner}/{repository.name} #{pullRequest.number}
-        </p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link
+            aria-label="Sphynx home"
+            className="shrink-0 transition-opacity hover:opacity-70"
+            to="/"
+          >
+            <SphynxMark className="size-4" />
+          </Link>
+          <p className="truncate font-mono text-muted-foreground text-xs">
+            {repository.owner}/{repository.name} #{pullRequest.number}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <SettingsDialog />
+          <UserMenu />
+        </div>
       </div>
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-balance font-heading text-2xl tracking-tight">
@@ -52,13 +60,13 @@ export function PullRequestHeader({
         </h1>
         <div className="flex shrink-0 items-center gap-2">
           {refresh}
-          <SignInButton />
           <a
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
             href={pullRequest.githubUrl}
             rel="noreferrer"
             target="_blank"
           >
+            <GithubIcon />
             View on GitHub
           </a>
         </div>

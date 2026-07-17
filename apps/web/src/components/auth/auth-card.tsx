@@ -2,7 +2,11 @@ import { Button } from "@sphynx/ui/components/ui/button";
 import { signInWithGithub } from "@/components/auth/sign-in";
 import { GithubIcon } from "@/components/icons/github-icon";
 
-export function AuthCard() {
+interface AuthCardProps {
+  redirect?: string;
+}
+
+export function AuthCard({ redirect }: AuthCardProps) {
   return (
     <div className="relative w-full max-w-sm bg-background p-8 before:absolute before:top-[-9999px] before:bottom-0 before:left-0 before:w-px before:bg-border before:content-[''] after:absolute after:top-0 after:right-0 after:bottom-[-9999px] after:w-px after:bg-border after:content-['']">
       <span
@@ -22,7 +26,7 @@ export function AuthCard() {
 
       <Button
         className="mt-7 h-10 w-full"
-        onClick={() => signInWithGithub("/")}
+        onClick={() => signInWithGithub(redirect ?? "/")}
         type="button"
         variant="outline"
       >

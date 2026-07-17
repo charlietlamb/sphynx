@@ -16,6 +16,7 @@ import {
   PullRequestSummarySchema,
 } from "@sphynx/schema/pull-requests";
 import {
+  type QueryClient,
   queryOptions,
   useMutation,
   useQuery,
@@ -52,6 +53,37 @@ function showMutationError(title: string, error: unknown) {
         ? error.body.message
         : "Can't reach the server. Please try again.",
   });
+}
+
+const ACCESS_BLOCK = /restricts OAuth apps/;
+
+function accessBlockKey(ref: PullRequestRef) {
+  return ["pull-request", ref.owner, ref.repo, ref.number, "access-block"];
+}
+
+function reportMutationError(
+  queryClient: QueryClient,
+  ref: PullRequestRef,
+  title: string,
+  error: unknown
+) {
+  if (
+    error instanceof ApiError &&
+    error.body.message &&
+    ACCESS_BLOCK.test(error.body.message)
+  ) {
+    queryClient.setQueryData(accessBlockKey(ref), error.body.message);
+  }
+  showMutationError(title, error);
+}
+
+export function useAccessBlock(ref: PullRequestRef) {
+  const query = useQuery({
+    queryKey: accessBlockKey(ref),
+    queryFn: () => null as string | null,
+    enabled: false,
+  });
+  return query.data ?? null;
 }
 
 async function fetchDecoded<A, I>(
@@ -261,7 +293,7 @@ export function useCreateComment(ref: PullRequestRef) {
       queryClient.setQueryData(queryKey, (current) =>
         current ? { threads: dropOptimisticComments(current.threads) } : current
       );
-      showMutationError("Couldn't post comment", error);
+      reportMutationError(queryClient, ref, "Couldn't post comment", error);
     },
     onSettled: () =>
       Promise.all([
@@ -304,7 +336,7 @@ export function useReplyToComment(ref: PullRequestRef) {
       queryClient.setQueryData(queryKey, (current) =>
         current ? { threads: dropOptimisticComments(current.threads) } : current
       );
-      showMutationError("Couldn't post reply", error);
+      reportMutationError(queryClient, ref, "Couldn't post reply", error);
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
@@ -331,7 +363,8 @@ export function useResolveThread(ref: PullRequestRef) {
           : current
       );
     },
-    onError: (error) => showMutationError("Couldn't update thread", error),
+    onError: (error) =>
+      reportMutationError(queryClient, ref, "Couldn't update thread", error),
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
   return { resolve: mutation.mutate };
@@ -378,13 +411,15 @@ export function useReviewSubmission(ref: PullRequestRef) {
   const submit = useMutation({
     mutationFn: (payload: SubmitReview) =>
       postJson(`${commentsUrl(ref)}/pending-review/submit`, payload),
-    onError: (error) => showMutationError("Couldn't submit review", error),
+    onError: (error) =>
+      reportMutationError(queryClient, ref, "Couldn't submit review", error),
     onSettled: invalidate,
   });
   const discard = useMutation({
     mutationFn: () =>
       postJson(`${commentsUrl(ref)}/pending-review/discard`, {}),
-    onError: (error) => showMutationError("Couldn't discard review", error),
+    onError: (error) =>
+      reportMutationError(queryClient, ref, "Couldn't discard review", error),
     onSettled: invalidate,
   });
   return {
@@ -475,7 +510,12 @@ export function useViewedFiles(ref: PullRequestRef) {
           return next;
         }
       );
-      showMutationError("Couldn't update viewed state", error);
+      reportMutationError(
+        queryClient,
+        ref,
+        "Couldn't update viewed state",
+        error
+      );
     },
     onSettled: () => {
       if (queryClient.isMutating({ mutationKey }) === 1) {
@@ -506,7 +546,12 @@ export function useViewedFiles(ref: PullRequestRef) {
       );
     },
     onError: (error) =>
-      showMutationError("Couldn't mark all files viewed", error),
+      reportMutationError(
+        queryClient,
+        ref,
+        "Couldn't mark all files viewed",
+        error
+      ),
     onSettled: () => {
       if (queryClient.isMutating({ mutationKey }) === 1) {
         return queryClient.invalidateQueries({
