@@ -19,6 +19,7 @@ interface PaneColumnProps {
   focused: boolean;
   headSha: string;
   onAttach: (index: number, handle: CodeViewHandle<undefined> | null) => void;
+  onClose: () => void;
   onFocus: (column: 0 | 1) => void;
   onNavigate: (index: number, definition: DefinitionRef) => void;
   onSelectPosition: (index: number, line: number, token?: HTMLElement) => void;
@@ -38,6 +39,7 @@ export function PaneColumn({
   focused,
   headSha,
   onAttach,
+  onClose,
   onFocus,
   onNavigate,
   onSelectPosition,
@@ -68,6 +70,7 @@ export function PaneColumn({
         index={depth}
         line={entry.line}
         onAttach={onAttach}
+        onClose={onClose}
         onNavigate={onNavigate}
         onSelectPosition={onSelectPosition}
         onSetViewed={onSetViewed}

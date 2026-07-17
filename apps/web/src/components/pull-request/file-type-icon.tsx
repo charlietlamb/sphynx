@@ -82,7 +82,3 @@ export function FileTypeIcon({ className, path }: FileTypeIconProps) {
     </svg>
   );
 }
-
-export function renderFileTypePrefix(item: { id: string }) {
-  return <FileTypeIcon className="size-3.5 text-foreground" path={item.id} />;
-}

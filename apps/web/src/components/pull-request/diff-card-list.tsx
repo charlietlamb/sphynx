@@ -10,7 +10,6 @@ import { type Ref, useCallback, useMemo, useRef } from "react";
 import { CommentComposer } from "@/components/pull-request/comment-composer";
 import { CommentThread } from "@/components/pull-request/comment-thread";
 import { CARD_CLASSES } from "@/components/pull-request/diff-card-classes";
-import { renderFileTypePrefix } from "@/components/pull-request/file-type-icon";
 import {
   enrichWithContents,
   expandableFilePath,
@@ -22,6 +21,7 @@ import {
 } from "@/components/pull-request/pull-request-queries";
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
 import { usePullRequestSearch } from "@/components/pull-request/pull-request-search";
+import { renderFileTypePrefix } from "@/components/pull-request/render-file-type-prefix";
 import type { SymbolIndex } from "@/components/pull-request/symbol-index";
 import { useActiveDiffContainer } from "@/components/pull-request/use-active-diff-container";
 import { useDiffSymbolOptions } from "@/components/pull-request/use-diff-symbol-options";

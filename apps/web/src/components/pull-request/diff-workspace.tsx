@@ -305,6 +305,11 @@ export default function DiffWorkspace({
                   headSha={headSha}
                   key={trailKey}
                   onAttach={navigation.attachPane}
+                  onClose={() =>
+                    navigation.setTrail(
+                      depth === 0 ? null : trail.slice(0, depth)
+                    )
+                  }
                   onFocus={focusColumn}
                   onNavigate={navigation.navigateFrom}
                   onSelectPosition={selectPanePosition}

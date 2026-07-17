@@ -1,14 +1,15 @@
+import { XIcon } from "@phosphor-icons/react";
 import { getSingularPatch } from "@pierre/diffs";
 import { CodeView, type CodeViewHandle } from "@pierre/diffs/react";
 import type {
   PullRequestFile,
   PullRequestRef,
 } from "@sphynx/schema/pull-requests";
+import { Button } from "@sphynx/ui/components/ui/button";
 import { cn } from "@sphynx/ui/lib/utils";
 import { useCallback, useMemo } from "react";
 import { scrollToLine } from "@/components/pull-request/code-view-scroll";
 import { CARD_CLASSES } from "@/components/pull-request/diff-card-classes";
-import { renderFileTypePrefix } from "@/components/pull-request/file-type-icon";
 import {
   enrichWithContents,
   expandableFilePath,
@@ -19,6 +20,7 @@ import {
   useFileContents,
 } from "@/components/pull-request/pull-request-queries";
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
+import { renderFileTypePrefix } from "@/components/pull-request/render-file-type-prefix";
 import type { SymbolIndex } from "@/components/pull-request/symbol-index";
 import { useDiffSymbolOptions } from "@/components/pull-request/use-diff-symbol-options";
 import { useViewedHeader } from "@/components/pull-request/use-viewed-header";
@@ -32,6 +34,7 @@ interface DefinitionPaneProps {
   index: number;
   line: number;
   onAttach: (index: number, handle: CodeViewHandle<undefined> | null) => void;
+  onClose: () => void;
   onNavigate: (index: number, definition: DefinitionRef) => void;
   onSelectPosition: (index: number, line: number, token?: HTMLElement) => void;
   onSetViewed: (change: { path: string; viewed: boolean }) => void;
@@ -47,6 +50,7 @@ export function DefinitionPane({
   index,
   line,
   onAttach,
+  onClose,
   onNavigate,
   onSelectPosition,
   onSetViewed,
@@ -73,7 +77,25 @@ export function DefinitionPane({
     [symbolOptions]
   );
 
-  const renderHeaderMetadata = useViewedHeader(viewedFiles, onSetViewed);
+  const viewedHeader = useViewedHeader(viewedFiles, onSetViewed);
+  const renderHeaderMetadata = useCallback(
+    (item: { id: string }) => (
+      <span className="flex items-center gap-1.5">
+        {viewedHeader(item)}
+        <Button
+          aria-label="Close pane"
+          className="text-muted-foreground"
+          onClick={onClose}
+          size="icon-xs"
+          title="Close pane"
+          variant="ghost"
+        >
+          <XIcon />
+        </Button>
+      </span>
+    ),
+    [viewedHeader, onClose]
+  );
   const viewed = viewedFiles?.has(file.path) ?? false;
 
   const contents = useFileContents(

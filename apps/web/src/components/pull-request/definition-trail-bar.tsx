@@ -1,14 +1,22 @@
-import { CaretRightIcon } from "@phosphor-icons/react";
+import { ArrowUUpLeftIcon, CaretRightIcon, XIcon } from "@phosphor-icons/react";
 import { Button } from "@sphynx/ui/components/ui/button";
-import { cn } from "@sphynx/ui/lib/utils";
 import { Fragment } from "react";
 import {
   type DefinitionRef,
   trailKeyAt,
 } from "@/components/pull-request/pull-request-search";
 
+const MAX_CRUMBS = 4;
+
 function baseName(path: string) {
   return path.split("/").at(-1) ?? path;
+}
+
+function visibleIndexes(length: number) {
+  if (length <= MAX_CRUMBS) {
+    return Array.from({ length }, (_, index) => index);
+  }
+  return [0, length - 2, length - 1];
 }
 
 interface DefinitionTrailBarProps {
@@ -24,52 +32,84 @@ export function DefinitionTrailBar({
   onTruncate,
   trail,
 }: DefinitionTrailBarProps) {
+  const indexes = visibleIndexes(trail.length);
+  const hidden = trail.length - indexes.length;
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5">
       <nav
         aria-label="Definition trail"
         className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto"
       >
-        {trail.map((entry, index) => {
+        {indexes.map((index, order) => {
+          const entry = trail[index];
           const isLast = index === trail.length - 1;
+          const label = (
+            <>
+              {baseName(entry.path)}
+              <span className="text-muted-foreground/60">:{entry.line}</span>
+            </>
+          );
           return (
             <Fragment key={trailKeyAt(trail, index)}>
-              {index > 0 ? (
-                <CaretRightIcon className="size-3 shrink-0 text-muted-foreground/50" />
+              {order > 0 ? (
+                <>
+                  {hidden > 0 && order === 1 ? (
+                    <>
+                      <CaretRightIcon className="size-3 shrink-0 text-muted-foreground/50" />
+                      <span
+                        className="shrink-0 px-1 text-muted-foreground/60 text-xs"
+                        title={`${hidden} more`}
+                      >
+                        …
+                      </span>
+                    </>
+                  ) : null}
+                  <CaretRightIcon className="size-3 shrink-0 text-muted-foreground/50" />
+                </>
               ) : null}
-              <Button
-                className={cn(
-                  "h-6 shrink-0 px-1.5 text-muted-foreground text-xs",
-                  isLast && "bg-muted text-foreground"
-                )}
-                disabled={isLast}
-                onClick={() => onTruncate(index)}
-                size="sm"
-                variant="ghost"
-              >
-                {baseName(entry.path)}
-                <span className="text-muted-foreground/60">:{entry.line}</span>
-              </Button>
+              {isLast ? (
+                <span
+                  aria-current="page"
+                  className="flex h-6 shrink-0 items-center gap-1 rounded-md bg-muted px-1.5 font-mono text-foreground text-xs"
+                >
+                  {label}
+                </span>
+              ) : (
+                <Button
+                  className="shrink-0 px-1.5 font-mono text-muted-foreground"
+                  onClick={() => onTruncate(index)}
+                  size="xs"
+                  variant="ghost"
+                >
+                  {label}
+                </Button>
+              )}
             </Fragment>
           );
         })}
       </nav>
-      <Button
-        className="h-6 shrink-0 px-1.5 text-xs"
-        onClick={onBack}
-        size="sm"
-        variant="ghost"
-      >
-        Back
-      </Button>
-      <Button
-        className="h-6 shrink-0 px-1.5 text-xs"
-        onClick={onClose}
-        size="sm"
-        variant="ghost"
-      >
-        Close
-      </Button>
+      <div className="flex shrink-0 items-center gap-0.5 border-border border-l pl-1.5">
+        <Button
+          aria-label="Back"
+          className="text-muted-foreground"
+          onClick={onBack}
+          size="icon-xs"
+          title="Back · u"
+          variant="ghost"
+        >
+          <ArrowUUpLeftIcon />
+        </Button>
+        <Button
+          aria-label="Close definitions"
+          className="text-muted-foreground"
+          onClick={onClose}
+          size="icon-xs"
+          title="Close · Esc"
+          variant="ghost"
+        >
+          <XIcon />
+        </Button>
+      </div>
     </div>
   );
 }

@@ -17,6 +17,11 @@ interface FileListProps {
   viewedFiles: ReadonlySet<string> | null;
 }
 
+interface TreeState {
+  collapsed: ReadonlySet<string>;
+  revealedFor: string | undefined;
+}
+
 export function FileList({
   files,
   onMarkAllViewed,
@@ -26,31 +31,37 @@ export function FileList({
   viewedFiles,
 }: FileListProps) {
   const { settings } = useSettings();
-  const [collapsedDirs, setCollapsedDirs] = useState<ReadonlySet<string>>(
-    new Set()
-  );
+  const [treeState, setTreeState] = useState<TreeState>({
+    collapsed: new Set(),
+    revealedFor: undefined,
+  });
   const nodes = useMemo(() => buildFileTree(files), [files]);
   const allViewed = viewedFiles
     ? files.every((file) => viewedFiles.has(file.path))
     : false;
-  const [revealedPath, setRevealedPath] = useState(selectedPath);
-  if (selectedPath !== revealedPath) {
-    setRevealedPath(selectedPath);
-    const revealed = selectedPath
-      ? [...collapsedDirs].filter((key) => !selectedPath.startsWith(`${key}/`))
-      : null;
-    if (revealed && revealed.length !== collapsedDirs.size) {
-      setCollapsedDirs(new Set(revealed));
-    }
+  if (selectedPath !== treeState.revealedFor) {
+    setTreeState((previous) => ({
+      collapsed: selectedPath
+        ? new Set(
+            [...previous.collapsed].filter(
+              (key) => !selectedPath.startsWith(`${key}/`)
+            )
+          )
+        : previous.collapsed,
+      revealedFor: selectedPath,
+    }));
   }
+  const collapsedDirs = treeState.collapsed;
   const toggleDirectory = (key: string) => {
-    const next = new Set(collapsedDirs);
-    if (next.has(key)) {
-      next.delete(key);
-    } else {
-      next.add(key);
-    }
-    setCollapsedDirs(next);
+    setTreeState((previous) => {
+      const collapsed = new Set(previous.collapsed);
+      if (collapsed.has(key)) {
+        collapsed.delete(key);
+      } else {
+        collapsed.add(key);
+      }
+      return { ...previous, collapsed };
+    });
   };
   if (settings.sidebarCollapsed) {
     return (
@@ -88,9 +99,9 @@ export function FileList({
         </div>
         {viewedFiles && !allViewed ? (
           <Button
-            className="h-6 px-1.5 text-muted-foreground text-xs"
+            className="text-muted-foreground"
             onClick={onMarkAllViewed}
-            size="sm"
+            size="xs"
             variant="ghost"
           >
             <ChecksIcon className="size-3.5" />
