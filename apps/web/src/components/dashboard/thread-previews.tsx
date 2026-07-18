@@ -6,6 +6,8 @@ import {
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
 import { cn } from "@sphynx/ui/lib/utils";
+import { Link } from "@tanstack/react-router";
+import { CopyForAgent } from "@/components/dashboard/copy-for-agent";
 import {
   orderedThreadPreviews,
   splitSeverity,
@@ -35,7 +37,14 @@ function ThreadPreviewRow({
   const login = preview.author ? stripBotSuffix(preview.author.login) : null;
   const { severity, text } = splitSeverity(preview.body);
   return (
-    <div className="group -mx-2 flex flex-col gap-1 rounded-md px-2 py-1.5 transition-colors hover:bg-alpha-2">
+    <div className="group relative -mx-2 flex flex-col gap-1 rounded-md px-2 py-1.5 transition-colors hover:bg-alpha-2">
+      <Link
+        aria-label="Open the thread in the review workspace"
+        className="absolute inset-0 rounded-md"
+        params={{ owner: pull.owner, repo: pull.repo, number: pull.number }}
+        search={preview.path ? { file: preview.path } : undefined}
+        to="/$owner/$repo/pull/$number"
+      />
       <div className="flex h-5 items-center gap-1.5">
         <Avatar className="size-3.5 shrink-0 rounded-full">
           <AvatarImage
@@ -58,7 +67,7 @@ function ThreadPreviewRow({
             {baseName(preview.path)}
           </span>
         ) : null}
-        <span className="ml-auto flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+        <span className="relative z-10 ml-auto flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
           <CopyButton
             className="size-6"
             label="Copy comment"
@@ -93,8 +102,6 @@ function ThreadPreviewRow({
   );
 }
 
-const MAX_SHOWN_THREADS = 3;
-
 export function ThreadPreviews({
   canAct,
   pull,
@@ -105,28 +112,26 @@ export function ThreadPreviews({
   if (pull.threadPreviews.length === 0) {
     return null;
   }
-  const shown = orderedThreadPreviews(pull).slice(0, MAX_SHOWN_THREADS);
+  const shown = orderedThreadPreviews(pull);
   const hidden = pull.unresolvedThreads - shown.length;
   return (
-    <div className="flex flex-col gap-1 border-border border-b px-5 py-4">
-      <div className="mb-1 flex items-center justify-between">
+    <div className="flex min-h-0 flex-col gap-1 border-border border-b px-5 py-4">
+      <div className="-mx-5 mb-2 flex items-center justify-between border-border border-b px-5 pb-2">
         <p className="font-medium text-[11px] text-muted-foreground/60">
           open threads
         </p>
-        <CopyButton
-          className="-my-1 size-6"
-          label="Copy all unresolved comments"
-          value={unresolvedThreadsText(pull)}
-        />
+        <CopyForAgent value={unresolvedThreadsText(pull)} />
       </div>
-      {shown.map((preview) => (
-        <ThreadPreviewRow
-          canAct={canAct}
-          key={preview.id}
-          preview={preview}
-          pull={pull}
-        />
-      ))}
+      <div className="no-scrollbar -mx-2 flex max-h-[320px] flex-col gap-1 overflow-y-auto px-2">
+        {shown.map((preview) => (
+          <ThreadPreviewRow
+            canAct={canAct}
+            key={preview.id}
+            preview={preview}
+            pull={pull}
+          />
+        ))}
+      </div>
       {hidden > 0 ? (
         <p className="text-[11px] text-muted-foreground/50">
           +{plural(hidden, "more open thread")}
