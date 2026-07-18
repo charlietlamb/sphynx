@@ -104,7 +104,8 @@ export function DiffCardList({
 }: DiffCardListProps) {
   const [{ file, line }] = usePullRequestSearch();
   const rootRef = useRef<HTMLDivElement>(null);
-  const activePath = focused ? (file ?? files[0]?.path ?? null) : null;
+  const fallbackPath = file ?? files[0]?.path;
+  const activePath = focused ? (fallbackPath ?? null) : null;
   useActiveDiffContainer(rootRef, activePath);
   const { canComment, changeSelection, openDraft } = commenting;
   const commentingCallbacks = useMemo(
@@ -140,7 +141,7 @@ export function DiffCardList({
   }, [threads]);
 
   const expandablePath = expandableFilePath(
-    files.find((candidate) => candidate.path === (file ?? files[0]?.path))
+    files.find((candidate) => candidate.path === fallbackPath)
   );
   const activeContents = useFileContents(
     pullRequestRef,

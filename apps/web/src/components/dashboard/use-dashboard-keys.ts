@@ -1,3 +1,4 @@
+import { isTypingTarget } from "@sphynx/ui/lib/typing-target";
 import { useEffect, useRef } from "react";
 
 export interface DashboardKeyHandlers {
@@ -29,15 +30,6 @@ const BINDINGS: Record<
   "]": "onNextRepo",
   "[": "onPrevRepo",
 };
-
-function isTypingTarget(target: EventTarget | null) {
-  return (
-    target instanceof HTMLElement &&
-    (target.tagName === "INPUT" ||
-      target.tagName === "TEXTAREA" ||
-      target.isContentEditable)
-  );
-}
 
 export function useDashboardKeys(handlers: DashboardKeyHandlers) {
   const live = useRef(handlers);

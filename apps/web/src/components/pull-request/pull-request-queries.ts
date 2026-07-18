@@ -197,7 +197,7 @@ export function usePullRequestFreshness(ref: PullRequestRef) {
   const current = useQuery(pullRequestQuery(ref));
   const poll = useQuery({
     queryKey: ["pull-request", ref.owner, ref.repo, ref.number, "head-poll"],
-    queryFn: () => fetchDecoded(pullUrl(ref), PullRequestSummarySchema),
+    queryFn: pullRequestQuery(ref).queryFn,
     enabled: current.data !== undefined,
     initialData: () => queryClient.getQueryData(pullRequestQuery(ref).queryKey),
     refetchInterval: HEAD_POLL_INTERVAL,
@@ -482,6 +482,7 @@ export function useViewedFiles(ref: PullRequestRef) {
     onMutate: async (change) => {
       const { queryKey } = viewedFilesQuery(ref);
       await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData(queryKey);
       queryClient.setQueryData(queryKey, (current) => {
         if (!current) {
           return current;
@@ -494,23 +495,15 @@ export function useViewedFiles(ref: PullRequestRef) {
         }
         return next;
       });
+      return { previous };
     },
-    onError: (error, change) => {
-      queryClient.setQueryData(
-        viewedFilesQuery(ref).queryKey,
-        (current: ReadonlySet<string> | null | undefined) => {
-          if (!current) {
-            return current;
-          }
-          const next = new Set(current);
-          if (change.viewed) {
-            next.delete(change.path);
-          } else {
-            next.add(change.path);
-          }
-          return next;
-        }
-      );
+    onError: (error, _change, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(
+          viewedFilesQuery(ref).queryKey,
+          context.previous
+        );
+      }
       reportMutationError(
         queryClient,
         ref,
@@ -539,17 +532,26 @@ export function useViewedFiles(ref: PullRequestRef) {
     onMutate: async (paths: readonly string[]) => {
       const { queryKey } = viewedFilesQuery(ref);
       await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData(queryKey);
       queryClient.setQueryData(queryKey, (current) =>
         current ? new Set(paths) : current
       );
+      return { previous };
     },
-    onError: (error) =>
+    onError: (error, _paths, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(
+          viewedFilesQuery(ref).queryKey,
+          context.previous
+        );
+      }
       reportMutationError(
         queryClient,
         ref,
         "Couldn't mark all files viewed",
         error
-      ),
+      );
+    },
     onSettled: () => {
       if (queryClient.isMutating({ mutationKey }) === 1) {
         return queryClient.invalidateQueries({

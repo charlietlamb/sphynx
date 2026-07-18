@@ -3,6 +3,7 @@ import { GithubIcon } from "@/components/icons/github-icon";
 import { TwitterIcon } from "@/components/icons/twitter-icon";
 import { SocialLink } from "@/components/layout/social-link";
 import { SphynxMark } from "@/components/layout/sphynx-mark";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export function SiteHeader() {
   return (
@@ -12,6 +13,7 @@ export function SiteHeader() {
         <span className="font-heading text-xl tracking-tight">Sphynx</span>
       </Link>
       <nav className="flex items-center gap-1">
+        <ThemeToggle />
         <SocialLink
           href="https://github.com/charlietlamb/sphynx"
           label="GitHub"

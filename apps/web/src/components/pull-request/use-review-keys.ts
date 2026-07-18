@@ -1,3 +1,4 @@
+import { isTypingTarget } from "@sphynx/ui/lib/typing-target";
 import { useEffect } from "react";
 import {
   compileKeymap,
@@ -50,13 +51,6 @@ const SEQUENCE_TIMEOUT = 800;
 
 function lookupKey(event: KeyboardEvent) {
   return event.shiftKey && event.key.length > 1 ? `S-${event.key}` : event.key;
-}
-
-function isEditable(target: EventTarget | null) {
-  return (
-    target instanceof HTMLElement &&
-    target.closest("input, textarea, select, [contenteditable=true]") !== null
-  );
 }
 
 function escapeCommand(
@@ -147,7 +141,7 @@ export function useReviewKeys({
       return runCommand(resolveCommand(key));
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey || event.altKey || isEditable(event.target)) {
+      if (event.metaKey || event.altKey || isTypingTarget(event.target)) {
         return;
       }
       if (event.ctrlKey) {

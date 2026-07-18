@@ -1,25 +1,11 @@
 import type { QueuePull } from "@sphynx/schema/review-queue";
 import { ShortcutButton } from "@sphynx/ui/components/shortcut-button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@sphynx/ui/components/ui/dialog";
 import { Textarea } from "@sphynx/ui/components/ui/textarea";
 import { useState } from "react";
+import { ConfirmActionDialog } from "@/components/dashboard/confirm-action-dialog";
 import { usePullActions } from "@/components/dashboard/use-pull-actions";
 
 export type ActionDialog = "merge" | "block" | null;
-
-const confirmOnMetaEnter =
-  (confirm: () => void) => (event: React.KeyboardEvent) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-      event.preventDefault();
-      confirm();
-    }
-  };
 
 interface DossierActionsProps {
   canAct: boolean;
@@ -97,66 +83,29 @@ export function DossierActions({
           Open pull
         </ShortcutButton>
       </div>
-      <Dialog
+      <ConfirmActionDialog
+        confirmDisabled={reason.trim().length === 0}
+        confirmLabel="Request changes"
+        description={`Submits a changes-requested review on ${pull.repo}#${pull.number} with your reason.`}
+        onConfirm={confirmBlock}
         onOpenChange={(open) => changeDialog(open ? "block" : null)}
         open={dialog === "block"}
+        title={`Block #${pull.number} with changes requested?`}
       >
-        <DialogContent
-          onKeyDown={confirmOnMetaEnter(confirmBlock)}
-          showCloseButton={false}
-        >
-          <DialogHeader>
-            <DialogTitle>
-              Block #{pull.number} with changes requested?
-            </DialogTitle>
-            <DialogDescription>
-              Submits a changes-requested review on {pull.repo}#{pull.number}{" "}
-              with your reason.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="What needs to change before this can merge?"
-            value={reason}
-          />
-          <ShortcutButton
-            className="w-full"
-            disabled={reason.trim().length === 0}
-            onClick={confirmBlock}
-            shortcut={["⌘", "↵"]}
-            size="sm"
-          >
-            Request changes
-          </ShortcutButton>
-        </DialogContent>
-      </Dialog>
-      <Dialog
+        <Textarea
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="What needs to change before this can merge?"
+          value={reason}
+        />
+      </ConfirmActionDialog>
+      <ConfirmActionDialog
+        confirmLabel="Merge"
+        description={`Squash-merges ${pull.repo}#${pull.number} on GitHub. This can't be undone from here.`}
+        onConfirm={confirmMerge}
         onOpenChange={(open) => changeDialog(open ? "merge" : null)}
         open={dialog === "merge"}
-      >
-        <DialogContent
-          onKeyDown={confirmOnMetaEnter(confirmMerge)}
-          showCloseButton={false}
-        >
-          <DialogHeader>
-            <DialogTitle>
-              Merge #{pull.number} into {pull.baseRefName}?
-            </DialogTitle>
-            <DialogDescription>
-              Squash-merges {pull.repo}#{pull.number} on GitHub. This can't be
-              undone from here.
-            </DialogDescription>
-          </DialogHeader>
-          <ShortcutButton
-            className="w-full"
-            onClick={confirmMerge}
-            shortcut={["⌘", "↵"]}
-            size="sm"
-          >
-            Merge
-          </ShortcutButton>
-        </DialogContent>
-      </Dialog>
+        title={`Merge #${pull.number} into ${pull.baseRefName}?`}
+      />
     </div>
   );
 }
