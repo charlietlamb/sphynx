@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 interface SignalTipProps {
   children: ReactNode;
   className?: string;
-  label: string;
+  label: ReactNode;
 }
 
 export function SignalTip({ children, className, label }: SignalTipProps) {

@@ -8,7 +8,7 @@ import { cn } from "@sphynx/ui/lib/utils";
 import { SignalTip } from "@/components/dashboard/signal-tip";
 import { stripBotSuffix } from "@/lib/claims";
 
-const MAX_SHOWN = 4;
+const MAX_SHOWN = 3;
 
 const RING_CLASSES: Record<ReviewerVerdict["state"], string> = {
   approved: "ring-addition",
@@ -61,10 +61,14 @@ export function ReviewerStack({
       ))}
       {hidden.length > 0 ? (
         <SignalTip
-          className="ml-1 text-[10px] text-muted-foreground/60 tabular-nums"
-          label={hidden
-            .map((reviewer) => stripBotSuffix(reviewer.name))
-            .join(", ")}
+          className="ml-[3px] inline-flex size-[18px] items-center justify-center rounded-[5px] bg-muted/60 font-medium text-[9px] text-muted-foreground tabular-nums ring-1 ring-border"
+          label={
+            <span className="flex flex-col gap-0.5">
+              {hidden.map((reviewer) => (
+                <span key={reviewer.name}>{reviewerLabel(reviewer)}</span>
+              ))}
+            </span>
+          }
         >
           +{hidden.length}
         </SignalTip>
