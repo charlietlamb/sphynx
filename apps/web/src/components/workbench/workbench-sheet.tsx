@@ -120,7 +120,7 @@ export function WorkbenchSheet({
   return (
     <Sheet onOpenChange={onOpenChange} open={open}>
       <SheetContent
-        className="flex h-[65svh] max-h-[640px] flex-col gap-0 border-border bg-background p-0 [transition-timing-function:cubic-bezier(.25,.1,.25,1)]"
+        className="flex flex-col gap-0 border-border bg-background p-0 [transition-timing-function:cubic-bezier(.25,.1,.25,1)] data-[side=bottom]:h-[480px]"
         showCloseButton={false}
         side="bottom"
       >
