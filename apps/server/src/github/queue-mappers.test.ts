@@ -57,9 +57,9 @@ describe("previewBody", () => {
   });
 
   test("truncates long bodies", () => {
-    const body = "a".repeat(400);
+    const body = "a".repeat(600);
     const preview = previewBody(body);
-    expect(preview.length).toBeLessThanOrEqual(180);
+    expect(preview.length).toBeLessThanOrEqual(400);
     expect(preview.endsWith("…")).toBe(true);
   });
 });

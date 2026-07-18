@@ -6,6 +6,7 @@ import {
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
 import { cn } from "@sphynx/ui/lib/utils";
+import { unresolvedThreadsText } from "@/components/dashboard/thread-copy-all";
 import { useResolveThread } from "@/components/dashboard/use-resolve-thread";
 import { plural, stripBotSuffix } from "@/lib/claims";
 import { baseName } from "@/lib/paths";
@@ -98,6 +99,8 @@ function ThreadPreviewRow({
   );
 }
 
+const MAX_SHOWN_THREADS = 3;
+
 export function ThreadPreviews({
   canAct,
   pull,
@@ -108,13 +111,21 @@ export function ThreadPreviews({
   if (pull.threadPreviews.length === 0) {
     return null;
   }
-  const hidden = pull.unresolvedThreads - pull.threadPreviews.length;
+  const shown = pull.threadPreviews.slice(0, MAX_SHOWN_THREADS);
+  const hidden = pull.unresolvedThreads - shown.length;
   return (
     <div className="flex flex-col gap-1 border-border border-b px-5 py-4">
-      <p className="mb-1 font-medium text-[11px] text-muted-foreground/60">
-        open threads
-      </p>
-      {pull.threadPreviews.map((preview) => (
+      <div className="mb-1 flex items-center justify-between">
+        <p className="font-medium text-[11px] text-muted-foreground/60">
+          open threads
+        </p>
+        <CopyButton
+          className="-my-1 size-6"
+          label="Copy all unresolved comments"
+          value={unresolvedThreadsText(pull)}
+        />
+      </div>
+      {shown.map((preview) => (
         <ThreadPreviewRow
           canAct={canAct}
           key={preview.id}

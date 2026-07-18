@@ -125,8 +125,8 @@ type RawThread = typeof RawThreadSchema.Type;
 const FAILED_CONCLUSIONS = new Set(["FAILURE", "TIMED_OUT", "STARTUP_FAILURE"]);
 const FAILED_STATUS_STATES = new Set(["FAILURE", "ERROR"]);
 const MAX_CI_FAILURES = 6;
-const MAX_THREAD_PREVIEWS = 3;
-const MAX_PREVIEW_BODY = 180;
+const MAX_THREAD_PREVIEWS = 12;
+const MAX_PREVIEW_BODY = 400;
 
 export function failingChecks(contexts: readonly RawContext[]): string[] {
   const names: string[] = [];
