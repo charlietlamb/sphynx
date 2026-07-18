@@ -7,7 +7,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: "Source Serif 4 Variable", ui-serif, Georgia, serif;
+  --font-heading: "Instrument Sans Variable", ui-sans-serif, sans-serif;
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -290,7 +290,8 @@
 
 @layer base {
   .font-heading {
-    letter-spacing: -0.01em;
+    font-weight: 550;
+    letter-spacing: -0.02em;
   }
 }
 
