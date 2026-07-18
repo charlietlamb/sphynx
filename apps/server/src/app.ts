@@ -14,6 +14,7 @@ import { GitHubClientLive } from "./github/client";
 import { GitHubConfigLive } from "./github/config";
 import { GitHubPipelineLive } from "./github/pipeline";
 import { PipelineCacheLive } from "./github/pipeline-cache";
+import { GitHubRepoEventsLive } from "./github/repo-events";
 import { GitHubReviewQueueLive } from "./github/review-queue";
 import { GitHubReviewsLive } from "./github/reviews";
 import { GitHubViewerLive } from "./github/viewer";
@@ -21,6 +22,7 @@ import { PullRequestCommentsApiLive } from "./routes/comments";
 import { PullRequestsApiLive } from "./routes/pulls";
 import { ReviewQueueApiLive } from "./routes/review-queue";
 import { PullRequestViewsApiLive } from "./routes/views";
+import { WorkbenchApiLive } from "./routes/workbench";
 
 export class HttpServer extends Context.Tag("@sphynx/server/HttpServer")<
   HttpServer,
@@ -72,7 +74,8 @@ const GitHubLive = PipelineCacheLive.pipe(
       GitHubClientLive,
       GitHubViewerLive,
       GitHubReviewsLive,
-      GitHubReviewQueueLive
+      GitHubReviewQueueLive,
+      GitHubRepoEventsLive
     )
   ),
   Layer.provide(Layer.mergeAll(GitHubConfigLive, FetchHttpClient.layer))
@@ -91,7 +94,8 @@ const ApiLive = Layer.mergeAll(
         PullRequestsApiLive,
         PullRequestViewsApiLive,
         PullRequestCommentsApiLive,
-        ReviewQueueApiLive
+        ReviewQueueApiLive,
+        WorkbenchApiLive
       )
     )
   ),

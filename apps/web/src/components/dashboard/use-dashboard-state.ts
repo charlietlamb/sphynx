@@ -11,6 +11,7 @@ import { useDialog } from "@/components/dashboard/dashboard-dialogs";
 import type { RepoOption } from "@/components/dashboard/repo-switcher";
 import { useDashboardKeys } from "@/components/dashboard/use-dashboard-keys";
 import { useSettings } from "@/components/settings/settings-provider";
+import { useWorkbench } from "@/components/workbench/use-workbench";
 import {
   buildBranchQueue,
   filterQueue,
@@ -107,6 +108,12 @@ export function useDashboardState() {
     [flow, fullQueue]
   );
 
+  const workbench = useWorkbench(
+    flow?.owner ?? null,
+    flow?.repo ?? null,
+    authed
+  );
+
   const focused = (() => {
     if (!queue) {
       return null;
@@ -169,7 +176,7 @@ export function useDashboardState() {
   };
 
   useDashboardKeys({
-    active: dialogs.stack.length === 0,
+    active: dialogs.stack.length === 0 && !workbench.open,
     onMerge: () => {
       if (authed && focusedPull) {
         dialogs.open("mergePull", { pull: focusedPull });
@@ -195,6 +202,7 @@ export function useDashboardState() {
     },
     onNextRepo: () => moveRepo(1),
     onPrevRepo: () => moveRepo(-1),
+    onWorkbench: () => workbench.toggle(),
   });
 
   const selectedRepo = flow
@@ -204,6 +212,7 @@ export function useDashboardState() {
   return {
     authed,
     selectedRepo,
+    workbench,
     branchFilter,
     flow,
     focused,

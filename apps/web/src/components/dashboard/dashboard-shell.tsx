@@ -12,6 +12,7 @@ interface DashboardShellProps {
   githubUrl: string | null;
   queue: ReactNode;
   rail: ReactNode;
+  railFooter?: ReactNode;
   switcher: ReactNode;
 }
 
@@ -20,6 +21,7 @@ export function DashboardShell({
   githubUrl,
   queue,
   rail,
+  railFooter,
   switcher,
 }: DashboardShellProps) {
   return (
@@ -38,8 +40,11 @@ export function DashboardShell({
           direction="horizontal"
         >
           <ResizablePanel defaultSize={17} minSize={12}>
-            <aside className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto px-3 py-3">
-              {rail}
+            <aside className="flex h-full min-h-0 flex-col">
+              <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3">
+                {rail}
+              </div>
+              {railFooter}
             </aside>
           </ResizablePanel>
           <ResizableHandle className="bg-border" />

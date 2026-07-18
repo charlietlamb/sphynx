@@ -11,6 +11,7 @@ export interface DashboardKeyHandlers {
   onOpen: () => void;
   onPrevRepo: () => void;
   onUp: () => void;
+  onWorkbench: () => void;
 }
 
 const DIGIT_PATTERN = /^[1-9]$/;
@@ -29,6 +30,7 @@ const BINDINGS: Record<
   b: "onBlock",
   "]": "onNextRepo",
   "[": "onPrevRepo",
+  w: "onWorkbench",
 };
 
 export function useDashboardKeys(handlers: DashboardKeyHandlers) {

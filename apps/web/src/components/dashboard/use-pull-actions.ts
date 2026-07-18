@@ -1,6 +1,7 @@
 import type { QueuePull } from "@sphynx/schema/review-queue";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { logWorkbenchEvent } from "@/components/workbench/workbench-store";
 import { postJson } from "@/lib/api";
 
 function pullPath(pull: QueuePull) {
@@ -15,7 +16,15 @@ export function usePullActions(pull: QueuePull) {
   const merge = useMutation({
     mutationKey: ["merge", pull.owner, pull.repo, pull.number],
     mutationFn: () => postJson(`${pullPath(pull)}/merge`),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      logWorkbenchEvent({
+        owner: pull.owner,
+        repo: pull.repo,
+        kind: "pr-merged",
+        pull: { number: pull.number, title: pull.title },
+      });
+      invalidate();
+    },
     onError: () =>
       toast.error(`Couldn't merge #${pull.number}`, {
         description: "Nothing was changed on GitHub.",
@@ -25,7 +34,16 @@ export function usePullActions(pull: QueuePull) {
   const block = useMutation({
     mutationKey: ["block", pull.owner, pull.repo, pull.number],
     mutationFn: (body: string) => postJson(`${pullPath(pull)}/block`, { body }),
-    onSuccess: invalidate,
+    onSuccess: (_data, body) => {
+      logWorkbenchEvent({
+        owner: pull.owner,
+        repo: pull.repo,
+        kind: "review-changes",
+        pull: { number: pull.number, title: pull.title },
+        detail: body,
+      });
+      invalidate();
+    },
     onError: () =>
       toast.error(`Couldn't block #${pull.number}`, {
         description: "Nothing was changed on GitHub.",
