@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Schema } from "effect";
 import { useMemo, useState } from "react";
-import type { ActionDialog } from "@/components/dashboard/dossier-actions";
+import { useDialog } from "@/components/dashboard/dashboard-dialogs";
 import type { RepoOption } from "@/components/dashboard/repo-switcher";
 import { useDashboardKeys } from "@/components/dashboard/use-dashboard-keys";
 import { useSettings } from "@/components/settings/settings-provider";
@@ -71,9 +71,9 @@ export function useDashboardState() {
   });
   const { settings, update: updateSettings } = useSettings();
   const repoKey = settings.selectedRepo;
+  const dialogs = useDialog();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
-  const [actionDialog, setActionDialog] = useState<ActionDialog>(null);
 
   const flows = useMemo(() => {
     const active = (pipeline.data?.repos ?? []).filter(
@@ -169,15 +169,15 @@ export function useDashboardState() {
   };
 
   useDashboardKeys({
-    active: actionDialog === null,
+    active: dialogs.stack.length === 0,
     onMerge: () => {
       if (authed && focusedPull) {
-        setActionDialog("merge");
+        dialogs.open("mergePull", { pull: focusedPull });
       }
     },
     onBlock: () => {
       if (authed && focusedPull) {
-        setActionDialog("block");
+        dialogs.open("blockPull", { pull: focusedPull });
       }
     },
     onBranch: (index) => {
@@ -202,7 +202,6 @@ export function useDashboardState() {
     : null;
 
   return {
-    actionDialog,
     authed,
     selectedRepo,
     branchFilter,
@@ -216,7 +215,6 @@ export function useDashboardState() {
     repos,
     selectBranch,
     selectRepo,
-    setActionDialog,
     setFocusedKey,
   };
 }

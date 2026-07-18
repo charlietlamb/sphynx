@@ -27,13 +27,13 @@ export function VerdictRow({ now, reviewer }: VerdictRowProps) {
   const name = stripBotSuffix(reviewer.name);
   return (
     <div className="flex h-9 items-center gap-2.5">
-      <Avatar className="size-5 shrink-0 rounded-full">
+      <Avatar className="size-5 shrink-0 rounded-xs after:rounded-xs">
         <AvatarImage
           alt={name}
-          className="rounded-full"
+          className="rounded-xs"
           src={reviewer.avatarUrl ?? undefined}
         />
-        <AvatarFallback className="rounded-full text-[9px]">
+        <AvatarFallback className="rounded-xs text-[9px]">
           {name[0]}
         </AvatarFallback>
       </Avatar>

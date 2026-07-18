@@ -44,16 +44,16 @@ export function ReviewerStack({
         >
           <Avatar
             className={cn(
-              "size-[18px] rounded-full ring-1",
+              "size-[18px] rounded-xs ring-1 after:rounded-xs",
               RING_CLASSES[reviewer.state]
             )}
           >
             <AvatarImage
               alt={stripBotSuffix(reviewer.name)}
-              className="rounded-full"
+              className="rounded-xs"
               src={reviewer.avatarUrl ?? undefined}
             />
-            <AvatarFallback className="rounded-full text-[8px]">
+            <AvatarFallback className="rounded-xs text-[8px]">
               {stripBotSuffix(reviewer.name)[0]}
             </AvatarFallback>
           </Avatar>

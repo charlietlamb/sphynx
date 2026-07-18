@@ -5,10 +5,7 @@ import {
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
 import { cn } from "@sphynx/ui/lib/utils";
-import {
-  type ActionDialog,
-  DossierActions,
-} from "@/components/dashboard/dossier-actions";
+import { DossierActions } from "@/components/dashboard/dossier-actions";
 import { ThreadPreviews } from "@/components/dashboard/thread-previews";
 import { VerdictMatrix } from "@/components/dashboard/verdict-matrix";
 import { shortAge } from "@/lib/age";
@@ -29,10 +26,8 @@ const TONE_CLASSES: Record<ClaimTone, string> = {
 };
 
 interface DossierPaneProps {
-  actionDialog: ActionDialog;
   canAct: boolean;
   now: number;
-  onActionDialogChange: (dialog: ActionDialog) => void;
   onOpen: (pull: QueuePull) => void;
   pull: QueuePull | null;
 }
@@ -56,14 +51,7 @@ function ClaimBlock({ now, pull }: { now: number; pull: QueuePull }) {
   );
 }
 
-export function DossierPane({
-  actionDialog,
-  canAct,
-  now,
-  onActionDialogChange,
-  onOpen,
-  pull,
-}: DossierPaneProps) {
+export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
   if (!pull) {
     return (
       <p className="px-5 py-4 text-[13px] text-muted-foreground">
@@ -141,13 +129,7 @@ export function DossierPane({
           {plural(pull.changedFiles, "file")}
         </span>
       </div>
-      <DossierActions
-        canAct={canAct}
-        dialog={actionDialog}
-        onDialogChange={onActionDialogChange}
-        onOpen={() => onOpen(pull)}
-        pull={pull}
-      />
+      <DossierActions canAct={canAct} onOpen={() => onOpen(pull)} pull={pull} />
     </div>
   );
 }
