@@ -42,12 +42,18 @@ export function BranchGroup({
           {group.total}
         </span>
         {group.mergeable > 0 ? (
-          <span className="text-[11px] text-addition/80">
+          <span
+            className="text-[11px] text-addition/80"
+            title="approved with green checks — ready to merge"
+          >
             · {group.mergeable} mergeable
           </span>
         ) : null}
         {group.contested > 0 ? (
-          <span className="text-[11px] text-deletion/80">
+          <span
+            className="text-[11px] text-deletion/80"
+            title="changes requested or failing checks — needs a human call"
+          >
             · {group.contested} contested
           </span>
         ) : null}
