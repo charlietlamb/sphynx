@@ -14,17 +14,25 @@ function ShortcutButton({
   shortcut,
   variant = "default",
   ...props
-}: ComponentProps<typeof Button> & { shortcut: string }) {
+}: ComponentProps<typeof Button> & {
+  shortcut: string | readonly string[];
+}) {
+  const keys = Array.isArray(shortcut) ? shortcut : [shortcut as string];
   return (
     <Button variant={variant} {...props}>
       {children}
-      <span
-        className={cn(
-          "flex h-4 min-w-4 items-center justify-center rounded-sm px-1 font-medium font-mono text-[10px]",
-          CHIP_VARIANTS[variant ?? "default"] ?? CHIP_VARIANTS.outline
-        )}
-      >
-        {shortcut}
+      <span className="flex items-center gap-0.5">
+        {keys.map((key) => (
+          <span
+            className={cn(
+              "flex h-4 min-w-4 items-center justify-center rounded-sm px-1 font-medium font-mono text-[10px]",
+              CHIP_VARIANTS[variant ?? "default"] ?? CHIP_VARIANTS.outline
+            )}
+            key={key}
+          >
+            {key}
+          </span>
+        ))}
       </span>
     </Button>
   );
