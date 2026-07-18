@@ -20,7 +20,7 @@ export function BranchGroup({
 }: BranchGroupProps) {
   return (
     <div className="flex flex-col gap-1">
-      <p className="mb-1 flex items-baseline gap-2 border-border border-b px-2.5 pt-1 pb-2">
+      <p className="-mx-4 mb-1 flex items-baseline gap-2 border-border border-b px-[26px] pt-1 pb-2">
         <span
           aria-hidden
           className={cn(
