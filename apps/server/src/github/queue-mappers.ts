@@ -31,6 +31,7 @@ fragment PullFields on PullRequest {
   }
   reviewThreads(first: 50) {
     nodes {
+      id
       isResolved
       path
       comments(first: 1) {
@@ -72,6 +73,7 @@ const RawContextSchema = Schema.Union(
 );
 
 const RawThreadSchema = Schema.Struct({
+  id: Schema.String,
   isResolved: Schema.Boolean,
   path: Schema.NullOr(Schema.String),
   comments: Schema.Struct({
@@ -198,6 +200,7 @@ function threadPreviews(threads: readonly RawThread[]) {
         ? { login: first.author.login, avatarUrl: first.author.avatarUrl }
         : null,
       body,
+      id: thread.id,
       path: thread.path,
     });
   }

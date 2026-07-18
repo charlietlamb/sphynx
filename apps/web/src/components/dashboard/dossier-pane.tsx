@@ -110,7 +110,7 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
           ))}
         </div>
       ) : null}
-      <ThreadPreviews pull={pull} />
+      <ThreadPreviews canAct={canAct} pull={pull} />
       <div className="mt-auto flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-3 text-[11px] text-muted-foreground tabular-nums">
         <span
           className={cn(

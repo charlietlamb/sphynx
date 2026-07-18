@@ -50,6 +50,7 @@ export type ReviewerVerdict = typeof ReviewerVerdictSchema.Type;
 export const ThreadPreviewSchema = Schema.Struct({
   author: Schema.NullOr(GitHubUserSchema),
   body: Schema.String,
+  id: Schema.String,
   path: Schema.NullOr(Schema.String),
 });
 
