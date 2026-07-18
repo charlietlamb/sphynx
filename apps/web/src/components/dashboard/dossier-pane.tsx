@@ -81,11 +81,11 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
           <DossierSignals pull={pull} />
         </div>
       </div>
-      <div className="border-border border-b px-5 py-4">
+      <div className="border-border border-b px-5 pb-4">
         <VerdictMatrix now={now} pull={pull} />
       </div>
       {pull.ciFailures.length > 0 ? (
-        <div className="flex flex-col gap-1.5 border-border border-b px-5 py-3">
+        <div className="flex flex-col gap-1.5 border-border border-b px-5 pb-3">
           <SectionHeader label="failing checks" />
           {pull.ciFailures.map((check) => (
             <a

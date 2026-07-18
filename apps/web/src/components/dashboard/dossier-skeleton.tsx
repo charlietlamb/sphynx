@@ -31,10 +31,12 @@ export function DossierSkeleton() {
           </span>
         </div>
       </div>
-      <div className="flex flex-col gap-1 border-border border-b px-5 py-4">
-        <p className="font-medium text-[11px] text-muted-foreground/60">
-          verdicts
-        </p>
+      <div className="flex flex-col gap-1 border-border border-b px-5 pb-4">
+        <div className="-mx-5 mb-2 flex items-center border-border border-b px-5 pt-3 pb-2">
+          <p className="font-medium text-[11px] text-muted-foreground/60">
+            verdicts
+          </p>
+        </div>
         {REVIEWER_WIDTHS.map((width) => (
           <VerdictRowSkeleton key={width} nameWidth={width} />
         ))}
