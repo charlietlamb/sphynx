@@ -38,22 +38,22 @@ export function ReviewerStack({
     <span className="flex items-center">
       {shown.map((reviewer) => (
         <SignalTip
-          className="-ml-1 inline-flex first:ml-0"
+          className="ml-[3px] inline-flex first:ml-0"
           key={reviewer.name}
           label={reviewerLabel(reviewer)}
         >
           <Avatar
             className={cn(
-              "size-[18px] rounded-xs ring-1 after:rounded-xs",
+              "size-[18px] rounded-[5px] ring-1 after:rounded-[5px]",
               RING_CLASSES[reviewer.state]
             )}
           >
             <AvatarImage
               alt={stripBotSuffix(reviewer.name)}
-              className="rounded-xs"
+              className="rounded-[5px]"
               src={reviewer.avatarUrl ?? undefined}
             />
-            <AvatarFallback className="rounded-xs text-[8px]">
+            <AvatarFallback className="rounded-[5px] text-[8px]">
               {stripBotSuffix(reviewer.name)[0]}
             </AvatarFallback>
           </Avatar>
