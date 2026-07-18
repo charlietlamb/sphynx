@@ -14,8 +14,8 @@ interface RailGapQueueProps {
 export function RailGapQueue({ gap, now, onOpenNumber }: RailGapQueueProps) {
   if (gap.aheadBy === 0) {
     return (
-      <div className="ml-[13px] border-border border-l py-1 pl-3">
-        <p className="py-0.5 text-[11px] text-muted-foreground/50">
+      <div className="relative py-0.5 pl-7">
+        <p className="py-0.5 text-[11px] text-muted-foreground/40">
           in sync with {gap.to}
         </p>
       </div>
@@ -26,12 +26,11 @@ export function RailGapQueue({ gap, now, onOpenNumber }: RailGapQueueProps) {
   const oldest = gap.pulls.at(-1)?.mergedAt;
   const oldestDays = oldest ? Math.round(ageDays(oldest, now)) : null;
   return (
-    <div
-      className={cn(
-        "ml-[13px] flex flex-col border-l py-1 pl-3",
-        "border-amber-500/50"
-      )}
-    >
+    <div className="relative py-0.5 pl-7">
+      <span
+        aria-hidden
+        className="absolute top-0 bottom-0 left-[13px] w-px bg-amber-500/60"
+      />
       <p className="flex items-baseline gap-2 py-0.5 text-[11px] text-muted-foreground">
         waiting for {gap.to}
         <span className="text-muted-foreground/60 tabular-nums">

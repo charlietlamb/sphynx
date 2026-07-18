@@ -12,24 +12,33 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
   return (
     <button
       className={cn(
-        "group flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors",
+        "group relative flex h-7 w-full items-center gap-2 rounded-md pr-2 pl-7 text-left transition-colors",
         active ? "bg-primary/5" : "hover:bg-alpha-2"
       )}
       onClick={onSelect}
       type="button"
     >
-      <span
-        aria-hidden
-        className={cn(
-          "size-[7px] shrink-0 rounded-full",
-          item.isStage
-            ? "bg-foreground"
-            : "border border-muted-foreground bg-transparent"
-        )}
-      />
+      {item.isStage ? (
+        <span
+          aria-hidden
+          className="absolute left-[10px] size-[7px] rounded-full bg-foreground"
+        />
+      ) : (
+        <>
+          <span
+            aria-hidden
+            className="absolute top-[-2px] left-[13px] h-[calc(50%+2px)] w-[11px] rounded-bl-md border-border border-b border-l"
+          />
+          <span
+            aria-hidden
+            className="absolute left-[26px] size-[5px] rounded-full border border-muted-foreground bg-background"
+          />
+        </>
+      )}
       <span
         className={cn(
           "min-w-0 flex-1 truncate font-mono text-xs",
+          !item.isStage && "pl-4",
           active && "text-primary",
           !active &&
             (item.isStage ? "text-foreground" : "text-muted-foreground")

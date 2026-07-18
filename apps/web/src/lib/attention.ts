@@ -1,5 +1,4 @@
 import type { QueuePull, RepoFlow } from "@sphynx/schema/review-queue";
-import { ageDays } from "@/lib/age";
 
 export type SizeClass = "xs" | "s" | "m" | "l" | "xl";
 
@@ -237,44 +236,4 @@ export function buildBranchQueue(flow: RepoFlow): BranchQueue {
   }
 
   return { groups, order };
-}
-
-export interface StuckPull {
-  pull: QueuePull;
-  reason: string;
-}
-
-const STUCK_LIMIT = 5;
-
-function stuckReason(pull: QueuePull, now: number): string | null {
-  const days = ageDays(pull.updatedAt, now);
-  if (pull.isDraft) {
-    return null;
-  }
-  if (pull.decision === "ready" && days > 1) {
-    return "approved, idle";
-  }
-  if (pull.ci === "failure" && days > 1) {
-    return "red ci";
-  }
-  if (pull.changesRequested > 0 && days > 2) {
-    return "changes requested";
-  }
-  if (pull.reviewers.length === 0 && days > 2) {
-    return "unreviewed";
-  }
-  return null;
-}
-
-export function stuckPulls(flow: RepoFlow, now: number): StuckPull[] {
-  const stuck: StuckPull[] = [];
-  for (const pull of flow.openPulls) {
-    const reason = stuckReason(pull, now);
-    if (reason) {
-      stuck.push({ pull, reason });
-    }
-  }
-  return stuck
-    .sort((a, b) => a.pull.updatedAt.localeCompare(b.pull.updatedAt))
-    .slice(0, STUCK_LIMIT);
 }

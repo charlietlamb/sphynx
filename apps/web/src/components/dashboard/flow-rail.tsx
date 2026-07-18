@@ -1,18 +1,15 @@
 import type { RepoFlow } from "@sphynx/schema/review-queue";
 import { RailBranch } from "@/components/dashboard/rail-branch";
 import { RailGapQueue } from "@/components/dashboard/rail-gap-queue";
-import { RailStuck } from "@/components/dashboard/rail-stuck";
-import type { RailBranchItem, StuckPull } from "@/lib/attention";
+import type { RailBranchItem } from "@/lib/attention";
 
 interface FlowRailProps {
   flow: RepoFlow;
   items: readonly RailBranchItem[];
   now: number;
-  onFocusPull: (key: string) => void;
   onOpenNumber: (number: number) => void;
   onSelect: (branch: string | null) => void;
   selected: string | null;
-  stuck: readonly StuckPull[];
 }
 
 function hintFor(items: readonly RailBranchItem[], item: RailBranchItem) {
@@ -24,11 +21,9 @@ export function FlowRail({
   flow,
   items,
   now,
-  onFocusPull,
   onOpenNumber,
   onSelect,
   selected,
-  stuck,
 }: FlowRailProps) {
   const tributaries = items.filter((item) => !item.isStage);
   const stages = items.filter((item) => item.isStage);
@@ -46,7 +41,11 @@ export function FlowRail({
           </button>
         ) : null}
       </div>
-      <div className="flex flex-col">
+      <div className="relative flex flex-col">
+        <span
+          aria-hidden
+          className="absolute top-1 bottom-[26px] left-[13px] w-px bg-border"
+        />
         {tributaries.map((item) => (
           <RailBranch
             active={selected === item.branch}
@@ -58,9 +57,6 @@ export function FlowRail({
             }
           />
         ))}
-        {tributaries.length > 0 ? (
-          <span aria-hidden className="ml-[13px] h-2 w-px bg-border" />
-        ) : null}
         {stages.map((item) => {
           const gap = flow.gaps.find(
             (candidate) => candidate.from === item.branch
@@ -81,14 +77,13 @@ export function FlowRail({
             </div>
           );
         })}
-        <div className="mt-1 flex items-center gap-2 px-2">
-          <span aria-hidden className="h-px flex-1 bg-border" />
+        <div className="flex h-[26px] items-center gap-2 pr-2 pl-7">
           <span className="text-[10px] text-muted-foreground/40">
             production
           </span>
+          <span aria-hidden className="h-px flex-1 bg-border" />
         </div>
       </div>
-      <RailStuck now={now} onFocus={onFocusPull} stuck={stuck} />
     </div>
   );
 }

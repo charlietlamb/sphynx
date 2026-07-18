@@ -23,7 +23,6 @@ import {
   filterQueue,
   pullKey,
   railBranches,
-  stuckPulls,
 } from "@/lib/attention";
 import { useSession } from "@/lib/auth-client";
 
@@ -115,11 +114,6 @@ export function DashboardPage() {
   const rail = useMemo(
     () => (flow && fullQueue ? railBranches(flow, fullQueue) : []),
     [flow, fullQueue]
-  );
-
-  const stuck = useMemo(
-    () => (flow ? stuckPulls(flow, Date.now()) : []),
-    [flow]
   );
 
   const focused = useMemo(() => {
@@ -246,10 +240,6 @@ export function DashboardPage() {
             flow={flow}
             items={rail}
             now={now}
-            onFocusPull={(key) => {
-              setBranchFilter(null);
-              setFocusedKey(`${key}`);
-            }}
             onOpenNumber={(number) => {
               if (flow) {
                 openPullPage(flow.owner, flow.repo, number);
@@ -257,7 +247,6 @@ export function DashboardPage() {
             }}
             onSelect={selectBranch}
             selected={branchFilter}
-            stuck={stuck}
           />
         ) : (
           <RailSkeleton />
