@@ -56,6 +56,13 @@ export const ThreadPreviewSchema = Schema.Struct({
 
 export type ThreadPreview = typeof ThreadPreviewSchema.Type;
 
+export const FailingCheckSchema = Schema.Struct({
+  name: Schema.String,
+  url: Schema.NullOr(Schema.String),
+});
+
+export type FailingCheck = typeof FailingCheckSchema.Type;
+
 export const QueuePullSchema = Schema.Struct({
   owner: Schema.String,
   repo: Schema.String,
@@ -76,7 +83,7 @@ export const QueuePullSchema = Schema.Struct({
   approvals: Schema.Number,
   changesRequested: Schema.Number,
   unresolvedThreads: Schema.Number,
-  ciFailures: Schema.Array(Schema.String),
+  ciFailures: Schema.Array(FailingCheckSchema),
   threadPreviews: Schema.Array(ThreadPreviewSchema),
   decision: DecisionSchema,
   blocker: Schema.NullOr(Schema.String),

@@ -63,7 +63,13 @@ describe("claimFor", () => {
 
   test("failing checks name the failing jobs", () => {
     const claim = claimFor(
-      pull({ ci: "failure", ciFailures: ["Type Check", "Unit Tests"] }),
+      pull({
+        ci: "failure",
+        ciFailures: [
+          { name: "Type Check", url: null },
+          { name: "Unit Tests", url: null },
+        ],
+      }),
       NOW
     );
     expect(claim.status).toBe("Fix failing checks");

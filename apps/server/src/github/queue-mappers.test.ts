@@ -5,12 +5,35 @@ describe("failingChecks", () => {
   test("collects failed check runs and status contexts", () => {
     expect(
       failingChecks([
-        { __typename: "CheckRun", name: "build", conclusion: "SUCCESS" },
-        { __typename: "CheckRun", name: "typecheck", conclusion: "FAILURE" },
-        { __typename: "StatusContext", context: "vercel", state: "ERROR" },
-        { __typename: "StatusContext", context: "ci/lint", state: "SUCCESS" },
+        {
+          __typename: "CheckRun",
+          name: "build",
+          conclusion: "SUCCESS",
+          detailsUrl: null,
+        },
+        {
+          __typename: "CheckRun",
+          name: "typecheck",
+          conclusion: "FAILURE",
+          detailsUrl: "https://github.com/checks/1",
+        },
+        {
+          __typename: "StatusContext",
+          context: "vercel",
+          state: "ERROR",
+          targetUrl: "https://vercel.com/deploy/1",
+        },
+        {
+          __typename: "StatusContext",
+          context: "ci/lint",
+          state: "SUCCESS",
+          targetUrl: null,
+        },
       ])
-    ).toEqual(["typecheck", "vercel"]);
+    ).toEqual([
+      { name: "typecheck", url: "https://github.com/checks/1" },
+      { name: "vercel", url: "https://vercel.com/deploy/1" },
+    ]);
   });
 
   test("dedupes repeated names from matrix jobs", () => {
@@ -20,15 +43,25 @@ describe("failingChecks", () => {
           __typename: "CheckRun",
           name: "root workspace",
           conclusion: "FAILURE",
+          detailsUrl: null,
         },
         {
           __typename: "CheckRun",
           name: "root workspace",
           conclusion: "FAILURE",
+          detailsUrl: null,
         },
-        { __typename: "CheckRun", name: "conduit", conclusion: "TIMED_OUT" },
+        {
+          __typename: "CheckRun",
+          name: "conduit",
+          conclusion: "TIMED_OUT",
+          detailsUrl: null,
+        },
       ])
-    ).toEqual(["root workspace", "conduit"]);
+    ).toEqual([
+      { name: "root workspace", url: null },
+      { name: "conduit", url: null },
+    ]);
   });
 
   test("caps the list at six names", () => {
@@ -36,6 +69,7 @@ describe("failingChecks", () => {
       __typename: "CheckRun" as const,
       name: `check-${index}`,
       conclusion: "FAILURE",
+      detailsUrl: null,
     }));
     expect(failingChecks(contexts)).toHaveLength(6);
   });

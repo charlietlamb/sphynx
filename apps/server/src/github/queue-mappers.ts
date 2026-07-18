@@ -1,4 +1,5 @@
 import type {
+  FailingCheck,
   QueuePull,
   ReviewerVerdict,
   ThreadPreview,
@@ -21,8 +22,8 @@ fragment PullFields on PullRequest {
     contexts(first: 40) {
       nodes {
         __typename
-        ... on CheckRun { name conclusion }
-        ... on StatusContext { context state }
+        ... on CheckRun { name conclusion detailsUrl }
+        ... on StatusContext { context state targetUrl }
       }
     }
   }
@@ -64,11 +65,13 @@ const RawContextSchema = Schema.Union(
     __typename: Schema.Literal("CheckRun"),
     name: Schema.String,
     conclusion: Schema.NullOr(Schema.String),
+    detailsUrl: Schema.NullishOr(Schema.String),
   }),
   Schema.Struct({
     __typename: Schema.Literal("StatusContext"),
     context: Schema.String,
     state: Schema.NullOr(Schema.String),
+    targetUrl: Schema.NullishOr(Schema.String),
   })
 );
 
@@ -128,13 +131,13 @@ const MAX_CI_FAILURES = 6;
 const MAX_THREAD_PREVIEWS = 12;
 const MAX_PREVIEW_BODY = 400;
 
-export function failingChecks(contexts: readonly RawContext[]): string[] {
-  const names: string[] = [];
+export function failingChecks(contexts: readonly RawContext[]): FailingCheck[] {
+  const checks: FailingCheck[] = [];
   const seen = new Set<string>();
-  const push = (name: string) => {
-    if (!seen.has(name) && names.length < MAX_CI_FAILURES) {
+  const push = (name: string, url: string | null) => {
+    if (!seen.has(name) && checks.length < MAX_CI_FAILURES) {
       seen.add(name);
-      names.push(name);
+      checks.push({ name, url });
     }
   };
   for (const context of contexts) {
@@ -143,17 +146,17 @@ export function failingChecks(contexts: readonly RawContext[]): string[] {
       context.conclusion &&
       FAILED_CONCLUSIONS.has(context.conclusion)
     ) {
-      push(context.name);
+      push(context.name, context.detailsUrl ?? null);
     }
     if (
       context.__typename === "StatusContext" &&
       context.state &&
       FAILED_STATUS_STATES.has(context.state)
     ) {
-      push(context.context);
+      push(context.context, context.targetUrl ?? null);
     }
   }
-  return names;
+  return checks;
 }
 
 const IMG_TAG = /<img[^>]*\balt="([^"]*)"[^>]*>/g;

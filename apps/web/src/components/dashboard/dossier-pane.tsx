@@ -88,15 +88,24 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
           <span className="font-medium text-[11px] text-muted-foreground/60">
             failing checks
           </span>
-          {pull.ciFailures.map((name) => (
-            <span className="flex items-center gap-2" key={name}>
+          {pull.ciFailures.map((check) => (
+            <a
+              className="group flex items-center gap-2"
+              href={
+                check.url ??
+                `https://github.com/${pull.owner}/${pull.repo}/pull/${pull.number}/checks`
+              }
+              key={check.name}
+              rel="noreferrer"
+              target="_blank"
+            >
               <span aria-hidden className="text-[11px] text-deletion">
                 ✕
               </span>
-              <span className="min-w-0 truncate font-mono text-[11px] text-foreground/80">
-                {name}
+              <span className="min-w-0 truncate font-mono text-[11px] text-foreground/80 underline-offset-2 transition-colors group-hover:text-foreground group-hover:underline">
+                {check.name}
               </span>
-            </span>
+            </a>
           ))}
         </div>
       ) : null}

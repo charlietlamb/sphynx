@@ -9,7 +9,7 @@ function CheckSignal({ pull }: { pull: QueuePull }) {
         className="flex items-center gap-1"
         label={
           pull.ciFailures.length > 0
-            ? `Failing: ${pull.ciFailures.join(", ")}`
+            ? `Failing: ${pull.ciFailures.map((check) => check.name).join(", ")}`
             : "Checks failing"
         }
       >
