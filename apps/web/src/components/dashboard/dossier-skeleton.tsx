@@ -34,7 +34,10 @@ export function DossierSkeleton() {
       </div>
       <div className="flex flex-col gap-1 border-border border-b px-5 pb-4">
         <div className="-mx-5 mb-2 flex items-center gap-1.5 border-border border-b px-5 py-2.5">
-          <SealCheckIcon className="size-3 text-muted-foreground/60" />
+          <SealCheckIcon
+            className="size-3 text-muted-foreground/60"
+            weight="fill"
+          />
           <p className="font-medium text-[11px] text-foreground">Verdicts</p>
         </div>
         {REVIEWER_WIDTHS.map((width) => (

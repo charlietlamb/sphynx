@@ -120,7 +120,7 @@ export function ThreadPreviews({
     <div className="flex flex-col gap-1 px-5 pb-3">
       <SectionHeader
         action={<CopyForAgent value={unresolvedThreadsText(pull)} />}
-        icon={<ChatCircleIcon className="size-3" />}
+        icon={<ChatCircleIcon className="size-3" weight="fill" />}
         label="Open threads"
       />
       <div className="-mx-2 flex flex-col gap-1 px-2">

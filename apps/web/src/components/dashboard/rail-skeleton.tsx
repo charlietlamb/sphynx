@@ -6,7 +6,10 @@ export function RailSkeleton() {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="-mx-3 mb-2 flex items-center gap-1.5 border-border border-b bg-background px-3 py-2.5">
-        <GitBranchIcon className="size-3 text-muted-foreground/60" />
+        <GitBranchIcon
+          className="size-3 text-muted-foreground/60"
+          weight="fill"
+        />
         <p className="font-medium text-[11px] text-foreground">Flow</p>
       </div>
       <div className="relative flex flex-col">

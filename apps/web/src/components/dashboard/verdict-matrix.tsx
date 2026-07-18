@@ -59,7 +59,7 @@ export function VerdictMatrix({ now, pull }: VerdictMatrixProps) {
   return (
     <div className="flex flex-col gap-1">
       <SectionHeader
-        icon={<SealCheckIcon className="size-3" />}
+        icon={<SealCheckIcon className="size-3" weight="fill" />}
         label="Verdicts"
       />
       {sorted.length === 0 ? (

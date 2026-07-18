@@ -89,7 +89,7 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
         {pull.ciFailures.length > 0 ? (
           <div className="flex flex-col gap-1.5 border-border border-b px-5 pb-3">
             <SectionHeader
-              icon={<XCircleIcon className="size-3" />}
+              icon={<XCircleIcon className="size-3" weight="fill" />}
               label="Failing checks"
             />
             {pull.ciFailures.map((check) => (

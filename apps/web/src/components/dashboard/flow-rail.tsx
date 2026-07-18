@@ -46,7 +46,7 @@ export function FlowRail({
           ) : null
         }
         className="-mx-3 px-3"
-        icon={<GitBranchIcon className="size-3" />}
+        icon={<GitBranchIcon className="size-3" weight="fill" />}
         label="Flow"
       />
       <div className="relative flex flex-col">
