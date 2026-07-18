@@ -38,6 +38,7 @@ export function isContested(pull: QueuePull) {
 export interface ScoreSummary {
   label: string;
   ratio: number;
+  reviewer: string;
 }
 
 export function worstScore(pull: QueuePull): ScoreSummary | null {
@@ -52,7 +53,7 @@ export function worstScore(pull: QueuePull): ScoreSummary | null {
     }
     const ratio = value / scale;
     if (worst === null || ratio < worst.ratio) {
-      worst = { label: reviewer.score, ratio };
+      worst = { label: reviewer.score, ratio, reviewer: reviewer.name };
     }
   }
   return worst;

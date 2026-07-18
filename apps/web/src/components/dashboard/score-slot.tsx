@@ -1,6 +1,8 @@
 import type { QueuePull } from "@sphynx/schema/review-queue";
 import { cn } from "@sphynx/ui/lib/utils";
+import { SignalTip } from "@/components/dashboard/signal-tip";
 import { worstScore } from "@/lib/attention";
+import { stripBotSuffix } from "@/lib/claims";
 
 const WEAK_SCORE = 0.5;
 const STRONG_SCORE = 0.8;
@@ -20,15 +22,18 @@ export function ScoreSlot({ pull }: { pull: QueuePull }) {
   return (
     <span className="flex w-8 shrink-0 items-center justify-end">
       {score ? (
-        <span
-          className={cn(
-            "font-medium text-[11px] tabular-nums",
-            scoreClass(score.ratio)
-          )}
-          title={`lowest reviewer score ${score.label}`}
+        <SignalTip
+          label={`Scored ${score.label} by ${stripBotSuffix(score.reviewer)}`}
         >
-          {score.label}
-        </span>
+          <span
+            className={cn(
+              "font-medium text-[11px] tabular-nums",
+              scoreClass(score.ratio)
+            )}
+          >
+            {score.label}
+          </span>
+        </SignalTip>
       ) : null}
     </span>
   );

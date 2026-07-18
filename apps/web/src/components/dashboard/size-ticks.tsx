@@ -1,6 +1,8 @@
 import type { QueuePull } from "@sphynx/schema/review-queue";
 import { cn } from "@sphynx/ui/lib/utils";
+import { SignalTip } from "@/components/dashboard/signal-tip";
 import { sizeClass } from "@/lib/attention";
+import { plural } from "@/lib/claims";
 
 const LEVELS: Record<ReturnType<typeof sizeClass>, number> = {
   xs: 1,
@@ -27,10 +29,9 @@ export function SizeTicks({ pull }: { pull: QueuePull }) {
   const size = sizeClass(pull);
   const level = LEVELS[size];
   return (
-    <span
-      aria-hidden
+    <SignalTip
       className="flex shrink-0 items-end gap-px"
-      title={`${size} · +${pull.additions} −${pull.deletions} · ${pull.changedFiles} files`}
+      label={`Size ${size} · +${pull.additions} −${pull.deletions} across ${plural(pull.changedFiles, "file")}`}
     >
       {TICKS.map((tick) => (
         <span
@@ -42,6 +43,6 @@ export function SizeTicks({ pull }: { pull: QueuePull }) {
           style={{ height: TICK_HEIGHTS[tick - 1] }}
         />
       ))}
-    </span>
+    </SignalTip>
   );
 }

@@ -1,30 +1,29 @@
 import type { QueuePull } from "@sphynx/schema/review-queue";
+import { SignalTip } from "@/components/dashboard/signal-tip";
 
 export function CiSlot({ pull }: { pull: QueuePull }) {
   let signal: React.ReactNode = null;
   if (pull.ci === "failure") {
     signal = (
-      <span
-        className="font-medium text-[11px] text-deletion"
-        title={
+      <SignalTip
+        label={
           pull.ciFailures.length > 0
-            ? `failing: ${pull.ciFailures.join(", ")}`
-            : "checks failing"
+            ? `Failing: ${pull.ciFailures.join(", ")}`
+            : "Checks failing"
         }
       >
-        ✕
-      </span>
+        <span className="font-medium text-[11px] text-deletion">✕</span>
+      </SignalTip>
     );
   } else if (pull.ci === "pending") {
     signal = (
-      <span
-        aria-hidden
+      <SignalTip
         className="relative inline-flex size-1.5"
-        title="checks running"
+        label="Checks running"
       >
         <span className="absolute inline-flex size-full animate-ping rounded-full bg-amber-500/60" />
         <span className="relative inline-flex size-1.5 rounded-full bg-amber-500" />
-      </span>
+      </SignalTip>
     );
   }
   return (
