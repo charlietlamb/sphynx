@@ -6,8 +6,8 @@ interface RailBranchSkeletonProps {
 
 export function RailBranchSkeleton({ nameWidth }: RailBranchSkeletonProps) {
   return (
-    <div className="flex w-full items-center gap-2.5 px-2 py-1.5">
-      <Skeleton className="size-[7px] shrink-0 rounded-full" />
+    <div className="relative flex h-7 w-full items-center gap-2 pr-2 pl-7">
+      <Skeleton className="absolute left-[22px] size-[5px] rounded-full" />
       <span className="min-w-0 flex-1">
         <Skeleton className="h-3" style={{ width: nameWidth }} />
       </span>

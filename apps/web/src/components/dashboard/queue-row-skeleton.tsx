@@ -6,16 +6,17 @@ interface QueueRowSkeletonProps {
 
 export function QueueRowSkeleton({ titleWidth }: QueueRowSkeletonProps) {
   return (
-    <div className="flex h-10 w-full items-center gap-2.5 px-2.5">
+    <div className="flex h-10 w-full items-center gap-2.5 rounded-md border border-transparent px-2.5">
       <Skeleton className="size-5 shrink-0 rounded-full" />
       <Skeleton className="h-3 w-8 shrink-0" />
-      <Skeleton className="size-1.5 shrink-0 rounded-full" />
       <span className="min-w-0 flex-1">
         <Skeleton className="h-3.5" style={{ width: titleWidth }} />
       </span>
       <Skeleton className="size-[18px] shrink-0 rounded-full" />
       <Skeleton className="h-3 w-8 shrink-0" />
-      <Skeleton className="size-1.5 shrink-0 rounded-full" />
+      <span className="flex w-4 shrink-0 items-center justify-center">
+        <Skeleton className="size-1.5 rounded-full" />
+      </span>
       <Skeleton className="h-[9px] w-5 shrink-0" />
       <Skeleton className="h-3 w-7 shrink-0" />
     </div>

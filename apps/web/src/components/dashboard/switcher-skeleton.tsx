@@ -2,9 +2,10 @@ import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 
 export function SwitcherSkeleton() {
   return (
-    <span className="flex items-center gap-1.5 px-1.5 py-0.5">
-      <Skeleton className="h-6 w-28" />
-      <Skeleton className="h-3 w-12" />
+    <span className="flex items-center gap-2 border border-transparent py-1 pr-2 pl-2.5">
+      <Skeleton className="size-5 rounded-sm" />
+      <Skeleton className="h-[18px] w-16" />
+      <Skeleton className="size-3" />
     </span>
   );
 }

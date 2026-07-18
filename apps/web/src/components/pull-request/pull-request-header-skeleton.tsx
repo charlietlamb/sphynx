@@ -39,8 +39,8 @@ export function PullRequestHeaderSkeleton({
         <Skeleton className="h-8 w-2/5" />
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2">
-        <Skeleton className="h-5 w-14 rounded-full" />
-        <Skeleton className="size-5 rounded-full" />
+        <Skeleton className="h-[22px] w-14 rounded-full" />
+        <Skeleton className="size-6 rounded-full" />
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-3 w-40" />
         <Skeleton className="h-3 w-28" />

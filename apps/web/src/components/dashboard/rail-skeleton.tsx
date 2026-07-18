@@ -11,12 +11,16 @@ export function RailSkeleton() {
       </p>
       <div className="flex flex-col">
         <RailBranchSkeleton nameWidth={NAME_WIDTHS[0] ?? "3rem"} />
-        <div className="ml-[10px] border-border border-l py-1 pl-3">
+        <div className="flex h-[24.5px] items-center py-0.5 pl-7">
           <Skeleton className="h-2.5 w-24" />
         </div>
         {NAME_WIDTHS.slice(1).map((width) => (
           <RailBranchSkeleton key={width} nameWidth={width} />
         ))}
+        <div className="flex h-[26px] items-center gap-2 pr-2 pl-7">
+          <Skeleton className="h-3 w-16" />
+          <span className="h-px min-w-0 flex-1 bg-border" />
+        </div>
       </div>
     </div>
   );

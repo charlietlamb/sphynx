@@ -18,8 +18,10 @@ function BranchHeaderSkeleton({
         !first && "border-t"
       )}
     >
-      <Skeleton className="h-3" style={{ width: nameWidth }} />
-      <Skeleton className="h-3 w-6" />
+      <span className="flex h-[16.5px] items-center gap-2">
+        <Skeleton className="h-3" style={{ width: nameWidth }} />
+        <Skeleton className="h-3 w-6" />
+      </span>
     </div>
   );
 }
@@ -29,15 +31,19 @@ export function QueueSkeleton() {
     <div className="flex flex-col gap-4 px-4 pb-3">
       <div className="flex flex-col gap-1">
         <BranchHeaderSkeleton nameWidth="2.5rem" />
-        {TITLE_WIDTHS.map((width) => (
-          <QueueRowSkeleton key={width} titleWidth={width} />
-        ))}
+        <div className="flex flex-col gap-0.5">
+          {TITLE_WIDTHS.map((width) => (
+            <QueueRowSkeleton key={width} titleWidth={width} />
+          ))}
+        </div>
       </div>
       <div className="flex flex-col gap-1">
         <BranchHeaderSkeleton first={false} nameWidth="3.5rem" />
-        {TITLE_WIDTHS.slice(0, 3).map((width) => (
-          <QueueRowSkeleton key={width} titleWidth={width} />
-        ))}
+        <div className="flex flex-col gap-0.5">
+          {TITLE_WIDTHS.slice(0, 3).map((width) => (
+            <QueueRowSkeleton key={width} titleWidth={width} />
+          ))}
+        </div>
       </div>
     </div>
   );

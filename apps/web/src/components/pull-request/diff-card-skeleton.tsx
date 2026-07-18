@@ -20,7 +20,7 @@ interface DiffCardSkeletonProps {
 export function DiffCardSkeleton({ lines = 10 }: DiffCardSkeletonProps) {
   return (
     <div className="flex flex-col border border-border">
-      <div className="flex h-9 items-center gap-2 border-border border-b px-3">
+      <div className="flex h-11 items-center gap-2 border-border border-b px-3">
         <Skeleton className="size-3.5 shrink-0 rounded-sm" />
         <Skeleton className="h-3 w-56" />
         <span className="flex-1" />
