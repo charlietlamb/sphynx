@@ -25,7 +25,7 @@ function ShortcutButton({
         {keys.map((key) => (
           <span
             className={cn(
-              "flex h-4 min-w-4 items-center justify-center rounded-sm px-1 font-medium font-mono text-[10px]",
+              "flex h-4 min-w-4 items-center justify-center rounded-sm px-1 font-medium font-mono text-[10px] uppercase",
               CHIP_VARIANTS[variant ?? "default"] ?? CHIP_VARIANTS.outline
             )}
             key={key}

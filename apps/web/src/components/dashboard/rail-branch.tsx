@@ -55,7 +55,7 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
         total={item.total}
       />
       {hint === null ? null : (
-        <kbd className="shrink-0 rounded-sm border border-border bg-muted/40 px-1 py-px font-mono text-[9px] text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100">
+        <kbd className="shrink-0 rounded-sm border border-border bg-muted/40 px-1 py-px font-mono text-[9px] text-muted-foreground/60 uppercase opacity-0 transition-opacity group-hover:opacity-100">
           {hint}
         </kbd>
       )}
