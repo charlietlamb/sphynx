@@ -1,5 +1,10 @@
 import { CaretDownIcon, CheckIcon } from "@phosphor-icons/react";
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@sphynx/ui/components/ui/avatar";
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -47,40 +52,18 @@ export function RepoSwitcher({ onSelect, repos, selected }: RepoSwitcherProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="group flex items-center gap-2 rounded-md border border-transparent py-1 pr-2 pl-2.5 outline-none transition-colors hover:border-border hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:border-border data-[state=open]:bg-muted/30">
-        <span className="flex items-baseline gap-1">
-          <span className="font-mono text-[11px] text-muted-foreground/60">
-            {selected.owner}/
-          </span>
-          <span className="font-heading text-lg leading-none tracking-tight">
-            {selected.repo}
-          </span>
-        </span>
-        <span className="text-[11px] tabular-nums">
-          {selected.mergeable > 0 ? (
-            <>
-              <span
-                className="text-addition"
-                title="approved and green, ready to merge"
-              >
-                {selected.mergeable} mergeable
-              </span>
-              <span className="text-muted-foreground/40"> · </span>
-            </>
-          ) : null}
-          {selected.contested > 0 ? (
-            <>
-              <span
-                className="text-deletion"
-                title="failing checks or changes requested"
-              >
-                {selected.contested} contested
-              </span>
-              <span className="text-muted-foreground/40"> · </span>
-            </>
-          ) : null}
-          <span className="text-muted-foreground/70">
-            {selected.openCount} open
-          </span>
+        <Avatar className="size-5 rounded-[4px]">
+          <AvatarImage
+            alt={selected.owner}
+            className="rounded-[4px]"
+            src={`https://github.com/${selected.owner}.png?size=40`}
+          />
+          <AvatarFallback className="rounded-[4px] text-[9px]">
+            {selected.owner[0]}
+          </AvatarFallback>
+        </Avatar>
+        <span className="font-heading text-lg leading-none tracking-tight">
+          {selected.repo}
         </span>
         <CaretDownIcon className="size-3 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
       </DropdownMenuTrigger>
