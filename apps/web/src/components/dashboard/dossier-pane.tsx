@@ -6,17 +6,11 @@ import {
 } from "@sphynx/ui/components/ui/avatar";
 import { cn } from "@sphynx/ui/lib/utils";
 import { DossierActions } from "@/components/dashboard/dossier-actions";
+import { DossierSignals } from "@/components/dashboard/dossier-signals";
 import { ThreadPreviews } from "@/components/dashboard/thread-previews";
 import { VerdictMatrix } from "@/components/dashboard/verdict-matrix";
 import { shortAge } from "@/lib/age";
-import { type ClaimTone, claimFor, plural } from "@/lib/claims";
-
-const CI_LABELS: Record<QueuePull["ci"], string> = {
-  success: "checks green",
-  failure: "checks failing",
-  pending: "checks running",
-  none: "no checks",
-};
+import { type ClaimTone, claimFor } from "@/lib/claims";
 
 const TONE_CLASSES: Record<ClaimTone, string> = {
   ready: "text-addition",
@@ -83,6 +77,7 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
             {pull.author?.login ?? "unknown"} · updated{" "}
             {shortAge(pull.updatedAt, now)} ago
           </span>
+          <DossierSignals pull={pull} />
         </div>
       </div>
       <div className="border-border border-b px-5 py-4">
@@ -106,26 +101,6 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
         </div>
       ) : null}
       <ThreadPreviews canAct={canAct} pull={pull} />
-      <div className="mt-auto flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-3 text-[11px] text-muted-foreground tabular-nums">
-        <span
-          className={cn(
-            pull.ci === "failure" && "text-deletion",
-            pull.ci === "success" && "text-addition"
-          )}
-        >
-          {CI_LABELS[pull.ci]}
-        </span>
-        {pull.unresolvedThreads > 0 ? (
-          <span>{plural(pull.unresolvedThreads, "open thread")}</span>
-        ) : null}
-        <span className="tabular-nums">
-          <span className="text-addition">+{pull.additions}</span>{" "}
-          <span className="text-deletion">−{pull.deletions}</span>
-        </span>
-        <span className="tabular-nums">
-          {plural(pull.changedFiles, "file")}
-        </span>
-      </div>
       <DossierActions canAct={canAct} onOpen={() => onOpen(pull)} pull={pull} />
     </div>
   );

@@ -24,6 +24,11 @@ export function DossierSkeleton() {
         <div className="flex h-[16.5px] items-center gap-2">
           <Skeleton className="size-4 shrink-0 rounded-full" />
           <Skeleton className="h-3 w-36" />
+          <span className="ml-auto flex items-center gap-3">
+            <Skeleton className="size-1.5 rounded-full" />
+            <Skeleton className="h-[3px] w-7 rounded-full" />
+            <Skeleton className="h-3 w-10" />
+          </span>
         </div>
       </div>
       <div className="flex flex-col gap-1 border-border border-b px-5 py-4">
@@ -37,13 +42,7 @@ export function DossierSkeleton() {
           <Skeleton className="h-3 w-24" />
         </span>
       </div>
-      <div className="mt-auto flex h-[41.5px] items-center gap-4 px-5">
-        <Skeleton className="h-3 w-16" />
-        <Skeleton className="h-3 w-14" />
-        <Skeleton className="h-3 w-12" />
-        <Skeleton className="h-3 w-6" />
-      </div>
-      <div className="flex items-center justify-end gap-2 border-border border-t px-5 py-3">
+      <div className="mt-auto flex items-center justify-end gap-2 border-border border-t px-5 py-3">
         <Skeleton className="h-7 w-16 rounded-md" />
         <Skeleton className="h-7 w-16 rounded-md" />
         <Skeleton className="h-7 w-20 rounded-md" />
