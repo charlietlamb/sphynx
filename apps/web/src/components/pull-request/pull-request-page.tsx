@@ -4,6 +4,7 @@ import { Button } from "@sphynx/ui/components/ui/button";
 import { Navigate, useLocation } from "@tanstack/react-router";
 import { lazy, type ReactNode, Suspense, useMemo, useState } from "react";
 import { ErrorCard } from "@/components/layout/error-card";
+import { NoticePanel } from "@/components/layout/notice-panel";
 import { PullRequestHeader } from "@/components/pull-request/pull-request-header";
 import { PullRequestHeaderSkeleton } from "@/components/pull-request/pull-request-header-skeleton";
 import {
@@ -64,29 +65,17 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
   if (files.isError) {
     const filesError = toErrorCardProps(files.error, () => files.refetch());
     filesContent = (
-      <div className="flex min-h-0 flex-1 items-center justify-center">
-        <div className="w-full max-w-md border border-border bg-background p-8 text-left">
-          <div className="flex flex-col gap-3">
-            <h2 className="font-heading text-2xl tracking-tight">
-              {filesError.title}
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              {filesError.description}
-            </p>
-            {filesError.onRetry ? (
-              <div className="mt-3">
-                <Button
-                  className="h-9 px-4"
-                  onClick={filesError.onRetry}
-                  size="sm"
-                >
-                  Try again
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
+      <NoticePanel
+        action={
+          filesError.onRetry ? (
+            <Button className="h-9 px-4" onClick={filesError.onRetry} size="sm">
+              Try again
+            </Button>
+          ) : undefined
+        }
+        description={filesError.description}
+        title={filesError.title}
+      />
     );
   } else if (files.isPending) {
     filesContent = workspaceSkeleton;
@@ -113,8 +102,8 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
 
   return (
     <main className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
-      <div className="flex flex-1 items-center justify-center md:hidden">
-        <EmptyState
+      <div className="flex flex-1 flex-col md:hidden">
+        <NoticePanel
           description="Open this pull request on a larger screen to review the diff."
           title="Sphynx is better on desktop"
         />
