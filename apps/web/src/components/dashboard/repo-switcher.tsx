@@ -52,13 +52,13 @@ export function RepoSwitcher({ onSelect, repos, selected }: RepoSwitcherProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="group flex items-center gap-2 rounded-md border border-transparent py-1 pr-2 pl-2.5 outline-none transition-colors hover:border-border hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:border-border data-[state=open]:bg-muted/30">
-        <Avatar className="size-5 rounded-[4px]">
+        <Avatar className="size-5 rounded-sm after:rounded-sm">
           <AvatarImage
             alt={selected.owner}
-            className="rounded-[4px]"
+            className="rounded-sm"
             src={`https://github.com/${selected.owner}.png?size=40`}
           />
-          <AvatarFallback className="rounded-[4px] text-[9px]">
+          <AvatarFallback className="rounded-sm text-[9px]">
             {selected.owner[0]}
           </AvatarFallback>
         </Avatar>
