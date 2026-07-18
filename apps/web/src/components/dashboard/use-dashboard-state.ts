@@ -108,11 +108,17 @@ export function useDashboardState() {
     [flow, fullQueue]
   );
 
-  const pullTitles = useMemo(
-    () =>
-      new Map((flow?.openPulls ?? []).map((pull) => [pull.number, pull.title])),
-    [flow]
-  );
+  const pullTitles = useMemo(() => {
+    const titles = new Map(
+      (flow?.openPulls ?? []).map((pull) => [pull.number, pull.title])
+    );
+    for (const gap of flow?.gaps ?? []) {
+      for (const pull of gap.pulls) {
+        titles.set(pull.number, pull.title);
+      }
+    }
+    return titles;
+  }, [flow]);
 
   const workbench = useWorkbench(
     flow?.owner ?? null,

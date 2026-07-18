@@ -96,17 +96,23 @@ export function WorkbenchRow(props: WorkbenchRowProps) {
           <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70 tabular-nums">
             #{event.pull.number}
           </span>
-          <span className="min-w-0 flex-1 truncate text-[12px]">
-            {event.pull.title}
-          </span>
+          {event.pull.title ? (
+            <span className="min-w-0 flex-1 truncate text-[12px]">
+              {event.pull.title}
+            </span>
+          ) : (
+            <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
+              {event.detail}
+            </span>
+          )}
         </>
       ) : (
         <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
           {event.detail}
         </span>
       )}
-      {event.pull && event.detail ? (
-        <span className="hidden max-w-48 shrink-0 truncate font-mono text-[11px] text-muted-foreground/60 lg:inline">
+      {event.pull?.title && event.detail ? (
+        <span className="hidden max-w-56 shrink-0 truncate font-mono text-[11px] text-muted-foreground/50 lg:inline">
           {event.detail}
         </span>
       ) : null}

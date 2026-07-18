@@ -13,6 +13,10 @@ const RawEventSchema = Schema.Struct({
   payload: Schema.optionalWith(Schema.Unknown, { default: () => null }),
 });
 
+const RawBranchTipSchema = Schema.Struct({
+  ref: Schema.NullishOr(Schema.String),
+});
+
 const RawPullPayloadSchema = Schema.Struct({
   action: Schema.String,
   pull_request: Schema.Struct({
@@ -20,6 +24,8 @@ const RawPullPayloadSchema = Schema.Struct({
     title: Schema.NullishOr(Schema.String),
     html_url: Schema.NullishOr(Schema.String),
     merged: Schema.NullishOr(Schema.Boolean),
+    head: Schema.NullishOr(RawBranchTipSchema),
+    base: Schema.NullishOr(RawBranchTipSchema),
   }),
 });
 
@@ -143,11 +149,13 @@ function fromPull(
   if (!kind) {
     return null;
   }
+  const headRef = pull_request.head?.ref ?? null;
+  const baseRef = pull_request.base?.ref ?? null;
   return {
     ...base,
     kind,
     pull: { number: pull_request.number, title: pull_request.title ?? null },
-    detail: null,
+    detail: headRef && baseRef ? `${headRef} → ${baseRef}` : null,
     url: pull_request.html_url ?? pullUrl(owner, repo, pull_request.number),
   };
 }
