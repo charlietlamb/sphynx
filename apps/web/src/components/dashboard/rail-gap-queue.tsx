@@ -1,17 +1,28 @@
 import type { StageGap } from "@sphynx/schema/review-queue";
 import { cn } from "@sphynx/ui/lib/utils";
+import { RailPromotion } from "@/components/dashboard/rail-promotion";
 import { ageDays, shortAge } from "@/lib/age";
 
 const MAX_ROWS = 3;
 const STALE_GAP_DAYS = 5;
 
 interface RailGapQueueProps {
+  canAct: boolean;
   gap: StageGap;
   now: number;
   onOpenNumber: (number: number) => void;
+  owner: string;
+  repo: string;
 }
 
-export function RailGapQueue({ gap, now, onOpenNumber }: RailGapQueueProps) {
+export function RailGapQueue({
+  canAct,
+  gap,
+  now,
+  onOpenNumber,
+  owner,
+  repo,
+}: RailGapQueueProps) {
   if (gap.aheadBy === 0) {
     return (
       <div className="relative py-0.5 pl-7">
@@ -76,21 +87,13 @@ export function RailGapQueue({ gap, now, onOpenNumber }: RailGapQueueProps) {
             : ""}
         </p>
       ) : null}
-      {gap.promotionPull ? (
-        <button
-          className="flex h-6 items-center gap-1 text-[11px] text-primary underline-offset-2 transition-colors hover:underline"
-          onClick={() => {
-            if (gap.promotionPull !== null) {
-              onOpenNumber(gap.promotionPull);
-            }
-          }}
-          type="button"
-        >
-          promotion <span className="font-mono">#{gap.promotionPull}</span> open
-        </button>
-      ) : (
-        <p className="py-0.5 text-[11px] text-amber-500/80">no promotion pr</p>
-      )}
+      <RailPromotion
+        canAct={canAct}
+        gap={gap}
+        onOpenNumber={onOpenNumber}
+        owner={owner}
+        repo={repo}
+      />
     </div>
   );
 }

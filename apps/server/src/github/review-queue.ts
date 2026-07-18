@@ -544,6 +544,58 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
       Effect.withSpan("GitHubReviewQueue.discoverRepos")
     );
 
+  const CreatedPullResponseSchema = Schema.Struct({ number: Schema.Number });
+
+  const createPull = (
+    owner: string,
+    repo: string,
+    head: string,
+    base: string,
+    title: string,
+    token: string
+  ): Effect.Effect<number, GitHubAuthedError | GitHubRateLimited> =>
+    Effect.gen(function* () {
+      const outgoing = HttpClientRequest.post(
+        `${config.apiUrl}/repos/${owner}/${repo}/pulls`
+      ).pipe(
+        HttpClientRequest.bearerToken(token),
+        HttpClientRequest.setHeaders({
+          accept: "application/vnd.github+json",
+          "x-github-api-version": config.apiVersion,
+        }),
+        HttpClientRequest.bodyUnsafeJson({ title, head, base })
+      );
+      const response = yield* client
+        .execute(outgoing)
+        .pipe(
+          Effect.mapError(
+            () => new GitHubUnavailable({ message: "GitHub is unreachable" })
+          )
+        );
+      yield* rejectFailedResponse(response);
+      const body = yield* response.json.pipe(
+        Effect.mapError(
+          () => new GitHubUnavailable({ message: "Invalid create response" })
+        )
+      );
+      const created = yield* Schema.decodeUnknown(CreatedPullResponseSchema)(
+        body
+      ).pipe(
+        Effect.mapError(
+          () => new GitHubUnavailable({ message: "Invalid create response" })
+        )
+      );
+      return created.number;
+    }).pipe(
+      Effect.timeoutFail({
+        duration: config.timeout,
+        onTimeout: () =>
+          new GitHubUnavailable({ message: "GitHub request timed out" }),
+      }),
+      Effect.withSpan("GitHubReviewQueue.createPull"),
+      Effect.annotateLogs({ owner, repo, head, base })
+    );
+
   const mergePull = (ref: PullRequestRef, token: string) =>
     restWrite(token, "PUT", pullPath(ref, "/merge"), {
       merge_method: "squash",
@@ -561,7 +613,7 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
       Effect.annotateLogs(refAnnotations(ref))
     );
 
-  return { discoverRepos, openPullsForRepos, mergePull, blockPull };
+  return { discoverRepos, openPullsForRepos, mergePull, blockPull, createPull };
 });
 
 export class GitHubReviewQueue extends Context.Tag(

@@ -4,6 +4,7 @@ import { RailGapQueue } from "@/components/dashboard/rail-gap-queue";
 import type { RailBranchItem } from "@/lib/attention";
 
 interface FlowRailProps {
+  canAct: boolean;
   flow: RepoFlow;
   items: readonly RailBranchItem[];
   now: number;
@@ -18,6 +19,7 @@ function hintFor(items: readonly RailBranchItem[], item: RailBranchItem) {
 }
 
 export function FlowRail({
+  canAct,
   flow,
   items,
   now,
@@ -72,7 +74,14 @@ export function FlowRail({
                 }
               />
               {gap ? (
-                <RailGapQueue gap={gap} now={now} onOpenNumber={onOpenNumber} />
+                <RailGapQueue
+                  canAct={canAct}
+                  gap={gap}
+                  now={now}
+                  onOpenNumber={onOpenNumber}
+                  owner={flow.owner}
+                  repo={flow.repo}
+                />
               ) : null}
             </div>
           );

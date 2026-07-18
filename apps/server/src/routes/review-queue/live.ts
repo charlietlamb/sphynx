@@ -112,6 +112,25 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
             Effect.map(() => OK)
           )
         )
+        .handle("createPromotion", ({ path, headers, payload }) =>
+          githubToken(headers.cookie).pipe(
+            Effect.flatMap((token) =>
+              queue
+                .createPull(
+                  path.owner,
+                  path.repo,
+                  payload.from,
+                  payload.to,
+                  `Release ${payload.from} to ${payload.to}`,
+                  token
+                )
+                .pipe(
+                  Effect.tap(() => dropCached(token)),
+                  Effect.map((number) => ({ number }))
+                )
+            )
+          )
+        )
         .handle("blockPull", ({ path, headers, payload }) =>
           githubToken(headers.cookie).pipe(
             Effect.flatMap((token) =>

@@ -133,6 +133,29 @@ export const PipelineSchema = Schema.Struct({
 
 export type Pipeline = typeof PipelineSchema.Type;
 
+export const RepoRefSchema = Schema.Struct({
+  owner: Schema.String.pipe(Schema.minLength(1)),
+  repo: Schema.String.pipe(Schema.minLength(1)),
+});
+
+export const PromoteSchema = Schema.Struct({
+  from: Schema.String.pipe(Schema.minLength(1)),
+  to: Schema.String.pipe(Schema.minLength(1)),
+});
+
+export type Promote = typeof PromoteSchema.Type;
+
+const CreatedPullSchema = Schema.Struct({ number: Schema.Number });
+
+const createPromotion = HttpApiEndpoint.post(
+  "createPromotion",
+  "/api/github/repos/:owner/:repo/promote"
+)
+  .setPath(RepoRefSchema)
+  .setHeaders(cookieHeaders)
+  .setPayload(PromoteSchema)
+  .addSuccess(CreatedPullSchema);
+
 const getPipeline = HttpApiEndpoint.get("getPipeline", "/api/github/pipeline")
   .setHeaders(cookieHeaders)
   .addSuccess(PipelineSchema);
@@ -164,6 +187,7 @@ export const ReviewQueueApi = HttpApiGroup.make("reviewQueue")
   .add(getDevPipeline)
   .add(mergePull)
   .add(blockPull)
+  .add(createPromotion)
   .addError(Unauthorized, { status: 401 })
   .addError(PullRequestNotFound, { status: 404 })
   .addError(GitHubRateLimited, { status: 429 })

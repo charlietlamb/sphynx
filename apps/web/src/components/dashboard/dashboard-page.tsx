@@ -237,6 +237,7 @@ export function DashboardPage() {
       rail={
         flow ? (
           <FlowRail
+            canAct={authedAct}
             flow={flow}
             items={rail}
             now={now}
