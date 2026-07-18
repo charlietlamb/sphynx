@@ -3,7 +3,6 @@ import { Schema } from "effect";
 import { Unauthorized } from "./pull-request-views";
 import {
   GitHubRateLimited,
-  GitHubTimeout,
   GitHubUnavailable,
   PullRequestNotFound,
   PullRequestRefSchema,
@@ -87,8 +86,6 @@ export const BlockPullSchema = Schema.Struct({
   body: Schema.String.pipe(Schema.minLength(1)),
 });
 
-export type BlockPull = typeof BlockPullSchema.Type;
-
 const OkSchema = Schema.Struct({ ok: Schema.Boolean });
 
 const cookieHeaders = Schema.Struct({
@@ -143,9 +140,7 @@ export const PromoteSchema = Schema.Struct({
   to: Schema.String.pipe(Schema.minLength(1)),
 });
 
-export type Promote = typeof PromoteSchema.Type;
-
-const CreatedPullSchema = Schema.Struct({ number: Schema.Number });
+export const CreatedPullSchema = Schema.Struct({ number: Schema.Number });
 
 const createPromotion = HttpApiEndpoint.post(
   "createPromotion",
@@ -191,5 +186,4 @@ export const ReviewQueueApi = HttpApiGroup.make("reviewQueue")
   .addError(Unauthorized, { status: 401 })
   .addError(PullRequestNotFound, { status: 404 })
   .addError(GitHubRateLimited, { status: 429 })
-  .addError(GitHubUnavailable, { status: 502 })
-  .addError(GitHubTimeout, { status: 504 });
+  .addError(GitHubUnavailable, { status: 502 });

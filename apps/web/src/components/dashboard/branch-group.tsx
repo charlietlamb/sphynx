@@ -34,7 +34,6 @@ export function BranchGroup({
         </span>
       </p>
       <StackRows
-        depth={0}
         focusedKey={focusedKey}
         nodes={group.nodes}
         now={now}

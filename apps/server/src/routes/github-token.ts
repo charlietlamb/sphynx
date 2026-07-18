@@ -12,29 +12,33 @@ export const githubTokenFor =
   (auth: AuthService, db: DatabaseService, message: string) =>
   (cookie: string | undefined) =>
     Effect.gen(function* () {
-      const session = yield* Effect.promise(() =>
-        auth.api.getSession({
-          headers: new Headers(cookie ? { cookie } : {}),
-        })
-      );
+      const session = yield* Effect.tryPromise({
+        try: () =>
+          auth.api.getSession({
+            headers: new Headers(cookie ? { cookie } : {}),
+          }),
+        catch: () => new Unauthorized({ message }),
+      });
       if (!session) {
         return yield* Effect.fail(new Unauthorized({ message }));
       }
-      const rows = yield* Effect.promise(() =>
-        db
-          .select({ accessToken: account.accessToken })
-          .from(account)
-          .where(
-            and(
-              eq(account.userId, session.user.id),
-              eq(account.providerId, "github")
+      const rows = yield* Effect.tryPromise({
+        try: () =>
+          db
+            .select({ accessToken: account.accessToken })
+            .from(account)
+            .where(
+              and(
+                eq(account.userId, session.user.id),
+                eq(account.providerId, "github")
+              )
             )
-          )
-          .limit(1)
-      );
+            .limit(1),
+        catch: () => new Unauthorized({ message }),
+      });
       const token = rows[0]?.accessToken;
       if (!token) {
         return yield* Effect.fail(new Unauthorized({ message }));
       }
       return token;
-    });
+    }).pipe(Effect.withSpan("githubTokenFor"));

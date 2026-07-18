@@ -2,6 +2,7 @@ import type { StageGap } from "@sphynx/schema/review-queue";
 import { cn } from "@sphynx/ui/lib/utils";
 import { RailPromotion } from "@/components/dashboard/rail-promotion";
 import { ageDays, shortAge } from "@/lib/age";
+import { plural } from "@/lib/claims";
 
 const MAX_ROWS = 3;
 const STALE_GAP_DAYS = 5;
@@ -83,7 +84,7 @@ export function RailGapQueue({
           {extra > 0 ? `${extra} more` : ""}
           {extra > 0 && gap.directCommits > 0 ? " · " : ""}
           {gap.directCommits > 0
-            ? `${gap.directCommits} direct commit${gap.directCommits === 1 ? "" : "s"}`
+            ? plural(gap.directCommits, "direct commit")
             : ""}
         </p>
       ) : null}

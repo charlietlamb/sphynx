@@ -1,4 +1,5 @@
 import type { QueuePull } from "@sphynx/schema/review-queue";
+import { cn } from "@sphynx/ui/lib/utils";
 import { worstScore } from "@/lib/attention";
 
 const WEAK_SCORE = 0.5;
@@ -33,7 +34,10 @@ export function SignalSlot({ pull }: { pull: QueuePull }) {
   } else if (score) {
     signal = (
       <span
-        className={`font-medium text-[11px] tabular-nums ${scoreClass(score.ratio)}`}
+        className={cn(
+          "font-medium text-[11px] tabular-nums",
+          scoreClass(score.ratio)
+        )}
         title={`lowest reviewer score ${score.label}`}
       >
         {score.label}

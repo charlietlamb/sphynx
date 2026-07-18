@@ -1,5 +1,6 @@
 import { PipelineSchema, type RepoFlow } from "@sphynx/schema/review-queue";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { Schema } from "effect";
 import { useMemo, useState } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
@@ -21,8 +22,11 @@ import { useSettings } from "@/components/settings/settings-provider";
 import {
   buildBranchQueue,
   filterQueue,
+  isContested,
+  isMergeable,
   pullKey,
   railBranches,
+  repoKeyOf,
 } from "@/lib/attention";
 import { useSession } from "@/lib/auth-client";
 
@@ -42,15 +46,15 @@ function toRepoOption(flow: RepoFlow): RepoOption {
   let mergeable = 0;
   let contested = 0;
   for (const pull of flow.openPulls) {
-    if (!pull.isDraft && pull.decision === "ready") {
+    if (isMergeable(pull)) {
       mergeable += 1;
     }
-    if (!pull.isDraft && pull.decision === "contested") {
+    if (isContested(pull)) {
       contested += 1;
     }
   }
   return {
-    key: `${flow.owner}/${flow.repo}`,
+    key: repoKeyOf(flow),
     owner: flow.owner,
     repo: flow.repo,
     openCount: flow.openPulls.length,
@@ -59,15 +63,12 @@ function toRepoOption(flow: RepoFlow): RepoOption {
   };
 }
 
-function openPullPage(owner: string, repo: string, number: number) {
-  window.location.href = `/${owner}/${repo}/pull/${number}`;
-}
-
 function cycle(index: number, delta: number, length: number) {
   return (index + delta + length) % length;
 }
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const { data: session, isPending: sessionPending } = useSession();
   const authed = Boolean(session?.user);
   const pipeline = useQuery({
@@ -93,9 +94,7 @@ export function DashboardPage() {
 
   const flow = useMemo(
     () =>
-      flows.find(
-        (candidate) => `${candidate.owner}/${candidate.repo}` === repoKey
-      ) ??
+      flows.find((candidate) => repoKeyOf(candidate) === repoKey) ??
       flows[0] ??
       null,
     [flows, repoKey]
@@ -116,7 +115,7 @@ export function DashboardPage() {
     [flow, fullQueue]
   );
 
-  const focused = useMemo(() => {
+  const focused = (() => {
     if (!queue) {
       return null;
     }
@@ -124,12 +123,10 @@ export function DashboardPage() {
       return focusedKey;
     }
     return queue.order[0] ?? null;
-  }, [queue, focusedKey]);
+  })();
 
-  const focusedPull = useMemo(
-    () => flow?.openPulls.find((pull) => pullKey(pull) === focused) ?? null,
-    [flow, focused]
-  );
+  const focusedPull =
+    flow?.openPulls.find((pull) => pullKey(pull) === focused) ?? null;
 
   const moveFocus = (delta: number) => {
     if (!queue || queue.order.length === 0) {
@@ -155,26 +152,30 @@ export function DashboardPage() {
       return;
     }
     const index = flows.findIndex(
-      (candidate) =>
-        `${candidate.owner}/${candidate.repo}` === `${flow.owner}/${flow.repo}`
+      (candidate) => repoKeyOf(candidate) === repoKeyOf(flow)
     );
     const next = flows[cycle(index, delta, flows.length)];
     if (next) {
-      selectRepo(`${next.owner}/${next.repo}`);
+      selectRepo(repoKeyOf(next));
     }
   };
 
-  const authedAct = Boolean(session?.user);
+  const openPullPage = (owner: string, repo: string, number: number) => {
+    navigate({
+      to: "/$owner/$repo/pull/$number",
+      params: { owner, repo, number },
+    });
+  };
 
   useDashboardKeys({
     active: actionDialog === null,
     onMerge: () => {
-      if (authedAct && focusedPull) {
+      if (authed && focusedPull) {
         setActionDialog("merge");
       }
     },
     onBlock: () => {
-      if (authedAct && focusedPull) {
+      if (authed && focusedPull) {
         setActionDialog("block");
       }
     },
@@ -203,7 +204,7 @@ export function DashboardPage() {
         queue ? (
           <DossierPane
             actionDialog={actionDialog}
-            canAct={authedAct}
+            canAct={authed}
             now={now}
             onActionDialogChange={setActionDialog}
             onOpen={(pull) => openPullPage(pull.owner, pull.repo, pull.number)}
@@ -216,7 +217,9 @@ export function DashboardPage() {
       hints={
         <>
           <KeyHint action="move" keys="j k" />
-          <KeyHint action="open" keys="↵" />
+          <KeyHint action="open" keys="p" />
+          <KeyHint action="merge" keys="m" />
+          <KeyHint action="block" keys="b" />
           <KeyHint action="branch" keys="1–9" />
           <KeyHint action="repo" keys="[ ]" />
         </>
@@ -237,15 +240,13 @@ export function DashboardPage() {
       rail={
         flow ? (
           <FlowRail
-            canAct={authedAct}
+            canAct={authed}
             flow={flow}
             items={rail}
             now={now}
-            onOpenNumber={(number) => {
-              if (flow) {
-                openPullPage(flow.owner, flow.repo, number);
-              }
-            }}
+            onOpenNumber={(number) =>
+              openPullPage(flow.owner, flow.repo, number)
+            }
             onSelect={selectBranch}
             selected={branchFilter}
           />

@@ -5,8 +5,7 @@ const TITLE_WIDTHS = ["46%", "58%", "34%", "62%", "41%", "52%", "38%"];
 
 function BranchHeaderSkeleton({ nameWidth }: { nameWidth: string }) {
   return (
-    <div className="flex items-center gap-2 px-2.5 pt-1 pb-0.5">
-      <Skeleton className="size-[7px] shrink-0 rounded-full" />
+    <div className="-mx-4 mb-1 flex items-center gap-2 border-border border-b px-[26px] pt-1 pb-2">
       <Skeleton className="h-3" style={{ width: nameWidth }} />
       <Skeleton className="h-3 w-6" />
     </div>

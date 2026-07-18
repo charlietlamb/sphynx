@@ -3,7 +3,6 @@ import { QueueRow } from "@/components/dashboard/queue-row";
 import { pullKey, type StackNode } from "@/lib/attention";
 
 interface StackRowsProps {
-  depth: number;
   focusedKey: string | null;
   nodes: readonly StackNode[];
   now: number;
@@ -12,7 +11,6 @@ interface StackRowsProps {
 }
 
 export function StackRows({
-  depth,
   focusedKey,
   now,
   nodes,
@@ -35,7 +33,6 @@ export function StackRows({
             {node.children.length > 0 ? (
               <div className="ml-4 border-border border-l pl-2">
                 <StackRows
-                  depth={depth + 1}
                   focusedKey={focusedKey}
                   nodes={node.children}
                   now={now}

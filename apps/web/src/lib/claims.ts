@@ -12,7 +12,11 @@ export interface Claim {
 const BOT_NAME_SUFFIX = /\[bot\]$/;
 const STALE_DAYS = 3;
 
-function plural(count: number, noun: string) {
+export function stripBotSuffix(name: string) {
+  return name.replace(BOT_NAME_SUFFIX, "");
+}
+
+export function plural(count: number, noun: string) {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
@@ -34,7 +38,7 @@ function changesDetail(pull: QueuePull) {
   );
   const first = blockers[0];
   if (blockers.length === 1 && first) {
-    return `Requested by ${first.name.replace(BOT_NAME_SUFFIX, "")}`;
+    return `Requested by ${stripBotSuffix(first.name)}`;
   }
   return `Requested by ${plural(blockers.length, "reviewer")}`;
 }
@@ -46,7 +50,7 @@ function readyDetail(pull: QueuePull, now: number) {
   );
   const approvedBy =
     pull.approvals === 1 && approver
-      ? `Approved by ${approver.name.replace(BOT_NAME_SUFFIX, "")}`
+      ? `Approved by ${stripBotSuffix(approver.name)}`
       : `${plural(pull.approvals, "approval")}`;
   return joinFragments([approvedBy, idle ?? "checks green"]);
 }

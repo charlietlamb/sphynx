@@ -8,13 +8,14 @@ import { Cache, Clock, Config, Duration, Effect, Redacted, Ref } from "effect";
 import { GitHubConfig } from "../../github/config";
 import type { GitHubAuthedError } from "../../github/graphql";
 import { GitHubPipeline } from "../../github/pipeline";
-import { GitHubReviewQueue, repoKey } from "../../github/review-queue";
+import { GitHubReviewQueue } from "../../github/review-queue";
 import { githubTokenFor } from "../github-token";
 
 const OK = { ok: true };
 
 const PIPELINE_TTL = Duration.minutes(10);
 const PIPELINE_REFRESH_MS = 45_000;
+const MARK_RETENTION_MS = Duration.toMillis(PIPELINE_TTL);
 
 export const ReviewQueueApiLive = HttpApiBuilder.group(
   SphynxApi,
@@ -38,17 +39,7 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
       const buildPipeline = (
         token: string
       ): Effect.Effect<Pipeline, GitHubAuthedError> =>
-        Effect.gen(function* () {
-          const discovered = yield* queue.discoverRepos(token);
-          const pullsByRepo = yield* queue.openPullsForRepos(discovered, token);
-          const entries = discovered.map((entry) => ({
-            owner: entry.owner,
-            repo: entry.repo,
-            pulls: pullsByRepo.get(repoKey(entry)) ?? [],
-          }));
-          const repos = yield* pipeline.flowsFor(entries, token);
-          return { repos };
-        }).pipe(Effect.withSpan("ReviewQueueApi.buildPipeline"));
+        pipeline.build(token).pipe(Effect.map((repos) => ({ repos })));
 
       const pipelineCache = yield* Cache.make({
         capacity: 64,
@@ -69,19 +60,37 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
           )
         );
 
+      const markStale = (token: string, now: number) =>
+        Ref.modify(refreshMarks, (marks) => {
+          const last = marks.get(token) ?? 0;
+          if (now - last <= PIPELINE_REFRESH_MS) {
+            return [false, marks] as const;
+          }
+          const next = new Map<string, number>();
+          for (const [key, at] of marks) {
+            if (now - at <= MARK_RETENTION_MS) {
+              next.set(key, at);
+            }
+          }
+          next.set(token, now);
+          return [true, next] as const;
+        });
+
       const cachedPipeline = (token: string) =>
         Effect.gen(function* () {
           const value = yield* pipelineCache
             .get(token)
             .pipe(Effect.tapError(() => pipelineCache.invalidate(token)));
           const now = yield* Clock.currentTimeMillis;
-          const marks = yield* Ref.get(refreshMarks);
-          if (now - (marks.get(token) ?? 0) > PIPELINE_REFRESH_MS) {
-            yield* Ref.update(refreshMarks, (previous) =>
-              new Map(previous).set(token, now)
-            );
+          const shouldRefresh = yield* markStale(token, now);
+          if (shouldRefresh) {
             yield* Effect.forkDaemon(
-              pipelineCache.refresh(token).pipe(Effect.ignore)
+              pipelineCache.refresh(token).pipe(
+                Effect.tapErrorCause((cause) =>
+                  Effect.logWarning("pipeline refresh failed", cause)
+                ),
+                Effect.ignore
+              )
             );
           }
           return value;

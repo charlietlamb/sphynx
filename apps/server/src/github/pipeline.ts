@@ -9,7 +9,7 @@ import type {
 import { Context, Effect, Layer, Schema } from "effect";
 import { GitHubConfig } from "./config";
 import { type GitHubAuthedError, makeGraphql } from "./graphql";
-import { repoKey } from "./review-queue";
+import { GitHubReviewQueue, repoKey } from "./review-queue";
 
 const REFS_FRAGMENT = `
 fragment RepoRefs on Repository {
@@ -129,6 +129,7 @@ function initialChain(refs: RepoRefs) {
 const makeGitHubPipeline = Effect.gen(function* () {
   const config = yield* GitHubConfig;
   const client = yield* HttpClient.HttpClient;
+  const queue = yield* GitHubReviewQueue;
   const github = makeGraphql(config, client);
 
   const restCompare = (
@@ -332,6 +333,9 @@ query($owner: String!, $name: String!) {
               upper,
               entry.pulls
             ).pipe(
+              Effect.tapErrorCause((cause) =>
+                Effect.logWarning("gap computation failed", cause)
+              ),
               Effect.orElseSucceed(
                 (): StageGap => ({
                   from: lower,
@@ -373,6 +377,9 @@ query($owner: String!, $name: String!) {
             const refs = refsByRepo.get(repoKey(entry));
             return refs
               ? flowFromRefs(entry, refs, token).pipe(
+                  Effect.tapErrorCause((cause) =>
+                    Effect.logWarning("repo flow failed", cause)
+                  ),
                   Effect.orElseSucceed(() => null)
                 )
               : Effect.succeed(null);
@@ -387,7 +394,19 @@ query($owner: String!, $name: String!) {
       Effect.annotateLogs({ repoCount: entries.length })
     );
 
-  return { flowsFor };
+  const build = (token: string): Effect.Effect<RepoFlow[], GitHubAuthedError> =>
+    Effect.gen(function* () {
+      const discovered = yield* queue.discoverRepos(token);
+      const pullsByRepo = yield* queue.openPullsForRepos(discovered, token);
+      const entries = discovered.map((entry) => ({
+        owner: entry.owner,
+        repo: entry.repo,
+        pulls: pullsByRepo.get(repoKey(entry)) ?? [],
+      }));
+      return yield* flowsFor(entries, token);
+    }).pipe(Effect.withSpan("GitHubPipeline.build"));
+
+  return { build, flowsFor };
 });
 
 export class GitHubPipeline extends Context.Tag(

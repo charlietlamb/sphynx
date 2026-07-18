@@ -17,28 +17,19 @@ async function postAction(url: string, payload?: object) {
   return response.json();
 }
 
-export function usePullActions(pull: QueuePull | null) {
+export function usePullActions(pull: QueuePull) {
   const queryClient = useQueryClient();
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["pipeline"] });
 
   const merge = useMutation({
-    mutationFn: () => {
-      if (!pull) {
-        throw new Error("no pull focused");
-      }
-      return postAction(`${pullPath(pull)}/merge`);
-    },
+    mutationFn: () => postAction(`${pullPath(pull)}/merge`),
     onSuccess: invalidate,
   });
 
   const block = useMutation({
-    mutationFn: (body: string) => {
-      if (!pull) {
-        throw new Error("no pull focused");
-      }
-      return postAction(`${pullPath(pull)}/block`, { body });
-    },
+    mutationFn: (body: string) =>
+      postAction(`${pullPath(pull)}/block`, { body }),
     onSuccess: invalidate,
   });
 

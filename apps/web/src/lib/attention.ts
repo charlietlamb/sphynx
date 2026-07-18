@@ -23,6 +23,18 @@ export function pullKey(pull: QueuePull) {
   return `${pull.owner}/${pull.repo}#${pull.number}`;
 }
 
+export function repoKeyOf(entry: { owner: string; repo: string }) {
+  return `${entry.owner}/${entry.repo}`;
+}
+
+export function isMergeable(pull: QueuePull) {
+  return !pull.isDraft && pull.decision === "ready";
+}
+
+export function isContested(pull: QueuePull) {
+  return !pull.isDraft && pull.decision === "contested";
+}
+
 export interface ScoreSummary {
   label: string;
   ratio: number;
@@ -101,10 +113,10 @@ function countNodes(nodes: readonly StackNode[]) {
   const walk = (list: readonly StackNode[]) => {
     for (const node of list) {
       total += 1;
-      if (!node.pull.isDraft && node.pull.decision === "ready") {
+      if (isMergeable(node.pull)) {
         mergeable += 1;
       }
-      if (!node.pull.isDraft && node.pull.decision === "contested") {
+      if (isContested(node.pull)) {
         contested += 1;
       }
       walk(node.children);
@@ -114,14 +126,7 @@ function countNodes(nodes: readonly StackNode[]) {
   return { total, mergeable, contested };
 }
 
-export function filterQueue(
-  queue: BranchQueue,
-  branch: string | null
-): BranchQueue {
-  if (!branch) {
-    return queue;
-  }
-  const groups = queue.groups.filter((group) => group.branch === branch);
+function collectOrder(groups: readonly BranchGroup[]): string[] {
   const order: string[] = [];
   const walk = (nodes: readonly StackNode[]) => {
     for (const node of nodes) {
@@ -132,7 +137,18 @@ export function filterQueue(
   for (const group of groups) {
     walk(group.nodes);
   }
-  return { groups, order };
+  return order;
+}
+
+export function filterQueue(
+  queue: BranchQueue,
+  branch: string | null
+): BranchQueue {
+  if (!branch) {
+    return queue;
+  }
+  const groups = queue.groups.filter((group) => group.branch === branch);
+  return { groups, order: collectOrder(groups) };
 }
 
 export interface RailBranchItem {
@@ -224,16 +240,5 @@ export function buildBranchQueue(flow: RepoFlow): BranchQueue {
     };
   });
 
-  const order: string[] = [];
-  const walk = (nodes: readonly StackNode[]) => {
-    for (const node of nodes) {
-      order.push(pullKey(node.pull));
-      walk(node.children);
-    }
-  };
-  for (const group of groups) {
-    walk(group.nodes);
-  }
-
-  return { groups, order };
+  return { groups, order: collectOrder(groups) };
 }

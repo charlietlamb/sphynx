@@ -3,6 +3,7 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from "@effect/platform";
+import { Unauthorized } from "@sphynx/schema/pull-request-views";
 import {
   GitHubRateLimited,
   GitHubTimeout,
@@ -24,7 +25,12 @@ import {
   type Schema,
 } from "effect";
 import { GitHubConfig } from "./config";
-import { refAnnotations } from "./graphql";
+import {
+  friendlyErrorMessage,
+  type GitHubAuthedError,
+  pullRequestNotFound,
+  refAnnotations,
+} from "./graphql";
 import { groupReviewThreads } from "./review-threads";
 import {
   RawFileContentsSchema,
@@ -50,11 +56,15 @@ export type GitHubResult<A> =
     }
   | { readonly _tag: "NotModified"; readonly etag: string | null };
 
-class RetryableGitHubError extends Data.TaggedError("RetryableGitHubError")<{
+export class RetryableGitHubError extends Data.TaggedError(
+  "RetryableGitHubError"
+)<{
   readonly message: string;
 }> {}
 
-const retryPolicy = Schedule.exponential("100 millis").pipe(Schedule.jittered);
+export const retryPolicy = Schedule.exponential("100 millis").pipe(
+  Schedule.jittered
+);
 const linkUrlPattern = /<([^>]+)>/;
 
 export const pullPath = (ref: PullRequestRef, suffix = "") =>
@@ -178,6 +188,41 @@ const responseError = (
         message: `GitHub rejected the request with ${response.status}`,
       });
 };
+
+export const rejectFailedResponse = (
+  response: HttpClientResponse.HttpClientResponse
+): Effect.Effect<void, GitHubAuthedError | GitHubRateLimited> =>
+  Effect.gen(function* () {
+    if (isRateLimited(response)) {
+      return yield* Effect.fail(
+        new GitHubRateLimited({
+          message: "GitHub rate limit exceeded",
+          retryAfterSeconds: retryAfter(response),
+          resetAt: resetAt(response),
+        })
+      );
+    }
+    if (response.status === 401 || response.status === 403) {
+      return yield* Effect.fail(
+        new Unauthorized({ message: "GitHub rejected the request" })
+      );
+    }
+    if (response.status === 404) {
+      return yield* Effect.fail(pullRequestNotFound());
+    }
+    if (response.status >= 400) {
+      const responseBody = yield* response.json.pipe(
+        Effect.orElseSucceed(() => null)
+      );
+      const message =
+        responseBody &&
+        typeof responseBody === "object" &&
+        "message" in responseBody
+          ? friendlyErrorMessage(String(responseBody.message))
+          : `GitHub rejected the request with ${response.status}`;
+      return yield* Effect.fail(new GitHubUnavailable({ message }));
+    }
+  });
 
 const makeClient = Effect.gen(function* () {
   const config = yield* GitHubConfig;

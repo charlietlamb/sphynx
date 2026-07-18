@@ -4,8 +4,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
-
-const BOT_NAME_SUFFIX = /\[bot\]$/;
+import { plural, stripBotSuffix } from "@/lib/claims";
 
 export function ThreadPreviews({ pull }: { pull: QueuePull }) {
   if (pull.threadPreviews.length === 0) {
@@ -18,7 +17,9 @@ export function ThreadPreviews({ pull }: { pull: QueuePull }) {
         open threads
       </p>
       {pull.threadPreviews.map((preview) => {
-        const login = preview.author?.login.replace(BOT_NAME_SUFFIX, "");
+        const login = preview.author
+          ? stripBotSuffix(preview.author.login)
+          : null;
         return (
           <div
             className="flex flex-col gap-1"
@@ -55,7 +56,7 @@ export function ThreadPreviews({ pull }: { pull: QueuePull }) {
       })}
       {hidden > 0 ? (
         <p className="text-[11px] text-muted-foreground/50">
-          +{hidden} more open thread{hidden === 1 ? "" : "s"}
+          +{plural(hidden, "more open thread")}
         </p>
       ) : null}
     </div>

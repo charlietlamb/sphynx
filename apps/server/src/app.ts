@@ -69,7 +69,7 @@ const GitHubLive = Layer.mergeAll(
   GitHubViewerLive,
   GitHubReviewsLive,
   GitHubReviewQueueLive,
-  GitHubPipelineLive
+  GitHubPipelineLive.pipe(Layer.provide(GitHubReviewQueueLive))
 ).pipe(Layer.provide(Layer.mergeAll(GitHubConfigLive, FetchHttpClient.layer)));
 
 const DatabaseLiveLayer = DatabaseLive.pipe(Layer.provide(DatabaseConfigLive));

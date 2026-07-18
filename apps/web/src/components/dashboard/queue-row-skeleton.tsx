@@ -13,9 +13,8 @@ export function QueueRowSkeleton({ titleWidth }: QueueRowSkeletonProps) {
         <Skeleton className="h-3.5" style={{ width: titleWidth }} />
       </span>
       <Skeleton className="size-[18px] shrink-0 rounded-full" />
-      <Skeleton className="h-3 w-8 shrink-0" />
-      <Skeleton className="h-3 w-5 shrink-0" />
-      <Skeleton className="size-1.5 shrink-0 rounded-full" />
+      <Skeleton className="h-3 w-10 shrink-0" />
+      <Skeleton className="h-[9px] w-5 shrink-0" />
       <Skeleton className="h-3 w-7 shrink-0" />
     </div>
   );

@@ -6,6 +6,7 @@ import {
 } from "@sphynx/ui/components/ui/avatar";
 import { cn } from "@sphynx/ui/lib/utils";
 import { shortAge } from "@/lib/age";
+import { stripBotSuffix } from "@/lib/claims";
 
 const VERDICT_LABELS: Record<
   ReviewerVerdict["state"],
@@ -16,8 +17,6 @@ const VERDICT_LABELS: Record<
   commented: { label: "commented", className: "text-muted-foreground" },
 };
 
-const BOT_NAME_SUFFIX = /\[bot\]$/;
-
 interface VerdictRowProps {
   now: number;
   reviewer: ReviewerVerdict;
@@ -25,7 +24,7 @@ interface VerdictRowProps {
 
 export function VerdictRow({ now, reviewer }: VerdictRowProps) {
   const verdict = VERDICT_LABELS[reviewer.state];
-  const name = reviewer.name.replace(BOT_NAME_SUFFIX, "");
+  const name = stripBotSuffix(reviewer.name);
   return (
     <div className="flex h-9 items-center gap-2.5">
       <Avatar className="size-5 shrink-0 rounded-full">

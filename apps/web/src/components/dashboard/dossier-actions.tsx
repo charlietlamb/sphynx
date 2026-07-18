@@ -8,10 +8,18 @@ import {
   DialogTitle,
 } from "@sphynx/ui/components/ui/dialog";
 import { Textarea } from "@sphynx/ui/components/ui/textarea";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { usePullActions } from "@/components/dashboard/use-pull-actions";
 
 export type ActionDialog = "merge" | "block" | null;
+
+const confirmOnMetaEnter =
+  (confirm: () => void) => (event: React.KeyboardEvent) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault();
+      confirm();
+    }
+  };
 
 interface DossierActionsProps {
   canAct: boolean;
@@ -32,40 +40,25 @@ export function DossierActions({
   const [reason, setReason] = useState("");
   const disabledTitle = canAct ? undefined : "sign in to act on pulls";
 
+  const changeDialog = (next: ActionDialog) => {
+    if (next === null) {
+      setReason("");
+    }
+    onDialogChange(next);
+  };
+
   const confirmBlock = () => {
     if (reason.trim().length === 0) {
       return;
     }
     block.mutate(reason.trim());
-    onDialogChange(null);
+    changeDialog(null);
   };
 
   const confirmMerge = () => {
     merge.mutate();
-    onDialogChange(null);
+    changeDialog(null);
   };
-
-  const live = useRef({ dialog, confirmBlock, confirmMerge });
-  useEffect(() => {
-    live.current = { dialog, confirmBlock, confirmMerge };
-  });
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!((event.metaKey || event.ctrlKey) && event.key === "Enter")) {
-        return;
-      }
-      const current = live.current;
-      if (current.dialog === "merge") {
-        event.preventDefault();
-        current.confirmMerge();
-      } else if (current.dialog === "block") {
-        event.preventDefault();
-        current.confirmBlock();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   return (
     <div className="mt-auto flex flex-col gap-2 border-border border-t px-5 py-3">
@@ -77,7 +70,7 @@ export function DossierActions({
       <div className="flex items-center justify-end gap-2">
         <ShortcutButton
           disabled={!canAct || block.isPending}
-          onClick={() => onDialogChange("block")}
+          onClick={() => changeDialog("block")}
           shortcut="b"
           size="sm"
           title={disabledTitle}
@@ -87,7 +80,7 @@ export function DossierActions({
         </ShortcutButton>
         <ShortcutButton
           disabled={!canAct || merge.isPending}
-          onClick={() => onDialogChange("merge")}
+          onClick={() => changeDialog("merge")}
           shortcut="m"
           size="sm"
           title={disabledTitle}
@@ -105,10 +98,13 @@ export function DossierActions({
         </ShortcutButton>
       </div>
       <Dialog
-        onOpenChange={(open) => onDialogChange(open ? "block" : null)}
+        onOpenChange={(open) => changeDialog(open ? "block" : null)}
         open={dialog === "block"}
       >
-        <DialogContent showCloseButton={false}>
+        <DialogContent
+          onKeyDown={confirmOnMetaEnter(confirmBlock)}
+          showCloseButton={false}
+        >
           <DialogHeader>
             <DialogTitle>
               Block #{pull.number} with changes requested?
@@ -135,10 +131,13 @@ export function DossierActions({
         </DialogContent>
       </Dialog>
       <Dialog
-        onOpenChange={(open) => onDialogChange(open ? "merge" : null)}
+        onOpenChange={(open) => changeDialog(open ? "merge" : null)}
         open={dialog === "merge"}
       >
-        <DialogContent showCloseButton={false}>
+        <DialogContent
+          onKeyDown={confirmOnMetaEnter(confirmMerge)}
+          showCloseButton={false}
+        >
           <DialogHeader>
             <DialogTitle>
               Merge #{pull.number} into {pull.baseRefName}?

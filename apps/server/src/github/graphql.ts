@@ -10,6 +10,7 @@ import {
   type PullRequestRef,
 } from "@sphynx/schema/pull-requests";
 import { Effect, Schema } from "effect";
+import { RetryableGitHubError, retryPolicy } from "./client";
 import type { GitHubConfig } from "./config";
 
 export type GitHubAuthedError =
@@ -82,9 +83,16 @@ export const makeGraphql = (
             () => new GitHubUnavailable({ message: "GitHub is unreachable" })
           )
         );
-      if (response.status === 401) {
+      if (response.status === 401 || response.status === 403) {
         return yield* Effect.fail(
-          new Unauthorized({ message: "GitHub session expired" })
+          new Unauthorized({ message: "GitHub rejected the request" })
+        );
+      }
+      if (response.status >= 500) {
+        return yield* Effect.fail(
+          new RetryableGitHubError({
+            message: `GitHub returned ${response.status}`,
+          })
         );
       }
       if (response.status >= 400) {
@@ -118,6 +126,15 @@ export const makeGraphql = (
       }
       return envelope.data;
     }).pipe(
+      Effect.retry({
+        schedule: retryPolicy,
+        times: 2,
+        while: (error) => error._tag === "RetryableGitHubError",
+      }),
+      Effect.catchTag(
+        "RetryableGitHubError",
+        (error) => new GitHubUnavailable({ message: error.message })
+      ),
       Effect.timeoutFail({
         duration: config.timeout,
         onTimeout: () =>

@@ -1,30 +1,20 @@
+import { HttpClient, HttpClientRequest } from "@effect/platform";
 import {
-  HttpClient,
-  HttpClientRequest,
-  type HttpClientResponse,
-} from "@effect/platform";
-import { Unauthorized } from "@sphynx/schema/pull-request-views";
-import {
-  GitHubRateLimited,
+  type GitHubRateLimited,
   GitHubUnavailable,
   type PullRequestRef,
 } from "@sphynx/schema/pull-requests";
-import type {
-  DiscoveredRepo,
-  QueuePull,
-  ReviewerVerdict,
-  ThreadPreview,
+import {
+  CreatedPullSchema,
+  type DiscoveredRepo,
+  type QueuePull,
+  type ReviewerVerdict,
+  type ThreadPreview,
 } from "@sphynx/schema/review-queue";
 import { Context, Effect, Layer, Schema } from "effect";
-import { isRateLimited, pullPath, resetAt, retryAfter } from "./client";
+import { pullPath, rejectFailedResponse } from "./client";
 import { GitHubConfig } from "./config";
-import {
-  friendlyErrorMessage,
-  type GitHubAuthedError,
-  makeGraphql,
-  pullRequestNotFound,
-  refAnnotations,
-} from "./graphql";
+import { type GitHubAuthedError, makeGraphql, refAnnotations } from "./graphql";
 import {
   blockerFor,
   decide,
@@ -376,41 +366,6 @@ function toQueuePull(
   };
 }
 
-const rejectFailedResponse = (
-  response: HttpClientResponse.HttpClientResponse
-): Effect.Effect<void, GitHubAuthedError | GitHubRateLimited> =>
-  Effect.gen(function* () {
-    if (isRateLimited(response)) {
-      return yield* Effect.fail(
-        new GitHubRateLimited({
-          message: "GitHub rate limit exceeded",
-          retryAfterSeconds: retryAfter(response),
-          resetAt: resetAt(response),
-        })
-      );
-    }
-    if (response.status === 401 || response.status === 403) {
-      return yield* Effect.fail(
-        new Unauthorized({ message: "GitHub rejected the request" })
-      );
-    }
-    if (response.status === 404) {
-      return yield* Effect.fail(pullRequestNotFound());
-    }
-    if (response.status >= 400) {
-      const responseBody = yield* response.json.pipe(
-        Effect.orElseSucceed(() => null)
-      );
-      const message =
-        responseBody &&
-        typeof responseBody === "object" &&
-        "message" in responseBody
-          ? friendlyErrorMessage(String(responseBody.message))
-          : `GitHub rejected the request with ${response.status}`;
-      return yield* Effect.fail(new GitHubUnavailable({ message }));
-    }
-  });
-
 const DISCOVER_REPOS_QUERY = `
 query {
   viewer {
@@ -460,7 +415,7 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
     method: "POST" | "PUT",
     path: string,
     body: Record<string, unknown>
-  ): Effect.Effect<void, GitHubAuthedError | GitHubRateLimited> =>
+  ) =>
     Effect.gen(function* () {
       const base =
         method === "PUT"
@@ -482,6 +437,7 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
           )
         );
       yield* rejectFailedResponse(response);
+      return response;
     }).pipe(
       Effect.timeoutFail({
         duration: config.timeout,
@@ -571,8 +527,6 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
       Effect.withSpan("GitHubReviewQueue.discoverRepos")
     );
 
-  const CreatedPullResponseSchema = Schema.Struct({ number: Schema.Number });
-
   const createPull = (
     owner: string,
     repo: string,
@@ -582,43 +536,24 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
     token: string
   ): Effect.Effect<number, GitHubAuthedError | GitHubRateLimited> =>
     Effect.gen(function* () {
-      const outgoing = HttpClientRequest.post(
-        `${config.apiUrl}/repos/${owner}/${repo}/pulls`
-      ).pipe(
-        HttpClientRequest.bearerToken(token),
-        HttpClientRequest.setHeaders({
-          accept: "application/vnd.github+json",
-          "x-github-api-version": config.apiVersion,
-        }),
-        HttpClientRequest.bodyUnsafeJson({ title, head, base })
+      const response = yield* restWrite(
+        token,
+        "POST",
+        `/repos/${owner}/${repo}/pulls`,
+        { title, head, base }
       );
-      const response = yield* client
-        .execute(outgoing)
-        .pipe(
-          Effect.mapError(
-            () => new GitHubUnavailable({ message: "GitHub is unreachable" })
-          )
-        );
-      yield* rejectFailedResponse(response);
       const body = yield* response.json.pipe(
         Effect.mapError(
           () => new GitHubUnavailable({ message: "Invalid create response" })
         )
       );
-      const created = yield* Schema.decodeUnknown(CreatedPullResponseSchema)(
-        body
-      ).pipe(
+      const created = yield* Schema.decodeUnknown(CreatedPullSchema)(body).pipe(
         Effect.mapError(
           () => new GitHubUnavailable({ message: "Invalid create response" })
         )
       );
       return created.number;
     }).pipe(
-      Effect.timeoutFail({
-        duration: config.timeout,
-        onTimeout: () =>
-          new GitHubUnavailable({ message: "GitHub request timed out" }),
-      }),
       Effect.withSpan("GitHubReviewQueue.createPull"),
       Effect.annotateLogs({ owner, repo, head, base })
     );

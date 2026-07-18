@@ -12,7 +12,7 @@ import {
 import { ThreadPreviews } from "@/components/dashboard/thread-previews";
 import { VerdictMatrix } from "@/components/dashboard/verdict-matrix";
 import { shortAge } from "@/lib/age";
-import { type ClaimTone, claimFor } from "@/lib/claims";
+import { type ClaimTone, claimFor, plural } from "@/lib/claims";
 
 const CI_LABELS: Record<QueuePull["ci"], string> = {
   success: "checks green",
@@ -131,17 +131,14 @@ export function DossierPane({
           {CI_LABELS[pull.ci]}
         </span>
         {pull.unresolvedThreads > 0 ? (
-          <span>
-            {pull.unresolvedThreads} open thread
-            {pull.unresolvedThreads === 1 ? "" : "s"}
-          </span>
+          <span>{plural(pull.unresolvedThreads, "open thread")}</span>
         ) : null}
         <span className="tabular-nums">
           <span className="text-addition">+{pull.additions}</span>{" "}
           <span className="text-deletion">−{pull.deletions}</span>
         </span>
         <span className="tabular-nums">
-          {pull.changedFiles} file{pull.changedFiles === 1 ? "" : "s"}
+          {plural(pull.changedFiles, "file")}
         </span>
       </div>
       <DossierActions

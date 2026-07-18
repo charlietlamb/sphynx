@@ -5,6 +5,7 @@ import {
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
 import { cn } from "@sphynx/ui/lib/utils";
+import { stripBotSuffix } from "@/lib/claims";
 
 const MAX_SHOWN = 4;
 
@@ -13,8 +14,6 @@ const RING_CLASSES: Record<ReviewerVerdict["state"], string> = {
   "changes-requested": "ring-deletion",
   commented: "ring-border",
 };
-
-const BOT_NAME_SUFFIX = /\[bot\]$/;
 
 export function ReviewerStack({
   reviewers,
@@ -26,7 +25,7 @@ export function ReviewerStack({
   return (
     <span className="flex items-center">
       {shown.map((reviewer) => {
-        const name = reviewer.name.replace(BOT_NAME_SUFFIX, "");
+        const name = stripBotSuffix(reviewer.name);
         return (
           <Avatar
             className={cn(
