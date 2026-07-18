@@ -9,7 +9,9 @@ import {
 
 const DASHBOARD_BINDINGS: readonly KeyBinding[] = [
   { chord: "j / k", description: "Move through the queue" },
-  { chord: "↵", description: "Open the focused pull" },
+  { chord: "p / ↵", description: "Open the focused pull" },
+  { chord: "m", description: "Merge (with confirmation)" },
+  { chord: "b", description: "Block (with confirmation)" },
   { chord: "1-9", description: "Filter to a branch (again to clear)" },
   { chord: "[ ]", description: "Switch repo" },
 ];

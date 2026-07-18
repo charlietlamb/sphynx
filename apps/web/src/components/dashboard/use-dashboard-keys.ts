@@ -1,8 +1,11 @@
 import { useEffect, useRef } from "react";
 
 export interface DashboardKeyHandlers {
+  active: boolean;
+  onBlock: () => void;
   onBranch: (index: number) => void;
   onDown: () => void;
+  onMerge: () => void;
   onNextRepo: () => void;
   onOpen: () => void;
   onPrevRepo: () => void;
@@ -13,13 +16,16 @@ const DIGIT_PATTERN = /^[1-9]$/;
 
 const BINDINGS: Record<
   string,
-  Exclude<keyof DashboardKeyHandlers, "onBranch">
+  Exclude<keyof DashboardKeyHandlers, "onBranch" | "active">
 > = {
   j: "onDown",
   ArrowDown: "onDown",
   k: "onUp",
   ArrowUp: "onUp",
   Enter: "onOpen",
+  p: "onOpen",
+  m: "onMerge",
+  b: "onBlock",
   "]": "onNextRepo",
   "[": "onPrevRepo",
 };
@@ -40,7 +46,12 @@ export function useDashboardKeys(handlers: DashboardKeyHandlers) {
   });
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || isTypingTarget(event.target)) {
+      if (
+        event.metaKey ||
+        event.ctrlKey ||
+        isTypingTarget(event.target) ||
+        !live.current.active
+      ) {
         return;
       }
       if (DIGIT_PATTERN.test(event.key)) {

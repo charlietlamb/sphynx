@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Schema } from "effect";
 import { useMemo, useState } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import type { ActionDialog } from "@/components/dashboard/dossier-actions";
 import { DossierPane } from "@/components/dashboard/dossier-pane";
 import { DossierSkeleton } from "@/components/dashboard/dossier-skeleton";
 import { FlowRail } from "@/components/dashboard/flow-rail";
@@ -79,6 +80,7 @@ export function DashboardPage() {
   const repoKey = settings.selectedRepo;
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
+  const [actionDialog, setActionDialog] = useState<ActionDialog>(null);
 
   const flows = useMemo(() => {
     const active = (pipeline.data?.repos ?? []).filter(
@@ -173,7 +175,20 @@ export function DashboardPage() {
     }
   };
 
+  const authedAct = Boolean(session?.user);
+
   useDashboardKeys({
+    active: actionDialog === null,
+    onMerge: () => {
+      if (authedAct && focusedPull) {
+        setActionDialog("merge");
+      }
+    },
+    onBlock: () => {
+      if (authedAct && focusedPull) {
+        setActionDialog("block");
+      }
+    },
     onBranch: (index) => {
       const item = rail[index];
       if (item) {
@@ -198,8 +213,10 @@ export function DashboardPage() {
       dossier={
         queue ? (
           <DossierPane
-            canAct={Boolean(session?.user)}
+            actionDialog={actionDialog}
+            canAct={authedAct}
             now={now}
+            onActionDialogChange={setActionDialog}
             onOpen={(pull) => openPullPage(pull.owner, pull.repo, pull.number)}
             pull={focusedPull}
           />
