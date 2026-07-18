@@ -15,7 +15,7 @@ export function DossierActions({ canAct, onOpen, pull }: DossierActionsProps) {
   const disabledTitle = canAct ? undefined : "sign in to act on pulls";
 
   return (
-    <div className="mt-auto flex flex-col gap-2 border-border border-t px-5 py-3">
+    <div className="sticky bottom-0 z-10 mt-auto flex flex-col gap-2 border-border border-t bg-background px-5 py-3">
       <div className="flex items-center justify-end gap-2">
         <ShortcutButton
           disabled={!canAct || block.isPending}
