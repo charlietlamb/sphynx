@@ -38,7 +38,7 @@ export function CopyForAgent({ value }: { value: string }) {
       ) : (
         <CopyIcon className="size-3" />
       )}
-      {copied ? "copied" : "copy for agent"}
+      {copied ? "copied" : "copy all for agent"}
     </button>
   );
 }
