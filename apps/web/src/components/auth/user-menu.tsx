@@ -4,6 +4,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
+import { buttonVariants } from "@sphynx/ui/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@sphynx/ui/components/ui/dropdown-menu";
+import { cn } from "@sphynx/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { signOut, useSession } from "@/lib/auth-client";
 
@@ -31,9 +33,9 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Account menu"
-        className="rounded-sm outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/50"
+        className={cn(buttonVariants({ variant: "outline", size: "icon-sm" }))}
       >
-        <Avatar className="rounded-sm after:rounded-sm" size="sm">
+        <Avatar className="size-5 rounded-sm after:rounded-sm">
           <AvatarImage
             alt={user.name}
             className="rounded-sm"
