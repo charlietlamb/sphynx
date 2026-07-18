@@ -46,7 +46,7 @@ export function DashboardShell({
           </ResizablePanel>
           <ResizableHandle className="bg-border" />
           <ResizablePanel defaultSize={53} minSize={30}>
-            <section className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto px-4 py-3">
+            <section className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto">
               {queue}
             </section>
           </ResizablePanel>

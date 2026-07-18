@@ -41,8 +41,8 @@ export interface ScoreSummary {
   reviewer: string;
 }
 
-export function worstScore(pull: QueuePull): ScoreSummary | null {
-  let worst: ScoreSummary | null = null;
+export function pullScores(pull: QueuePull): ScoreSummary[] {
+  const scored: { at: string; summary: ScoreSummary }[] = [];
   for (const reviewer of pull.reviewers) {
     if (!reviewer.score) {
       continue;
@@ -51,12 +51,18 @@ export function worstScore(pull: QueuePull): ScoreSummary | null {
     if (!(value !== undefined && scale)) {
       continue;
     }
-    const ratio = value / scale;
-    if (worst === null || ratio < worst.ratio) {
-      worst = { label: reviewer.score, ratio, reviewer: reviewer.name };
-    }
+    scored.push({
+      at: reviewer.submittedAt,
+      summary: {
+        label: reviewer.score,
+        ratio: value / scale,
+        reviewer: reviewer.name,
+      },
+    });
   }
-  return worst;
+  return scored
+    .sort((a, b) => a.at.localeCompare(b.at))
+    .map((entry) => entry.summary);
 }
 
 export interface StackNode {

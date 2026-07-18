@@ -19,15 +19,16 @@ export function QueuePane({
 }: QueuePaneProps) {
   if (queue.groups.length === 0) {
     return (
-      <p className="px-2.5 py-4 text-muted-foreground text-sm">
+      <p className="px-[26px] py-7 text-muted-foreground text-sm">
         No open pull requests.
       </p>
     );
   }
   return (
-    <div className="flex flex-col gap-4">
-      {queue.groups.map((group) => (
+    <div className="flex flex-col gap-4 px-4 pt-3 pb-3">
+      {queue.groups.map((group, index) => (
         <BranchGroup
+          first={index === 0}
           focusedKey={focusedKey}
           group={group}
           key={group.branch}

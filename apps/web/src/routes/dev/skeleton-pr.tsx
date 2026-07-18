@@ -5,7 +5,9 @@ import { WorkspaceSkeleton } from "@/components/pull-request/workspace-skeleton"
 function PullSkeletonGallery() {
   return (
     <main className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
-      <PullRequestHeaderSkeleton />
+      <PullRequestHeaderSkeleton
+        pullRequestRef={{ number: 2229, owner: "useautumn", repo: "autumn" }}
+      />
       <WorkspaceSkeleton />
     </main>
   );

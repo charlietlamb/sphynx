@@ -110,7 +110,7 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
       </div>
       <div className="hidden min-h-0 flex-1 flex-col md:flex">
         {pullRequest.isPending ? (
-          <PullRequestHeaderSkeleton />
+          <PullRequestHeaderSkeleton pullRequestRef={pullRequestRef} />
         ) : (
           <PullRequestHeader
             progress={
