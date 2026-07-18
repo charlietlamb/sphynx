@@ -48,7 +48,9 @@ export function VerdictMatrix({ now, pull }: VerdictMatrixProps) {
   const sorted = [...pull.reviewers].sort(byImportance);
   return (
     <div className="flex flex-col gap-1">
-      <p className="font-mono text-[11px] text-muted-foreground/60">verdicts</p>
+      <p className="font-medium text-[10px] text-muted-foreground/60 uppercase tracking-[0.12em]">
+        Verdicts
+      </p>
       {sorted.length === 0 ? (
         <p className="py-1 text-[13px] text-muted-foreground">
           Nobody has reviewed this yet.

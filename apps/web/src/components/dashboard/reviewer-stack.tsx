@@ -48,7 +48,7 @@ export function ReviewerStack({
         );
       })}
       {hidden > 0 ? (
-        <span className="ml-1 font-mono text-[10px] text-muted-foreground/60 tabular-nums">
+        <span className="ml-1 text-[10px] text-muted-foreground/60 tabular-nums">
           +{hidden}
         </span>
       ) : null}

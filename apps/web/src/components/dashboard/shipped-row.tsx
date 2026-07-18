@@ -25,11 +25,11 @@ export function ShippedRow({ now, onOpen, pull }: ShippedRowProps) {
         {pull.title}
       </span>
       {pull.author ? (
-        <span className="shrink-0 font-mono text-[10px] text-muted-foreground/50">
+        <span className="shrink-0 text-[11px] text-muted-foreground/50">
           {pull.author.login}
         </span>
       ) : null}
-      <span className="w-7 shrink-0 text-right font-mono text-[11px] text-muted-foreground/50 tabular-nums">
+      <span className="w-7 shrink-0 text-right text-[11px] text-muted-foreground/50 tabular-nums">
         {pull.mergedAt ? shortAge(pull.mergedAt, now) : ""}
       </span>
     </button>

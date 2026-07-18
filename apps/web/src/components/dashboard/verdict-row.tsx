@@ -40,19 +40,19 @@ export function VerdictRow({ now, reviewer }: VerdictRowProps) {
       </Avatar>
       <span className="min-w-0 flex-1 truncate text-[13px]">{name}</span>
       {reviewer.kind === "bot" ? (
-        <span className="shrink-0 rounded-sm bg-muted/60 px-1 py-px font-mono text-[9px] text-muted-foreground">
+        <span className="shrink-0 font-medium text-[9px] text-muted-foreground/70 uppercase tracking-[0.1em]">
           bot
         </span>
       ) : null}
       {reviewer.score ? (
-        <span className="shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums">
+        <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
           {reviewer.score}
         </span>
       ) : null}
       <span className={cn("shrink-0 text-[12px]", verdict.className)}>
         {verdict.label}
       </span>
-      <span className="w-7 shrink-0 text-right font-mono text-[10px] text-muted-foreground/60 tabular-nums">
+      <span className="w-7 shrink-0 text-right text-[11px] text-muted-foreground/60 tabular-nums">
         {reviewer.submittedAt ? shortAge(reviewer.submittedAt, now) : ""}
       </span>
     </div>

@@ -51,6 +51,14 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --color-border-faint: var(--border-faint);
+  --color-border-loud: var(--border-loud);
+  --color-alpha-2: var(--alpha-2);
+  --color-alpha-4: var(--alpha-4);
+  --color-alpha-6: var(--alpha-6);
+  --color-alpha-8: var(--alpha-8);
+  --default-transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --default-transition-duration: 200ms;
 }
 
 :root {
@@ -89,16 +97,25 @@
   --sidebar-ring: oklch(0.705 0.015 286.067);
   --background: oklch(0.99 0 0);
   --foreground: oklch(0.145 0 0);
+  --border-faint: oklch(0 0 0 / 7%);
+  --border-loud: oklch(0 0 0 / 14%);
+  --alpha-2: oklch(0 0 0 / 2%);
+  --alpha-4: oklch(0 0 0 / 4%);
+  --alpha-6: oklch(0 0 0 / 6%);
+  --alpha-8: oklch(0 0 0 / 8%);
+  --shadow-popover:
+    0 0 0 1px oklch(0 0 0 / 6%), 0 25px 25px oklch(0 0 0 / 4%),
+    0 6px 14px oklch(0 0 0 / 6%);
 }
 
 .dark {
   --addition: #5ecc71;
   --deletion: #ff6762;
-  --background: oklch(0.165 0.005 285.823);
+  --background: oklch(0.145 0.004 285.823);
   --foreground: oklch(0.97 0 0);
-  --card: oklch(0.215 0.006 285.885);
+  --card: oklch(0.185 0.005 285.885);
   --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.215 0.006 285.885);
+  --popover: oklch(0.205 0.006 285.885);
   --popover-foreground: oklch(0.97 0 0);
   --primary: oklch(0.779 0.117 213.7);
   --primary-foreground: oklch(0.21 0.04 230);
@@ -110,8 +127,17 @@
   --accent: oklch(0.3 0.006 286.033);
   --accent-foreground: oklch(0.955 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 17%);
-  --input: oklch(1 0 0 / 20%);
+  --border: oklch(1 0 0 / 10%);
+  --border-faint: oklch(1 0 0 / 7%);
+  --border-loud: oklch(1 0 0 / 15%);
+  --alpha-2: oklch(1 0 0 / 2%);
+  --alpha-4: oklch(1 0 0 / 4%);
+  --alpha-6: oklch(1 0 0 / 6%);
+  --alpha-8: oklch(1 0 0 / 8%);
+  --shadow-popover:
+    0 0 0 1px oklch(1 0 0 / 6%), 0 25px 25px oklch(0 0 0 / 12%),
+    0 6px 14px oklch(0 0 0 / 16%);
+  --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.779 0.117 213.7);
   --chart-1: oklch(0.779 0.117 213.7);
   --chart-2: oklch(0.66 0.17 266);
@@ -124,11 +150,88 @@
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.3 0.006 286.033);
   --sidebar-accent-foreground: oklch(0.955 0 0);
-  --sidebar-border: oklch(1 0 0 / 17%);
+  --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
 }
 
 @layer utilities {
+  .corner-ticks {
+    position: relative;
+  }
+  .corner-ticks::before,
+  .corner-ticks::after {
+    position: absolute;
+    z-index: 10;
+    width: 9px;
+    height: 9px;
+    pointer-events: none;
+    content: "";
+  }
+  .corner-ticks::before {
+    top: -1px;
+    left: -1px;
+    border-top: 1px solid var(--border-loud);
+    border-left: 1px solid var(--border-loud);
+  }
+  .corner-ticks::after {
+    right: -1px;
+    bottom: -1px;
+    border-right: 1px solid var(--border-loud);
+    border-bottom: 1px solid var(--border-loud);
+  }
+
+  .btn-primary-glow {
+    position: relative;
+    box-shadow:
+      0 -6px 12px oklch(0.45 0.12 220 / 0.35) inset,
+      0 2px 4px oklch(0.68 0.1 220 / 0.12),
+      0 1px 1px oklch(0.68 0.1 220 / 0.12),
+      0 0.5px 0.5px oklch(0.68 0.1 220 / 0.16);
+  }
+  .btn-primary-glow::before {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    background: linear-gradient(to bottom, white, transparent);
+    border-radius: inherit;
+    opacity: 0.06;
+    transition: opacity 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+  .btn-primary-glow:hover::before {
+    opacity: 0.08;
+  }
+  .btn-primary-glow:active {
+    scale: 0.995;
+  }
+  .btn-primary-glow:active::before {
+    opacity: 0;
+    transition-duration: 0.05s;
+  }
+
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .skeleton-shimmer::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+    background: linear-gradient(
+      90deg,
+      transparent,
+      oklch(1 0 0 / 4%),
+      transparent
+    );
+    transform: translateX(-100%);
+    animation: skeleton-shimmer 1.8s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+  }
+  @keyframes skeleton-shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
   /* Primary counterpart to input-bevel-shadow: a single subtle top-light inset,
      matching the secondary button's restraint so both read as one flat material.
      No heavy bottom band, no drop shadow. */
@@ -182,6 +285,12 @@
   }
   ::-webkit-scrollbar-corner {
     background: transparent;
+  }
+}
+
+@layer base {
+  .font-heading {
+    letter-spacing: -0.01em;
   }
 }
 

@@ -9,8 +9,7 @@ import { DossierActions } from "@/components/dashboard/dossier-actions";
 import { ThreadPreviews } from "@/components/dashboard/thread-previews";
 import { VerdictMatrix } from "@/components/dashboard/verdict-matrix";
 import { shortAge } from "@/lib/age";
-import { sizeClass } from "@/lib/attention";
-import { claimFor } from "@/lib/claims";
+import { type ClaimTone, claimFor } from "@/lib/claims";
 
 const CI_LABELS: Record<QueuePull["ci"], string> = {
   success: "checks green",
@@ -19,11 +18,37 @@ const CI_LABELS: Record<QueuePull["ci"], string> = {
   none: "no checks",
 };
 
+const TONE_CLASSES: Record<ClaimTone, string> = {
+  ready: "text-addition",
+  blocked: "text-deletion",
+  waiting: "text-foreground",
+  neutral: "text-muted-foreground",
+};
+
 interface DossierPaneProps {
   canAct: boolean;
   now: number;
   onOpen: (pull: QueuePull) => void;
   pull: QueuePull | null;
+}
+
+function ClaimBlock({ now, pull }: { now: number; pull: QueuePull }) {
+  const claim = claimFor(pull, now);
+  return (
+    <div className="flex flex-col gap-0.5 border-border-faint border-b px-5 py-3.5">
+      <p
+        className={cn(
+          "font-semibold text-[14px] leading-snug",
+          TONE_CLASSES[claim.tone]
+        )}
+      >
+        {claim.status}
+      </p>
+      {claim.detail ? (
+        <p className="text-[12px] text-muted-foreground">{claim.detail}</p>
+      ) : null}
+    </div>
+  );
 }
 
 export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
@@ -36,7 +61,7 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
   }
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-col gap-2 border-border border-b px-5 py-4">
+      <div className="flex flex-col gap-2 border-border-faint border-b px-5 py-4">
         <p className="font-mono text-[11px] text-muted-foreground">
           #{pull.number}
           <span className="text-muted-foreground/50">
@@ -58,27 +83,20 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
               {pull.author?.login[0] ?? "?"}
             </AvatarFallback>
           </Avatar>
-          <span className="font-mono text-[11px] text-muted-foreground">
+          <span className="text-[11px] text-muted-foreground">
             {pull.author?.login ?? "unknown"} · updated{" "}
             {shortAge(pull.updatedAt, now)} ago
           </span>
-          {pull.isDraft ? (
-            <span className="rounded-sm bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-              draft
-            </span>
-          ) : null}
         </div>
       </div>
-      <p className="text-pretty border-border border-b px-5 py-3.5 text-[14px] leading-relaxed">
-        {claimFor(pull, now)}
-      </p>
-      <div className="border-border border-b px-5 py-4">
+      <ClaimBlock now={now} pull={pull} />
+      <div className="border-border-faint border-b px-5 py-4">
         <VerdictMatrix now={now} pull={pull} />
       </div>
       {pull.ciFailures.length > 0 ? (
-        <div className="flex flex-wrap items-baseline gap-1.5 border-border border-b px-5 py-3">
-          <span className="mr-1 font-mono text-[11px] text-muted-foreground/60">
-            failing
+        <div className="flex flex-wrap items-baseline gap-1.5 border-border-faint border-b px-5 py-3">
+          <span className="mr-1 font-medium text-[10px] text-muted-foreground/60 uppercase tracking-[0.12em]">
+            Failing
           </span>
           {pull.ciFailures.map((name) => (
             <span
@@ -91,7 +109,7 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
         </div>
       ) : null}
       <ThreadPreviews pull={pull} />
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-border border-b px-5 py-3 font-mono text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-border-faint border-b px-5 py-3 text-[11px] text-muted-foreground tabular-nums">
         <span
           className={cn(
             pull.ci === "failure" && "text-deletion",
@@ -113,7 +131,6 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
         <span className="tabular-nums">
           {pull.changedFiles} file{pull.changedFiles === 1 ? "" : "s"}
         </span>
-        <span className="uppercase">{sizeClass(pull)}</span>
       </div>
       <DossierActions canAct={canAct} onOpen={() => onOpen(pull)} pull={pull} />
     </div>

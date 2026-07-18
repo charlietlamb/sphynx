@@ -13,7 +13,7 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
     <button
       className={cn(
         "group flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors",
-        active ? "bg-muted/50" : "hover:bg-muted/30"
+        active ? "bg-primary/5" : "hover:bg-alpha-2"
       )}
       onClick={onSelect}
       type="button"
@@ -30,13 +30,15 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
       <span
         className={cn(
           "min-w-0 flex-1 truncate font-mono text-xs",
-          item.isStage ? "text-foreground" : "text-muted-foreground"
+          active && "text-primary",
+          !active &&
+            (item.isStage ? "text-foreground" : "text-muted-foreground")
         )}
         title={item.branch}
       >
         {item.branch}
       </span>
-      <span className="shrink-0 font-mono text-[11px] tabular-nums">
+      <span className="shrink-0 text-[11px] tabular-nums">
         {item.mergeable > 0 ? (
           <>
             <span

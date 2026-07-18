@@ -6,7 +6,7 @@ const REVIEWER_WIDTHS = ["5.5rem", "7rem", "4.5rem"];
 export function DossierSkeleton() {
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-col gap-2 border-border border-b px-5 py-4">
+      <div className="flex flex-col gap-2 border-border-faint border-b px-5 py-4">
         <Skeleton className="h-3 w-44" />
         <div className="flex flex-col gap-1.5 py-0.5">
           <Skeleton className="h-5 w-11/12" />
@@ -17,24 +17,24 @@ export function DossierSkeleton() {
           <Skeleton className="h-3 w-36" />
         </div>
       </div>
-      <div className="border-border border-b px-5 py-3.5">
+      <div className="border-border-faint border-b px-5 py-3.5">
         <Skeleton className="h-4 w-2/3" />
       </div>
-      <div className="flex flex-col gap-1 border-border border-b px-5 py-4">
-        <p className="font-mono text-[11px] text-muted-foreground/60">
-          verdicts
+      <div className="flex flex-col gap-1 border-border-faint border-b px-5 py-4">
+        <p className="font-medium text-[10px] text-muted-foreground/60 uppercase tracking-[0.12em]">
+          Verdicts
         </p>
         {REVIEWER_WIDTHS.map((width) => (
           <VerdictRowSkeleton key={width} nameWidth={width} />
         ))}
       </div>
-      <div className="flex items-baseline gap-4 border-border border-b px-5 py-3">
+      <div className="flex items-baseline gap-4 border-border-faint border-b px-5 py-3">
         <Skeleton className="h-3 w-16" />
         <Skeleton className="h-3 w-14" />
         <Skeleton className="h-3 w-12" />
         <Skeleton className="h-3 w-6" />
       </div>
-      <div className="mt-auto flex items-center justify-end gap-2 border-border border-t px-5 py-3">
+      <div className="mt-auto flex items-center justify-end gap-2 border-border-faint border-t px-5 py-3">
         <Skeleton className="h-8 w-16 rounded-md" />
         <Skeleton className="h-8 w-16 rounded-md" />
         <Skeleton className="h-8 w-20 rounded-md" />

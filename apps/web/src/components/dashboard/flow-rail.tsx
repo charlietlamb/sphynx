@@ -14,10 +14,12 @@ export function FlowRail({ flow, items, onSelect, selected }: FlowRailProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between px-2">
-        <p className="font-mono text-[11px] text-muted-foreground/60">flow</p>
+        <p className="font-medium text-[10px] text-muted-foreground/60 uppercase tracking-[0.12em]">
+          Flow
+        </p>
         {selected ? (
           <button
-            className="font-mono text-[10px] text-muted-foreground/60 underline-offset-2 transition-colors hover:text-foreground hover:underline"
+            className="text-[11px] text-muted-foreground/60 underline-offset-2 transition-colors hover:text-foreground hover:underline"
             onClick={() => onSelect(null)}
             type="button"
           >

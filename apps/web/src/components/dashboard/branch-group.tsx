@@ -38,16 +38,16 @@ export function BranchGroup({
         >
           {group.branch}
         </span>
-        <span className="font-mono text-[11px] text-muted-foreground/60 tabular-nums">
+        <span className="text-[11px] text-muted-foreground/60 tabular-nums">
           {group.total}
         </span>
         {group.mergeable > 0 ? (
-          <span className="font-mono text-[11px] text-addition/80">
+          <span className="text-[11px] text-addition/80">
             · {group.mergeable} mergeable
           </span>
         ) : null}
         {group.contested > 0 ? (
-          <span className="font-mono text-[11px] text-deletion/80">
+          <span className="text-[11px] text-deletion/80">
             · {group.contested} contested
           </span>
         ) : null}

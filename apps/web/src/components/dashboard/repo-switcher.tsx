@@ -55,7 +55,7 @@ export function RepoSwitcher({ onSelect, repos, selected }: RepoSwitcherProps) {
             {selected.repo}
           </span>
         </span>
-        <span className="font-mono text-[11px] tabular-nums">
+        <span className="text-[11px] tabular-nums">
           {selected.mergeable > 0 ? (
             <>
               <span
@@ -110,7 +110,7 @@ export function RepoSwitcher({ onSelect, repos, selected }: RepoSwitcherProps) {
                       {active ? (
                         <CheckIcon className="size-3.5 shrink-0 text-primary" />
                       ) : null}
-                      <span className="shrink-0 text-right font-mono text-[11px] tabular-nums">
+                      <span className="shrink-0 text-right text-[11px] tabular-nums">
                         {repo.mergeable > 0 ? (
                           <>
                             <span className="text-addition">

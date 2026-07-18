@@ -13,9 +13,9 @@ export function ThreadPreviews({ pull }: { pull: QueuePull }) {
   }
   const hidden = pull.unresolvedThreads - pull.threadPreviews.length;
   return (
-    <div className="flex flex-col gap-2 border-border border-b px-5 py-4">
-      <p className="font-mono text-[11px] text-muted-foreground/60">
-        open threads
+    <div className="flex flex-col gap-2 border-border-faint border-b px-5 py-4">
+      <p className="font-medium text-[10px] text-muted-foreground/60 uppercase tracking-[0.12em]">
+        Open threads
       </p>
       {pull.threadPreviews.map((preview) => {
         const login = preview.author?.login.replace(BOT_NAME_SUFFIX, "");
@@ -35,7 +35,7 @@ export function ThreadPreviews({ pull }: { pull: QueuePull }) {
                   {login?.[0] ?? "?"}
                 </AvatarFallback>
               </Avatar>
-              <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+              <span className="shrink-0 text-[11px] text-muted-foreground">
                 {login ?? "unknown"}
               </span>
               {preview.path ? (
@@ -54,7 +54,7 @@ export function ThreadPreviews({ pull }: { pull: QueuePull }) {
         );
       })}
       {hidden > 0 ? (
-        <p className="font-mono text-[10px] text-muted-foreground/50">
+        <p className="text-[11px] text-muted-foreground/50">
           +{hidden} more open thread{hidden === 1 ? "" : "s"}
         </p>
       ) : null}
