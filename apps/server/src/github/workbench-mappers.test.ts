@@ -67,6 +67,37 @@ describe("toWorkbenchEvent", () => {
     expect(closedNoField?.kind).toBe("pr-closed");
   });
 
+  test("maps the events api slim payload with merged action", () => {
+    const mapped = convert(
+      event("PullRequestEvent", {
+        action: "merged",
+        pull_request: { number: 2296 },
+      })
+    );
+    expect(mapped).toEqual({
+      id: "100",
+      at: "2026-07-18T12:00:00Z",
+      actor: { login: "charlie", avatarUrl: "https://avatars.test/1" },
+      kind: "pr-merged",
+      pull: { number: 2296, title: null },
+      detail: null,
+      url: "https://github.com/acme/widgets/pull/2296",
+    });
+  });
+
+  test("review events tolerate slim pull payloads", () => {
+    const mapped = convert(
+      event("PullRequestReviewEvent", {
+        action: "created",
+        review: { state: "approved", html_url: null },
+        pull_request: { number: 8 },
+      })
+    );
+    expect(mapped?.kind).toBe("review-approved");
+    expect(mapped?.pull).toEqual({ number: 8, title: null });
+    expect(mapped?.url).toBe("https://github.com/acme/widgets/pull/8");
+  });
+
   test("skips noisy pull actions", () => {
     for (const action of ["synchronize", "labeled", "assigned"]) {
       expect(

@@ -10,7 +10,7 @@ export interface MergedWorkbenchEvent {
   readonly detail: string | null;
   readonly id: string;
   readonly kind: WorkbenchKind;
-  readonly pull: { number: number; title: string } | null;
+  readonly pull: { number: number; title: string | null } | null;
   readonly source: WorkbenchSource;
   readonly url: string | null;
 }

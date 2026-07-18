@@ -17,7 +17,7 @@ const RawPullPayloadSchema = Schema.Struct({
   action: Schema.String,
   pull_request: Schema.Struct({
     number: Schema.Number,
-    title: Schema.String,
+    title: Schema.NullishOr(Schema.String),
     html_url: Schema.NullishOr(Schema.String),
     merged: Schema.NullishOr(Schema.Boolean),
   }),
@@ -31,7 +31,7 @@ const RawReviewPayloadSchema = Schema.Struct({
   }),
   pull_request: Schema.Struct({
     number: Schema.Number,
-    title: Schema.String,
+    title: Schema.NullishOr(Schema.String),
     html_url: Schema.NullishOr(Schema.String),
   }),
 });
@@ -45,7 +45,7 @@ const RawReviewCommentPayloadSchema = Schema.Struct({
   }),
   pull_request: Schema.Struct({
     number: Schema.Number,
-    title: Schema.String,
+    title: Schema.NullishOr(Schema.String),
   }),
 });
 
@@ -111,27 +111,44 @@ const PULL_KINDS: Record<string, WorkbenchEventKind> = {
   opened: "pr-opened",
   reopened: "pr-reopened",
   ready_for_review: "pr-ready",
+  merged: "pr-merged",
 };
 
-function fromPull(base: EventBase, payload: unknown): WorkbenchEvent | null {
+function pullKind(
+  action: string,
+  merged: boolean
+): WorkbenchEventKind | undefined {
+  if (action === "closed") {
+    return merged ? "pr-merged" : "pr-closed";
+  }
+  return PULL_KINDS[action];
+}
+
+function pullUrl(owner: string, repo: string, number: number) {
+  return `https://github.com/${owner}/${repo}/pull/${number}`;
+}
+
+function fromPull(
+  base: EventBase,
+  payload: unknown,
+  owner: string,
+  repo: string
+): WorkbenchEvent | null {
   const decoded = decodePullPayload(payload);
   if (Option.isNone(decoded)) {
     return null;
   }
   const { action, pull_request } = decoded.value;
-  const closedKind: WorkbenchEventKind = pull_request.merged
-    ? "pr-merged"
-    : "pr-closed";
-  const kind = action === "closed" ? closedKind : PULL_KINDS[action];
+  const kind = pullKind(action, pull_request.merged ?? false);
   if (!kind) {
     return null;
   }
   return {
     ...base,
     kind,
-    pull: { number: pull_request.number, title: pull_request.title },
+    pull: { number: pull_request.number, title: pull_request.title ?? null },
     detail: null,
-    url: pull_request.html_url ?? null,
+    url: pull_request.html_url ?? pullUrl(owner, repo, pull_request.number),
   };
 }
 
@@ -140,7 +157,12 @@ const REVIEW_KINDS: Record<string, WorkbenchEventKind> = {
   changes_requested: "review-changes",
 };
 
-function fromReview(base: EventBase, payload: unknown): WorkbenchEvent | null {
+function fromReview(
+  base: EventBase,
+  payload: unknown,
+  owner: string,
+  repo: string
+): WorkbenchEvent | null {
   const decoded = decodeReviewPayload(payload);
   if (Option.isNone(decoded) || decoded.value.action !== "created") {
     return null;
@@ -149,9 +171,15 @@ function fromReview(base: EventBase, payload: unknown): WorkbenchEvent | null {
   return {
     ...base,
     kind: REVIEW_KINDS[review.state ?? ""] ?? "review-commented",
-    pull: { number: pull_request.number, title: pull_request.title },
+    pull: {
+      number: pull_request.number,
+      title: pull_request.title ?? null,
+    },
     detail: null,
-    url: review.html_url ?? pull_request.html_url ?? null,
+    url:
+      review.html_url ??
+      pull_request.html_url ??
+      pullUrl(owner, repo, pull_request.number),
   };
 }
 
@@ -168,7 +196,10 @@ function fromReviewComment(
   return {
     ...base,
     kind: "comment",
-    pull: { number: pull_request.number, title: pull_request.title },
+    pull: {
+      number: pull_request.number,
+      title: pull_request.title ?? null,
+    },
     detail: snippet.length > 0 ? snippet : (comment.path ?? null),
     url: comment.html_url ?? null,
   };
@@ -292,9 +323,9 @@ export function toWorkbenchEvent(
   };
   switch (type) {
     case "PullRequestEvent":
-      return fromPull(base, payload);
+      return fromPull(base, payload, owner, repo);
     case "PullRequestReviewEvent":
-      return fromReview(base, payload);
+      return fromReview(base, payload, owner, repo);
     case "PullRequestReviewCommentEvent":
       return fromReviewComment(base, payload);
     case "IssueCommentEvent":

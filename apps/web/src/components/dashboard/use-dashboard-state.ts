@@ -108,10 +108,17 @@ export function useDashboardState() {
     [flow, fullQueue]
   );
 
+  const pullTitles = useMemo(
+    () =>
+      new Map((flow?.openPulls ?? []).map((pull) => [pull.number, pull.title])),
+    [flow]
+  );
+
   const workbench = useWorkbench(
     flow?.owner ?? null,
     flow?.repo ?? null,
-    authed
+    authed,
+    pullTitles
   );
 
   const focused = (() => {

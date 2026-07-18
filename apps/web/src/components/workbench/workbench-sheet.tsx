@@ -126,9 +126,6 @@ export function WorkbenchSheet({
       >
         <SheetTitle className="sr-only">Repo workbench</SheetTitle>
         <div className="flex h-12 shrink-0 items-center gap-4 border-border border-b px-4">
-          <span className="shrink-0 font-mono text-muted-foreground text-xs">
-            {owner}/{repo}
-          </span>
           <WorkbenchFilters
             filter={filter}
             onFilter={setFilter}

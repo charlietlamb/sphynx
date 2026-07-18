@@ -35,7 +35,10 @@ export const WorkbenchEventSchema = Schema.Struct({
   actor: GitHubUserSchema,
   kind: WorkbenchEventKindSchema,
   pull: Schema.NullOr(
-    Schema.Struct({ number: Schema.Number, title: Schema.String })
+    Schema.Struct({
+      number: Schema.Number,
+      title: Schema.NullOr(Schema.String),
+    })
   ),
   detail: Schema.NullOr(Schema.String),
   url: Schema.NullOr(Schema.String),

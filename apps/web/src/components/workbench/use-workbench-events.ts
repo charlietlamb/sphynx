@@ -34,7 +34,8 @@ export function useWorkbenchEvents(
   owner: string,
   repo: string,
   authed: boolean,
-  enabled: boolean
+  enabled: boolean,
+  pullTitles: ReadonlyMap<number, string>
 ) {
   const server = useQuery({
     ...workbenchEventsQuery(owner, repo, authed),
@@ -44,12 +45,22 @@ export function useWorkbenchEvents(
 
   const events = useMemo<readonly MergedWorkbenchEvent[]>(() => {
     const github = (server.data ?? []).map(
-      (event): MergedWorkbenchEvent => ({ ...event, source: "github" })
+      (event): MergedWorkbenchEvent => ({
+        ...event,
+        pull: event.pull
+          ? {
+              number: event.pull.number,
+              title:
+                event.pull.title ?? pullTitles.get(event.pull.number) ?? null,
+            }
+          : null,
+        source: "github",
+      })
     );
     return [...github, ...local.events].sort(
       (a, b) => Date.parse(b.at) - Date.parse(a.at)
     );
-  }, [server.data, local.events]);
+  }, [server.data, local.events, pullTitles]);
 
   const unseen = useMemo(
     () =>
