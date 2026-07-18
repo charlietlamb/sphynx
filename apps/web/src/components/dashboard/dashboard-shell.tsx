@@ -8,6 +8,7 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 
 interface DashboardShellProps {
   dossier: ReactNode;
+  githubUrl: string | null;
   hints: ReactNode;
   queue: ReactNode;
   rail: ReactNode;
@@ -16,6 +17,7 @@ interface DashboardShellProps {
 
 export function DashboardShell({
   dossier,
+  githubUrl,
   hints,
   queue,
   rail,
@@ -23,7 +25,7 @@ export function DashboardShell({
 }: DashboardShellProps) {
   return (
     <main className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
-      <DashboardHeader switcher={switcher} />
+      <DashboardHeader githubUrl={githubUrl} switcher={switcher} />
       <ResizablePanelGroup
         autoSaveId="sphynx-dashboard"
         className="min-h-0 flex-1"

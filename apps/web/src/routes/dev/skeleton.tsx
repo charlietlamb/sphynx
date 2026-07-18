@@ -9,6 +9,7 @@ function SkeletonGallery() {
   return (
     <DashboardShell
       dossier={<DossierSkeleton />}
+      githubUrl={null}
       hints={null}
       queue={<QueueSkeleton />}
       rail={<RailSkeleton />}

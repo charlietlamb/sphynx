@@ -5,12 +5,10 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
-import { buttonVariants } from "@sphynx/ui/components/ui/button";
-import { cn } from "@sphynx/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { UserMenu } from "@/components/auth/user-menu";
-import { GithubIcon } from "@/components/icons/github-icon";
+import { GithubLink } from "@/components/layout/github-link";
 import { SphynxMark } from "@/components/layout/sphynx-mark";
 import { DiffStat } from "@/components/pull-request/diff-stat";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
@@ -52,6 +50,7 @@ export function PullRequestHeader({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          <GithubLink href={pullRequest.githubUrl} />
           <SettingsDialog />
           <UserMenu />
         </div>
@@ -60,18 +59,9 @@ export function PullRequestHeader({
         <h1 className="text-balance font-heading text-2xl tracking-tight">
           {pullRequest.title}
         </h1>
-        <div className="flex shrink-0 items-center gap-2">
-          {refresh}
-          <a
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-            href={pullRequest.githubUrl}
-            rel="noreferrer"
-            target="_blank"
-          >
-            <GithubIcon />
-            View on GitHub
-          </a>
-        </div>
+        {refresh ? (
+          <div className="flex shrink-0 items-center gap-2">{refresh}</div>
+        ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-muted-foreground text-sm">
         <StatusPill label={label} tone={tone} />

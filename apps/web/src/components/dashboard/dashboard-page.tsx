@@ -214,6 +214,7 @@ export function DashboardPage() {
           <DossierSkeleton />
         )
       }
+      githubUrl={flow ? `https://github.com/${flow.owner}/${flow.repo}` : null}
       hints={
         <>
           <KeyHint action="move" keys="j k" />
