@@ -72,7 +72,7 @@ export function DossierPane({
     );
   }
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="fade-in flex flex-1 animate-in flex-col duration-150">
       <div className="flex flex-col gap-2 border-border border-b px-5 py-4">
         <p className="font-mono text-[11px] text-muted-foreground">
           #{pull.number}

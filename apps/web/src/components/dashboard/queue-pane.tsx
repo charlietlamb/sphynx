@@ -25,7 +25,7 @@ export function QueuePane({
     );
   }
   return (
-    <div className="flex flex-col gap-4 px-4 pb-3">
+    <div className="fade-in flex animate-in flex-col gap-4 px-4 pb-3 duration-150">
       {queue.groups.map((group, index) => (
         <BranchGroup
           first={index === 0}
