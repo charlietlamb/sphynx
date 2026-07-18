@@ -46,6 +46,14 @@ class ApiError extends Error {
   }
 }
 
+async function ensureOk(response: Response) {
+  if (response.ok) {
+    return;
+  }
+  const body: ApiErrorBody = await response.json().catch(() => ({}));
+  throw new ApiError(response.status, body);
+}
+
 function showMutationError(title: string, error: unknown) {
   toast.error(title, {
     description:
@@ -91,10 +99,7 @@ async function fetchDecoded<A, I>(
   schema: Schema.Schema<A, I>
 ): Promise<A> {
   const response = await fetch(url);
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new ApiError(response.status, body as ApiErrorBody);
-  }
+  await ensureOk(response);
   return Schema.decodeUnknownPromise(schema)(await response.json());
 }
 
@@ -240,10 +245,7 @@ async function postJson(url: string, payload: unknown) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new ApiError(response.status, body as ApiErrorBody);
-  }
+  await ensureOk(response);
 }
 
 function commentsUrl({ owner, repo, number }: PullRequestRef) {
@@ -392,10 +394,7 @@ function pendingReviewQuery(ref: PullRequestRef) {
       if (response.status === 401) {
         return { pendingId: null, commentCount: 0 };
       }
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new ApiError(response.status, body as ApiErrorBody);
-      }
+      await ensureOk(response);
       return Schema.decodeUnknownPromise(PendingReviewSchema)(
         await response.json()
       );
@@ -450,10 +449,7 @@ function viewedFilesQuery(ref: PullRequestRef) {
       if (response.status === 401) {
         return null;
       }
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new ApiError(response.status, body as ApiErrorBody);
-      }
+      await ensureOk(response);
       const decoded = await Schema.decodeUnknownPromise(ViewedFilesSchema)(
         await response.json()
       );
@@ -481,10 +477,7 @@ export function useViewedFiles(ref: PullRequestRef) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(change),
       });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new ApiError(response.status, body as ApiErrorBody);
-      }
+      await ensureOk(response);
     },
     onMutate: async (change) => {
       const { queryKey } = viewedFilesQuery(ref);
@@ -541,10 +534,7 @@ export function useViewedFiles(ref: PullRequestRef) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ viewed: true }),
       });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new ApiError(response.status, body as ApiErrorBody);
-      }
+      await ensureOk(response);
     },
     onMutate: async (paths: readonly string[]) => {
       const { queryKey } = viewedFilesQuery(ref);

@@ -13,8 +13,10 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const { redirect } = Route.useSearch();
   const { data: session, isPending } = useSession();
+  const target =
+    redirect?.startsWith("/") && !redirect.startsWith("//") ? redirect : "/";
   if (!isPending && session?.user) {
-    return <Navigate href={redirect ?? "/"} replace to="/" />;
+    return <Navigate replace to={target as "/"} />;
   }
   return (
     <SiteLayout center texture>

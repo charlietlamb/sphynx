@@ -75,7 +75,7 @@ export function PullRequestHeader({
           </span>
         ) : null}
         <span className="font-mono text-xs">
-          {pullRequest.base.ref} ← {pullRequest.head.ref}
+          {pullRequest.head.ref} → {pullRequest.base.ref}
         </span>
         <span className="tabular-nums">
           {stats.commits} commits · {stats.changedFiles} files

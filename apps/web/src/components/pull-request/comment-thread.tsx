@@ -6,6 +6,7 @@ import { CommentComposer } from "@/components/pull-request/comment-composer";
 import { CommentItem } from "@/components/pull-request/comment-item";
 import { CommentThreadFooter } from "@/components/pull-request/comment-thread-footer";
 import type { ReviewCommenting } from "@/components/pull-request/use-review-comments";
+import { plural } from "@/lib/claims";
 
 interface CommentThreadProps {
   commenting: ReviewCommenting;
@@ -53,8 +54,7 @@ export function CommentThread({
           <Badge variant="outline">Resolved</Badge>
           <span className="truncate">
             {thread.comments[0]?.author?.login ?? "unknown"} ·{" "}
-            {thread.comments.length}{" "}
-            {thread.comments.length === 1 ? "comment" : "comments"}
+            {plural(thread.comments.length, "comment")}
           </span>
         </button>
       ) : null}

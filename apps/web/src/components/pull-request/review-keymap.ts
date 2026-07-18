@@ -213,3 +213,9 @@ export function keymapHelp(keymap: Record<string, ReviewCommandId>) {
     description: REVIEW_COMMANDS[command].description,
   }));
 }
+
+export const REVIEW_KEY_HELP = [
+  ...keymapHelp(DEFAULT_KEYMAP),
+  { chord: "1-9", description: "Count — repeats the next motion" },
+  { chord: "Esc", description: "Cancel — draft, selection, definitions" },
+];

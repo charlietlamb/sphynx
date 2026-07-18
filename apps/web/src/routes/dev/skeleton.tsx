@@ -1,9 +1,10 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { DossierSkeleton } from "@/components/dashboard/dossier-skeleton";
 import { QueueSkeleton } from "@/components/dashboard/queue-skeleton";
 import { RailSkeleton } from "@/components/dashboard/rail-skeleton";
 import { SwitcherSkeleton } from "@/components/dashboard/switcher-skeleton";
+import { devOnly } from "@/lib/dev-only";
 
 function SkeletonGallery() {
   return (
@@ -19,10 +20,6 @@ function SkeletonGallery() {
 }
 
 export const Route = createFileRoute("/dev/skeleton")({
-  beforeLoad: () => {
-    if (!import.meta.env.DEV) {
-      throw notFound();
-    }
-  },
+  beforeLoad: devOnly,
   component: SkeletonGallery,
 });

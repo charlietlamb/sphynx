@@ -25,7 +25,8 @@ import "@fontsource-variable/syne";
 import "@fontsource-variable/red-hat-display";
 import "@fontsource-variable/archivo";
 import "@fontsource-variable/unbounded";
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { devOnly } from "@/lib/dev-only";
 
 const CANDIDATES = [
   {
@@ -216,10 +217,6 @@ function FontGallery() {
 }
 
 export const Route = createFileRoute("/dev/fonts")({
-  beforeLoad: () => {
-    if (!import.meta.env.DEV) {
-      throw notFound();
-    }
-  },
+  beforeLoad: devOnly,
   component: FontGallery,
 });

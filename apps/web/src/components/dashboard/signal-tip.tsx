@@ -1,7 +1,6 @@
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@sphynx/ui/components/ui/tooltip";
 import type { ReactNode } from "react";
@@ -14,13 +13,11 @@ interface SignalTipProps {
 
 export function SignalTip({ children, className, label }: SignalTipProps) {
   return (
-    <TooltipProvider delay={300}>
-      <Tooltip>
-        <TooltipTrigger className={className} render={<span />}>
-          {children}
-        </TooltipTrigger>
-        <TooltipContent>{label}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger className={className} render={<span />}>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }

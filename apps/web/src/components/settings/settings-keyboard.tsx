@@ -1,26 +1,6 @@
-import {
-  type KeyBinding,
-  KeymapList,
-} from "@/components/pull-request/keymap-list";
-import {
-  DEFAULT_KEYMAP,
-  keymapHelp,
-} from "@/components/pull-request/review-keymap";
-
-const DASHBOARD_BINDINGS: readonly KeyBinding[] = [
-  { chord: "j / k", description: "Move through the queue" },
-  { chord: "p / ↵", description: "Open the focused pull" },
-  { chord: "m", description: "Merge (with confirmation)" },
-  { chord: "b", description: "Block (with confirmation)" },
-  { chord: "1-9", description: "Filter to a branch (again to clear)" },
-  { chord: "[ ]", description: "Switch repo" },
-];
-
-const REVIEW_BINDINGS: readonly KeyBinding[] = [
-  ...keymapHelp(DEFAULT_KEYMAP),
-  { chord: "1-9", description: "Count — repeats the next motion" },
-  { chord: "Esc", description: "Cancel — draft, selection, definitions" },
-];
+import { DASHBOARD_KEY_HELP } from "@/components/dashboard/dashboard-key-help";
+import { KeymapList } from "@/components/pull-request/keymap-list";
+import { REVIEW_KEY_HELP } from "@/components/pull-request/review-keymap";
 
 export function SettingsKeyboard() {
   return (
@@ -29,13 +9,13 @@ export function SettingsKeyboard() {
         <h3 className="font-mono text-[11px] text-muted-foreground/60">
           dashboard
         </h3>
-        <KeymapList bindings={DASHBOARD_BINDINGS} />
+        <KeymapList bindings={DASHBOARD_KEY_HELP} />
       </section>
       <section className="flex flex-col gap-2">
         <h3 className="font-mono text-[11px] text-muted-foreground/60">
           review workspace
         </h3>
-        <KeymapList bindings={REVIEW_BINDINGS} />
+        <KeymapList bindings={REVIEW_KEY_HELP} />
       </section>
       <p className="text-muted-foreground text-xs">
         Custom keybindings coming soon.

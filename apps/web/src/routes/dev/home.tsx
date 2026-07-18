@@ -1,11 +1,8 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { devOnly } from "@/lib/dev-only";
 
 export const Route = createFileRoute("/dev/home")({
-  beforeLoad: () => {
-    if (!import.meta.env.DEV) {
-      throw notFound();
-    }
-  },
+  beforeLoad: devOnly,
   component: DashboardPage,
 });

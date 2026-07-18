@@ -19,6 +19,7 @@ import {
 } from "@sphynx/ui/components/ui/dropdown-menu";
 import { cn } from "@sphynx/ui/lib/utils";
 import { useMemo } from "react";
+import { QueueCounts } from "@/components/dashboard/queue-counts";
 
 export interface RepoOption {
   contested: number;
@@ -93,33 +94,11 @@ export function RepoSwitcher({ onSelect, repos, selected }: RepoSwitcherProps) {
                       {active ? (
                         <CheckIcon className="size-3.5 shrink-0 text-primary" />
                       ) : null}
-                      <span className="shrink-0 text-right text-[11px] tabular-nums">
-                        {repo.mergeable > 0 ? (
-                          <>
-                            <span className="text-addition">
-                              {repo.mergeable}
-                            </span>
-                            <span className="text-muted-foreground/40">
-                              {" "}
-                              ·{" "}
-                            </span>
-                          </>
-                        ) : null}
-                        {repo.contested > 0 ? (
-                          <>
-                            <span className="text-deletion">
-                              {repo.contested}
-                            </span>
-                            <span className="text-muted-foreground/40">
-                              {" "}
-                              ·{" "}
-                            </span>
-                          </>
-                        ) : null}
-                        <span className="text-muted-foreground/70">
-                          {repo.openCount}
-                        </span>
-                      </span>
+                      <QueueCounts
+                        contested={repo.contested}
+                        mergeable={repo.mergeable}
+                        total={repo.openCount}
+                      />
                     </CommandItem>
                   );
                 })}

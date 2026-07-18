@@ -18,6 +18,14 @@ function byImportance(a: ReviewerVerdict, b: ReviewerVerdict) {
   return a.name.localeCompare(b.name);
 }
 
+function approves(count: number) {
+  return count === 1 ? "1 approves" : `${count} approve`;
+}
+
+function wantsChanges(count: number) {
+  return count === 1 ? "1 wants changes" : `${count} want changes`;
+}
+
 function consensusLine(pull: QueuePull) {
   const commented =
     pull.reviewers.length - pull.approvals - pull.changesRequested;
@@ -25,16 +33,16 @@ function consensusLine(pull: QueuePull) {
     return "no verdicts yet";
   }
   if (pull.approvals > 0 && pull.changesRequested > 0) {
-    return `split verdict · ${pull.approvals} approve · ${pull.changesRequested} want changes`;
+    return `split verdict · ${approves(pull.approvals)} · ${wantsChanges(pull.changesRequested)}`;
   }
   if (pull.changesRequested > 0) {
-    return `${pull.changesRequested} want changes`;
+    return wantsChanges(pull.changesRequested);
   }
   if (pull.approvals === pull.reviewers.length) {
     return "unanimous approval";
   }
   if (pull.approvals > 0) {
-    return `${pull.approvals} approve · ${commented} commented`;
+    return `${approves(pull.approvals)} · ${commented} commented`;
   }
   return "comments only";
 }

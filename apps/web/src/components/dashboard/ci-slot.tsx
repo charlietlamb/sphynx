@@ -17,12 +17,8 @@ export function CiSlot({ pull }: { pull: QueuePull }) {
     );
   } else if (pull.ci === "pending") {
     signal = (
-      <SignalTip
-        className="relative inline-flex size-1.5"
-        label="Checks running"
-      >
-        <span className="absolute inline-flex size-full animate-ping rounded-full bg-amber-500/60" />
-        <span className="relative inline-flex size-1.5 rounded-full bg-amber-500" />
+      <SignalTip className="inline-flex size-1.5" label="Checks running">
+        <span className="inline-flex size-1.5 animate-pulse rounded-full bg-amber-500" />
       </SignalTip>
     );
   }

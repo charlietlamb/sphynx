@@ -16,8 +16,6 @@
   "dependencies": {
     "@base-ui/react": "^1.5.0",
     "@phosphor-icons/react": "catalog:",
-    "@tanstack/react-form": "^1.33.0",
-    "@tanstack/react-table": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "cmdk": "catalog:",

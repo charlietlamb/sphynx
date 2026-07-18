@@ -51,7 +51,7 @@ export function RailGapQueue({
       </p>
       {shown.map((pull) => (
         <button
-          className="flex h-6 w-full min-w-0 items-center gap-2 rounded-sm text-left transition-colors hover:bg-alpha-2"
+          className="flex h-6 w-full min-w-0 items-center gap-2 rounded-sm text-left transition-colors hover:bg-alpha-4"
           key={pull.number}
           onClick={() => onOpenNumber(pull.number)}
           type="button"

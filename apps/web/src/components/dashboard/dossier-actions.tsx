@@ -61,7 +61,7 @@ export function DossierActions({
   };
 
   return (
-    <div className="mt-auto flex flex-col gap-2 border-border border-t px-5 py-3">
+    <div className="flex flex-col gap-2 border-border border-t px-5 py-3">
       {merge.isError || block.isError ? (
         <p className="text-[12px] text-deletion">
           Nothing was changed on GitHub.

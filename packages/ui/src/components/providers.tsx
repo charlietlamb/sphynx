@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
-      <TooltipProvider>{children}</TooltipProvider>
+      <TooltipProvider delay={300}>{children}</TooltipProvider>
       <Toaster />
     </ThemeProvider>
   );

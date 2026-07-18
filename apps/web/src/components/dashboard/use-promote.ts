@@ -1,4 +1,6 @@
+import { CreatedPullSchema } from "@sphynx/schema/review-queue";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { postDecoded } from "@/lib/api";
 
 interface PromoteInput {
   from: string;
@@ -8,20 +10,12 @@ interface PromoteInput {
 export function usePromote(owner: string, repo: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ from, to }: PromoteInput) => {
-      const response = await fetch(
+    mutationFn: ({ from, to }: PromoteInput) =>
+      postDecoded(
         `/api/github/repos/${owner}/${repo}/promote`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ from, to }),
-        }
-      );
-      if (!response.ok) {
-        throw new Error(`release pr failed (${response.status})`);
-      }
-      return response.json() as Promise<{ number: number }>;
-    },
+        CreatedPullSchema,
+        { from, to }
+      ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pipeline"] }),
   });
 }

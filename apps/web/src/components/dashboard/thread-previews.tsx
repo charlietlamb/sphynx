@@ -5,6 +5,7 @@ import {
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
 import { plural, stripBotSuffix } from "@/lib/claims";
+import { baseName } from "@/lib/paths";
 
 export function ThreadPreviews({ pull }: { pull: QueuePull }) {
   if (pull.threadPreviews.length === 0) {
@@ -44,7 +45,7 @@ export function ThreadPreviews({ pull }: { pull: QueuePull }) {
                   className="min-w-0 truncate font-mono text-[10px] text-muted-foreground/50"
                   title={preview.path}
                 >
-                  {preview.path.split("/").at(-1)}
+                  {baseName(preview.path)}
                 </span>
               ) : null}
             </div>

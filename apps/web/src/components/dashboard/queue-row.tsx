@@ -30,10 +30,10 @@ export function QueueRow({
   return (
     <button
       className={cn(
-        "relative flex h-10 w-full items-center gap-2.5 rounded-md border px-2.5 text-left transition-colors",
+        "relative flex h-10 w-full items-center gap-2.5 rounded-md border px-2.5 text-left",
         focused
           ? "border-primary bg-primary/10"
-          : "border-transparent hover:bg-alpha-2"
+          : "border-transparent transition-colors hover:bg-alpha-4"
       )}
       onClick={onFocus}
       onDoubleClick={onOpen}

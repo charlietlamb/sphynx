@@ -5,12 +5,9 @@ import {
   type DefinitionRef,
   trailKeyAt,
 } from "@/components/pull-request/pull-request-search";
+import { baseName } from "@/lib/paths";
 
 const MAX_CRUMBS = 4;
-
-function baseName(path: string) {
-  return path.split("/").at(-1) ?? path;
-}
 
 function visibleIndexes(length: number) {
   if (length <= MAX_CRUMBS) {

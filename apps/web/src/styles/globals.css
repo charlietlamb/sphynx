@@ -199,10 +199,10 @@
     transition: opacity 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
   }
   .btn-primary-glow:hover::before {
-    opacity: 0.08;
+    opacity: 0.12;
   }
   .btn-primary-glow:active {
-    scale: 0.995;
+    scale: 0.98;
   }
   .btn-primary-glow:active::before {
     opacity: 0;
@@ -291,7 +291,6 @@
 @layer base {
   .font-heading {
     font-weight: 350;
-    letter-spacing: -0.015em;
   }
 }
 

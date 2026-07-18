@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Schema } from "effect";
 import { useMemo, useState } from "react";
+import { DASHBOARD_KEY_HELP } from "@/components/dashboard/dashboard-key-help";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import type { ActionDialog } from "@/components/dashboard/dossier-actions";
 import { DossierPane } from "@/components/dashboard/dossier-pane";
@@ -215,16 +216,13 @@ export function DashboardPage() {
         )
       }
       githubUrl={flow ? `https://github.com/${flow.owner}/${flow.repo}` : null}
-      hints={
-        <>
-          <KeyHint action="move" keys="j k" />
-          <KeyHint action="open" keys="p" />
-          <KeyHint action="merge" keys="m" />
-          <KeyHint action="block" keys="b" />
-          <KeyHint action="branch" keys="1–9" />
-          <KeyHint action="repo" keys="[ ]" />
-        </>
-      }
+      hints={DASHBOARD_KEY_HELP.map((binding) => (
+        <KeyHint
+          action={binding.action}
+          key={binding.action}
+          keys={binding.keys}
+        />
+      ))}
       queue={
         queue && flow ? (
           <QueuePane
