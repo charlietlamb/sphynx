@@ -2,7 +2,7 @@ import type {
   ReviewComment,
   ReviewThread,
 } from "@sphynx/schema/pull-request-comments";
-import type { RawReviewComment } from "./schemas";
+import type { RawReviewComment } from "./rest-schemas";
 
 const toReviewComment = (raw: RawReviewComment): ReviewComment => ({
   id: raw.id,

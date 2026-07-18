@@ -93,7 +93,7 @@ function byAttention(a: QueuePull, b: QueuePull) {
   if (rank !== 0) {
     return rank;
   }
-  return a.updatedAt.localeCompare(b.updatedAt);
+  return b.updatedAt.localeCompare(a.updatedAt);
 }
 
 function buildNode(

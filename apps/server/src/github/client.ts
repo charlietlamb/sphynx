@@ -3,7 +3,6 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from "@effect/platform";
-import { Unauthorized } from "@sphynx/schema/pull-request-views";
 import {
   GitHubRateLimited,
   GitHubTimeout,
@@ -15,23 +14,11 @@ import {
   type PullRequestRef,
   type PullRequestSummary,
 } from "@sphynx/schema/pull-requests";
-import {
-  Context,
-  Data,
-  Effect,
-  Layer,
-  Redacted,
-  Schedule,
-  type Schema,
-} from "effect";
+import { Context, Effect, Layer, Redacted, type Schema } from "effect";
 import { GitHubConfig } from "./config";
-import {
-  friendlyErrorMessage,
-  type GitHubAuthedError,
-  pullRequestNotFound,
-  refAnnotations,
-} from "./graphql";
-import { groupReviewThreads } from "./review-threads";
+import { RetryableGitHubError, retryPolicy } from "./errors";
+import { refAnnotations } from "./graphql";
+import { isRateLimited, pullPath, resetAt, retryAfter } from "./http";
 import {
   RawFileContentsSchema,
   type RawPullRequest,
@@ -39,7 +26,8 @@ import {
   RawPullRequestSchema,
   type RawReviewComment,
   RawReviewCommentsSchema,
-} from "./schemas";
+} from "./rest-schemas";
+import { groupReviewThreads } from "./review-threads";
 
 type GitHubError =
   | PullRequestNotFound
@@ -56,46 +44,10 @@ export type GitHubResult<A> =
     }
   | { readonly _tag: "NotModified"; readonly etag: string | null };
 
-export class RetryableGitHubError extends Data.TaggedError(
-  "RetryableGitHubError"
-)<{
-  readonly message: string;
-}> {}
-
-export const retryPolicy = Schedule.exponential("100 millis").pipe(
-  Schedule.jittered
-);
 const linkUrlPattern = /<([^>]+)>/;
-
-export const pullPath = (ref: PullRequestRef, suffix = "") =>
-  `/repos/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/pulls/${ref.number}${suffix}`;
 
 const encodeFilePath = (path: string) =>
   path.split("/").map(encodeURIComponent).join("/");
-
-export const resetAt = (response: HttpClientResponse.HttpClientResponse) => {
-  const value = response.headers["x-ratelimit-reset"];
-  if (!value) {
-    return null;
-  }
-  const seconds = Number(value);
-  return Number.isFinite(seconds)
-    ? new Date(seconds * 1000).toISOString()
-    : null;
-};
-
-export const retryAfter = (response: HttpClientResponse.HttpClientResponse) => {
-  const value = Number(response.headers["retry-after"]);
-  return Number.isFinite(value) ? value : null;
-};
-
-export const isRateLimited = (
-  response: HttpClientResponse.HttpClientResponse
-) =>
-  response.status === 429 ||
-  (response.status === 403 &&
-    (response.headers["x-ratelimit-remaining"] === "0" ||
-      response.headers["retry-after"] !== undefined));
 
 const nextPageFrom = (link: string | undefined) => {
   const next = link
@@ -188,41 +140,6 @@ const responseError = (
         message: `GitHub rejected the request with ${response.status}`,
       });
 };
-
-export const rejectFailedResponse = (
-  response: HttpClientResponse.HttpClientResponse
-): Effect.Effect<void, GitHubAuthedError | GitHubRateLimited> =>
-  Effect.gen(function* () {
-    if (isRateLimited(response)) {
-      return yield* Effect.fail(
-        new GitHubRateLimited({
-          message: "GitHub rate limit exceeded",
-          retryAfterSeconds: retryAfter(response),
-          resetAt: resetAt(response),
-        })
-      );
-    }
-    if (response.status === 401 || response.status === 403) {
-      return yield* Effect.fail(
-        new Unauthorized({ message: "GitHub rejected the request" })
-      );
-    }
-    if (response.status === 404) {
-      return yield* Effect.fail(pullRequestNotFound());
-    }
-    if (response.status >= 400) {
-      const responseBody = yield* response.json.pipe(
-        Effect.orElseSucceed(() => null)
-      );
-      const message =
-        responseBody &&
-        typeof responseBody === "object" &&
-        "message" in responseBody
-          ? friendlyErrorMessage(String(responseBody.message))
-          : `GitHub rejected the request with ${response.status}`;
-      return yield* Effect.fail(new GitHubUnavailable({ message }));
-    }
-  });
 
 const makeClient = Effect.gen(function* () {
   const config = yield* GitHubConfig;

@@ -13,13 +13,14 @@ import { ServerConfig, ServerConfigLive } from "./config";
 import { GitHubClientLive } from "./github/client";
 import { GitHubConfigLive } from "./github/config";
 import { GitHubPipelineLive } from "./github/pipeline";
+import { PipelineCacheLive } from "./github/pipeline-cache";
 import { GitHubReviewQueueLive } from "./github/review-queue";
 import { GitHubReviewsLive } from "./github/reviews";
 import { GitHubViewerLive } from "./github/viewer";
-import { PullRequestCommentsApiLive } from "./routes/comments/live";
-import { PullRequestsApiLive } from "./routes/pulls/live";
-import { ReviewQueueApiLive } from "./routes/review-queue/live";
-import { PullRequestViewsApiLive } from "./routes/views/live";
+import { PullRequestCommentsApiLive } from "./routes/comments";
+import { PullRequestsApiLive } from "./routes/pulls";
+import { ReviewQueueApiLive } from "./routes/review-queue";
+import { PullRequestViewsApiLive } from "./routes/views";
 
 export class HttpServer extends Context.Tag("@sphynx/server/HttpServer")<
   HttpServer,
@@ -69,7 +70,10 @@ const GitHubLive = Layer.mergeAll(
   GitHubViewerLive,
   GitHubReviewsLive,
   GitHubReviewQueueLive,
-  GitHubPipelineLive.pipe(Layer.provide(GitHubReviewQueueLive))
+  GitHubPipelineLive.pipe(Layer.provide(GitHubReviewQueueLive)),
+  PipelineCacheLive.pipe(
+    Layer.provide(GitHubPipelineLive.pipe(Layer.provide(GitHubReviewQueueLive)))
+  )
 ).pipe(Layer.provide(Layer.mergeAll(GitHubConfigLive, FetchHttpClient.layer)));
 
 const DatabaseLiveLayer = DatabaseLive.pipe(Layer.provide(DatabaseConfigLive));

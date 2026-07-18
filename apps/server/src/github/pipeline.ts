@@ -1,14 +1,20 @@
-import { HttpClient, HttpClientRequest } from "@effect/platform";
-import { GitHubUnavailable } from "@sphynx/schema/pull-requests";
-import type {
-  PromotedPull,
-  QueuePull,
-  RepoFlow,
-  StageGap,
+import { HttpClient, HttpClientResponse } from "@effect/platform";
+import {
+  type GitHubRateLimited,
+  GitHubUnavailable,
+} from "@sphynx/schema/pull-requests";
+import {
+  type PromotedPull,
+  PromotedPullSchema,
+  type QueuePull,
+  type RepoFlow,
+  type StageGap,
 } from "@sphynx/schema/review-queue";
 import { Context, Effect, Layer, Schema } from "effect";
 import { GitHubConfig } from "./config";
-import { type GitHubAuthedError, makeGraphql } from "./graphql";
+import type { GitHubAuthedError } from "./errors";
+import { makeGraphql } from "./graphql";
+import { makeRest } from "./http";
 import { GitHubReviewQueue, repoKey } from "./review-queue";
 
 const REFS_FRAGMENT = `
@@ -45,15 +51,6 @@ const CompareSchema = Schema.Struct({
     Schema.Struct({
       commit: Schema.Struct({ message: Schema.String }),
     })
-  ),
-});
-
-const PromotedNodeSchema = Schema.Struct({
-  number: Schema.Number,
-  title: Schema.String,
-  mergedAt: Schema.NullOr(Schema.String),
-  author: Schema.NullOr(
-    Schema.Struct({ login: Schema.String, avatarUrl: Schema.String })
   ),
 });
 
@@ -132,6 +129,8 @@ const makeGitHubPipeline = Effect.gen(function* () {
   const queue = yield* GitHubReviewQueue;
   const github = makeGraphql(config, client);
 
+  const rest = makeRest(config, client);
+
   const restCompare = (
     token: string,
     owner: string,
@@ -139,46 +138,18 @@ const makeGitHubPipeline = Effect.gen(function* () {
     upper: string,
     lower: string
   ) =>
-    Effect.gen(function* () {
-      const outgoing = HttpClientRequest.get(
-        `${config.apiUrl}/repos/${owner}/${repo}/compare/${encodeURIComponent(upper)}...${encodeURIComponent(lower)}?per_page=100`
-      ).pipe(
-        HttpClientRequest.bearerToken(token),
-        HttpClientRequest.setHeaders({
-          accept: "application/vnd.github+json",
-          "x-github-api-version": config.apiVersion,
-        })
-      );
-      const response = yield* client
-        .execute(outgoing)
-        .pipe(
+    rest(
+      token,
+      "GET",
+      `/repos/${owner}/${repo}/compare/${encodeURIComponent(upper)}...${encodeURIComponent(lower)}?per_page=100`
+    ).pipe(
+      Effect.flatMap((response) =>
+        HttpClientResponse.schemaBodyJson(CompareSchema)(response).pipe(
           Effect.mapError(
-            () => new GitHubUnavailable({ message: "GitHub is unreachable" })
+            () => new GitHubUnavailable({ message: "Invalid compare response" })
           )
-        );
-      if (response.status >= 400) {
-        return yield* Effect.fail(
-          new GitHubUnavailable({
-            message: `Compare failed with ${response.status}`,
-          })
-        );
-      }
-      const body = yield* response.json.pipe(
-        Effect.mapError(
-          () => new GitHubUnavailable({ message: "Invalid compare response" })
         )
-      );
-      return yield* Schema.decodeUnknown(CompareSchema)(body).pipe(
-        Effect.mapError(
-          () => new GitHubUnavailable({ message: "Invalid compare response" })
-        )
-      );
-    }).pipe(
-      Effect.timeoutFail({
-        duration: config.timeout,
-        onTimeout: () =>
-          new GitHubUnavailable({ message: "GitHub request timed out" }),
-      })
+      )
     );
 
   const lookupPulls = (
@@ -206,28 +177,16 @@ query($owner: String!, $name: String!) {
       repository: Schema.NullOr(
         Schema.Record({
           key: Schema.String,
-          value: Schema.NullOr(PromotedNodeSchema),
+          value: Schema.NullOr(PromotedPullSchema),
         })
       ),
     });
     return github.query(token, schema, document, { owner, name: repo }).pipe(
-      Effect.map((data) => {
-        const repository = data.repository ?? {};
-        const pulls: PromotedPull[] = [];
-        for (const node of Object.values(repository)) {
-          if (node) {
-            pulls.push({
-              number: node.number,
-              title: node.title,
-              author: node.author,
-              mergedAt: node.mergedAt,
-            });
-          }
-        }
-        return pulls.sort((a, b) =>
-          (b.mergedAt ?? "").localeCompare(a.mergedAt ?? "")
-        );
-      })
+      Effect.map((data) =>
+        Object.values(data.repository ?? {})
+          .filter((node): node is PromotedPull => node !== null)
+          .sort((a, b) => (b.mergedAt ?? "").localeCompare(a.mergedAt ?? ""))
+      )
     );
   };
 
@@ -238,7 +197,7 @@ query($owner: String!, $name: String!) {
     lower: string,
     upper: string,
     openPulls: readonly QueuePull[]
-  ): Effect.Effect<StageGap, GitHubAuthedError> =>
+  ): Effect.Effect<StageGap, GitHubAuthedError | GitHubRateLimited> =>
     restCompare(token, owner, repo, upper, lower).pipe(
       Effect.flatMap((compare) => {
         const { numbers, direct } = commitPullNumbers(
@@ -299,7 +258,7 @@ query($owner: String!, $name: String!) {
     entry: { owner: string; repo: string; pulls: readonly QueuePull[] },
     refs: RepoRefs,
     token: string
-  ): Effect.Effect<RepoFlow, GitHubAuthedError> => {
+  ): Effect.Effect<RepoFlow, GitHubAuthedError | GitHubRateLimited> => {
     const initial = initialChain(refs);
     const middleCheck =
       initial.length === 3

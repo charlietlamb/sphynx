@@ -5,7 +5,7 @@ import {
   PullRequestSummarySchema,
 } from "@sphynx/schema/pull-requests";
 import { Effect, type Schema } from "effect";
-import { GitHubClient, type GitHubResult } from "../../github/client";
+import { GitHubClient, type GitHubResult } from "../github/client";
 
 const cacheHeaders = (etag: string | null) => ({
   "cache-control": "public, max-age=0, s-maxage=30, must-revalidate",

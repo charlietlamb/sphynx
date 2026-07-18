@@ -6,20 +6,17 @@ import {
 import { Unauthorized } from "@sphynx/schema/pull-request-views";
 import {
   GitHubUnavailable,
-  PullRequestNotFound,
   type PullRequestRef,
 } from "@sphynx/schema/pull-requests";
 import { Effect, Schema } from "effect";
-import { RetryableGitHubError, retryPolicy } from "./client";
 import type { GitHubConfig } from "./config";
-
-export type GitHubAuthedError =
-  | Unauthorized
-  | PullRequestNotFound
-  | GitHubUnavailable;
-
-export const pullRequestNotFound = () =>
-  new PullRequestNotFound({ message: "Pull request not found" });
+import {
+  friendlyErrorMessage,
+  type GitHubAuthedError,
+  pullRequestNotFound,
+  RetryableGitHubError,
+  retryPolicy,
+} from "./errors";
 
 export const refAnnotations = (ref: PullRequestRef) => ({
   "github.owner": ref.owner,
@@ -35,13 +32,6 @@ export const PageInfoSchema = Schema.Struct({
 const GraphQLErrors = Schema.optional(
   Schema.Array(Schema.Struct({ message: Schema.String }))
 );
-
-const OAUTH_RESTRICTIONS = "OAuth App access restrictions";
-
-export const friendlyErrorMessage = (message: string) =>
-  message.includes(OAUTH_RESTRICTIONS)
-    ? "This organization restricts OAuth apps, so GitHub blocked the request. An organization owner can approve Sphynx in the organization's third-party access settings."
-    : message;
 
 const pullRequestData = <A, I, R>(inner: Schema.Schema<A, I, R>) =>
   Schema.Struct({

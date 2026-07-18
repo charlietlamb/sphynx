@@ -3,8 +3,8 @@ import { Auth } from "@sphynx/auth";
 import { Database } from "@sphynx/db/client";
 import { SphynxApi } from "@sphynx/schema/api";
 import { Effect } from "effect";
-import { GitHubViewer } from "../../github/viewer";
-import { githubTokenFor } from "../github-token";
+import { githubTokenFor } from "../auth/github-token";
+import { GitHubViewer } from "../github/viewer";
 
 export const PullRequestViewsApiLive = HttpApiBuilder.group(
   SphynxApi,

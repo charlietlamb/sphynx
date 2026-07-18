@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { failingChecks, previewBody } from "./review-queue";
+import { failingChecks, previewBody } from "./queue-mappers";
 
 describe("failingChecks", () => {
   test("collects failed check runs and status contexts", () => {
@@ -33,7 +33,7 @@ describe("failingChecks", () => {
 
   test("caps the list at six names", () => {
     const contexts = Array.from({ length: 10 }, (_, index) => ({
-      __typename: "CheckRun",
+      __typename: "CheckRun" as const,
       name: `check-${index}`,
       conclusion: "FAILURE",
     }));

@@ -3,8 +3,8 @@ import type { ViewedFile } from "@sphynx/schema/pull-request-views";
 import type { PullRequestRef } from "@sphynx/schema/pull-requests";
 import { Array as Arr, Context, Effect, Layer, Schema } from "effect";
 import { GitHubConfig } from "./config";
+import type { GitHubAuthedError } from "./errors";
 import {
-  type GitHubAuthedError,
   makeGraphql,
   PageInfoSchema,
   paginateConnection,

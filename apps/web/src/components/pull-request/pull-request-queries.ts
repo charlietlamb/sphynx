@@ -627,7 +627,7 @@ export function toErrorCardProps(
   ) {
     return {
       title: "GitHub is unavailable",
-      description: "We couldn't reach GitHub. It may be down or slow.",
+      description: "We couldn't reach GitHub (shock). It may be down or slow.",
       onRetry,
     };
   }

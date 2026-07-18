@@ -3,9 +3,9 @@ import { Auth } from "@sphynx/auth";
 import { Database } from "@sphynx/db/client";
 import { SphynxApi } from "@sphynx/schema/api";
 import { Effect } from "effect";
-import { GitHubClient } from "../../github/client";
-import { GitHubReviews } from "../../github/reviews";
-import { githubTokenFor } from "../github-token";
+import { githubTokenFor } from "../auth/github-token";
+import { GitHubClient } from "../github/client";
+import { GitHubReviews } from "../github/reviews";
 
 const OK = { ok: true };
 

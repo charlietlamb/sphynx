@@ -34,7 +34,7 @@ export const PullRequestRefSchema = Schema.Struct({
 
 export type PullRequestRef = typeof PullRequestRefSchema.Type;
 
-const GitHubUserSchema = Schema.Struct({
+export const GitHubUserSchema = Schema.Struct({
   login: Schema.String,
   avatarUrl: Schema.String,
 });

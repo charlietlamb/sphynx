@@ -64,14 +64,28 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
   if (files.isError) {
     const filesError = toErrorCardProps(files.error, () => files.refetch());
     filesContent = (
-      <div className="mx-4 mt-3 flex flex-col items-start gap-3 self-start rounded-md border border-border p-4 text-sm">
-        <p className="font-medium">{filesError.title}</p>
-        <p className="text-muted-foreground">{filesError.description}</p>
-        {filesError.onRetry ? (
-          <Button onClick={filesError.onRetry} size="sm" variant="outline">
-            Try again
-          </Button>
-        ) : null}
+      <div className="flex min-h-0 flex-1 items-center justify-center">
+        <div className="w-full max-w-md border border-border bg-background p-8 text-left">
+          <div className="flex flex-col gap-3">
+            <h2 className="font-heading text-2xl tracking-tight">
+              {filesError.title}
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              {filesError.description}
+            </p>
+            {filesError.onRetry ? (
+              <div className="mt-3">
+                <Button
+                  className="h-9 px-4"
+                  onClick={filesError.onRetry}
+                  size="sm"
+                >
+                  Try again
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
     );
   } else if (files.isPending) {

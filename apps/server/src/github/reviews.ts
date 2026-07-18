@@ -1,4 +1,4 @@
-import { HttpClient, HttpClientRequest } from "@effect/platform";
+import { HttpClient } from "@effect/platform";
 import type {
   CreateReviewComment,
   PendingReview,
@@ -7,24 +7,21 @@ import type {
   ReviewThread,
   SubmitReview,
 } from "@sphynx/schema/pull-request-comments";
-import { Unauthorized } from "@sphynx/schema/pull-request-views";
 import {
-  GitHubRateLimited,
+  type GitHubRateLimited,
   GitHubUnavailable,
   type PullRequestRef,
 } from "@sphynx/schema/pull-requests";
 import { Context, Effect, Layer, Schema } from "effect";
-import { isRateLimited, pullPath, resetAt, retryAfter } from "./client";
 import { GitHubConfig } from "./config";
+import type { GitHubAuthedError } from "./errors";
 import {
-  friendlyErrorMessage,
-  type GitHubAuthedError,
   makeGraphql,
   PageInfoSchema,
   paginateConnection,
-  pullRequestNotFound,
   refAnnotations,
 } from "./graphql";
+import { makeRest, pullPath } from "./http";
 
 const REVIEW_THREADS_QUERY = `
 query($owner: String!, $name: String!, $number: Int!, $after: String) {
@@ -182,63 +179,7 @@ const makeGitHubReviews = Effect.gen(function* () {
   const client = yield* HttpClient.HttpClient;
   const github = makeGraphql(config, client);
 
-  const rest = (
-    token: string,
-    path: string,
-    body: Record<string, unknown>
-  ): Effect.Effect<void, GitHubAuthedError | GitHubRateLimited> =>
-    Effect.gen(function* () {
-      const outgoing = HttpClientRequest.post(`${config.apiUrl}${path}`).pipe(
-        HttpClientRequest.bearerToken(token),
-        HttpClientRequest.setHeaders({
-          accept: "application/vnd.github+json",
-          "x-github-api-version": config.apiVersion,
-        }),
-        HttpClientRequest.bodyUnsafeJson(body)
-      );
-      const response = yield* client
-        .execute(outgoing)
-        .pipe(
-          Effect.mapError(
-            () => new GitHubUnavailable({ message: "GitHub is unreachable" })
-          )
-        );
-      if (isRateLimited(response)) {
-        return yield* Effect.fail(
-          new GitHubRateLimited({
-            message: "GitHub rate limit exceeded",
-            retryAfterSeconds: retryAfter(response),
-            resetAt: resetAt(response),
-          })
-        );
-      }
-      if (response.status === 401 || response.status === 403) {
-        return yield* Effect.fail(
-          new Unauthorized({ message: "GitHub rejected the request" })
-        );
-      }
-      if (response.status === 404) {
-        return yield* Effect.fail(pullRequestNotFound());
-      }
-      if (response.status >= 400) {
-        const responseBody = yield* response.json.pipe(
-          Effect.orElseSucceed(() => null)
-        );
-        const message =
-          responseBody &&
-          typeof responseBody === "object" &&
-          "message" in responseBody
-            ? friendlyErrorMessage(String(responseBody.message))
-            : `GitHub rejected the request with ${response.status}`;
-        return yield* Effect.fail(new GitHubUnavailable({ message }));
-      }
-    }).pipe(
-      Effect.timeoutFail({
-        duration: config.timeout,
-        onTimeout: () =>
-          new GitHubUnavailable({ message: "GitHub request timed out" }),
-      })
-    );
+  const rest = makeRest(config, client);
 
   const listReviewThreads = (
     ref: PullRequestRef,
@@ -334,7 +275,7 @@ const makeGitHubReviews = Effect.gen(function* () {
     payload: CreateReviewComment,
     token: string
   ) =>
-    rest(token, pullPath(ref, "/comments"), {
+    rest(token, "POST", pullPath(ref, "/comments"), {
       body: payload.body,
       commit_id: payload.commitSha,
       path: payload.path,
@@ -346,7 +287,7 @@ const makeGitHubReviews = Effect.gen(function* () {
             start_line: payload.startLine,
             start_side: githubSide(payload.side),
           }),
-    });
+    }).pipe(Effect.asVoid);
 
   const createComment = (
     ref: PullRequestRef,
@@ -369,9 +310,15 @@ const makeGitHubReviews = Effect.gen(function* () {
     payload: ReplyPayload,
     token: string
   ): Effect.Effect<void, GitHubAuthedError | GitHubRateLimited> =>
-    rest(token, pullPath(ref, `/comments/${payload.commentId}/replies`), {
-      body: payload.body,
-    }).pipe(
+    rest(
+      token,
+      "POST",
+      pullPath(ref, `/comments/${payload.commentId}/replies`),
+      {
+        body: payload.body,
+      }
+    ).pipe(
+      Effect.asVoid,
       Effect.withSpan("GitHubReviews.replyToComment"),
       Effect.annotateLogs({
         ...refAnnotations(ref),

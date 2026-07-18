@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import type { RawReviewComment } from "./rest-schemas";
 import { groupReviewThreads } from "./review-threads";
-import type { RawReviewComment } from "./schemas";
 
 const rawComment = (
   overrides: Partial<RawReviewComment> & { id: number }

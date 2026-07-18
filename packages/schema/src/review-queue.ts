@@ -4,6 +4,7 @@ import { Unauthorized } from "./pull-request-views";
 import {
   GitHubRateLimited,
   GitHubUnavailable,
+  GitHubUserSchema,
   PullRequestNotFound,
   PullRequestRefSchema,
 } from "./pull-requests";
@@ -43,9 +44,7 @@ export const ReviewerVerdictSchema = Schema.Struct({
 export type ReviewerVerdict = typeof ReviewerVerdictSchema.Type;
 
 export const ThreadPreviewSchema = Schema.Struct({
-  author: Schema.NullOr(
-    Schema.Struct({ login: Schema.String, avatarUrl: Schema.String })
-  ),
+  author: Schema.NullOr(GitHubUserSchema),
   body: Schema.String,
   path: Schema.NullOr(Schema.String),
 });
@@ -57,9 +56,7 @@ export const QueuePullSchema = Schema.Struct({
   repo: Schema.String,
   number: Schema.Number,
   title: Schema.String,
-  author: Schema.NullOr(
-    Schema.Struct({ login: Schema.String, avatarUrl: Schema.String })
-  ),
+  author: Schema.NullOr(GitHubUserSchema),
   isDraft: Schema.Boolean,
   updatedAt: Schema.String,
   additions: Schema.Number,
@@ -95,9 +92,7 @@ const cookieHeaders = Schema.Struct({
 export const PromotedPullSchema = Schema.Struct({
   number: Schema.Number,
   title: Schema.String,
-  author: Schema.NullOr(
-    Schema.Struct({ login: Schema.String, avatarUrl: Schema.String })
-  ),
+  author: Schema.NullOr(GitHubUserSchema),
   mergedAt: Schema.NullOr(Schema.String),
 });
 
