@@ -22,15 +22,6 @@ export function BranchGroup({
     <div className="flex flex-col gap-1">
       <p className="-mx-4 mb-1 flex items-baseline gap-2 border-border border-b px-[26px] pt-1 pb-2">
         <span
-          aria-hidden
-          className={cn(
-            "size-[7px] shrink-0 self-center rounded-full",
-            group.isStage
-              ? "bg-foreground"
-              : "border border-muted-foreground bg-transparent"
-          )}
-        />
-        <span
           className={cn(
             "font-mono text-xs",
             group.isStage ? "text-foreground" : "text-muted-foreground"
@@ -41,22 +32,6 @@ export function BranchGroup({
         <span className="text-[11px] text-muted-foreground/60 tabular-nums">
           {group.total}
         </span>
-        {group.mergeable > 0 ? (
-          <span
-            className="text-[11px] text-addition/80"
-            title="approved with green checks — ready to merge"
-          >
-            · {group.mergeable} mergeable
-          </span>
-        ) : null}
-        {group.contested > 0 ? (
-          <span
-            className="text-[11px] text-deletion/80"
-            title="changes requested or failing checks — needs a human call"
-          >
-            · {group.contested} contested
-          </span>
-        ) : null}
       </p>
       <StackRows
         depth={0}
