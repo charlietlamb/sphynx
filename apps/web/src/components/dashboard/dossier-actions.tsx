@@ -2,16 +2,13 @@ import type { QueuePull } from "@sphynx/schema/review-queue";
 import { ShortcutButton } from "@sphynx/ui/components/shortcut-button";
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@sphynx/ui/components/ui/alert-dialog";
 import { Textarea } from "@sphynx/ui/components/ui/textarea";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePullActions } from "@/components/dashboard/use-pull-actions";
 
 export type ActionDialog = "merge" | "block" | null;
@@ -34,6 +31,42 @@ export function DossierActions({
   const { merge, block } = usePullActions(pull);
   const [reason, setReason] = useState("");
   const disabledTitle = canAct ? undefined : "sign in to act on pulls";
+
+  const confirmBlock = () => {
+    if (reason.trim().length === 0) {
+      return;
+    }
+    block.mutate(reason.trim());
+    onDialogChange(null);
+  };
+
+  const confirmMerge = () => {
+    merge.mutate();
+    onDialogChange(null);
+  };
+
+  const live = useRef({ dialog, confirmBlock, confirmMerge });
+  useEffect(() => {
+    live.current = { dialog, confirmBlock, confirmMerge };
+  });
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!((event.metaKey || event.ctrlKey) && event.key === "Enter")) {
+        return;
+      }
+      const current = live.current;
+      if (current.dialog === "merge") {
+        event.preventDefault();
+        current.confirmMerge();
+      } else if (current.dialog === "block") {
+        event.preventDefault();
+        current.confirmBlock();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <div className="mt-auto flex flex-col gap-2 border-border border-t px-5 py-3">
       {merge.isError || block.isError ? (
@@ -90,18 +123,15 @@ export function DossierActions({
             placeholder="What needs to change before this can merge?"
             value={reason}
           />
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={reason.trim().length === 0}
-              onClick={() => {
-                block.mutate(reason.trim());
-                onDialogChange(null);
-              }}
-            >
-              Request changes
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          <ShortcutButton
+            className="w-full"
+            disabled={reason.trim().length === 0}
+            onClick={confirmBlock}
+            shortcut="⌘↵"
+            size="sm"
+          >
+            Request changes
+          </ShortcutButton>
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog
@@ -118,17 +148,14 @@ export function DossierActions({
               undone from here.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                merge.mutate();
-                onDialogChange(null);
-              }}
-            >
-              Merge
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          <ShortcutButton
+            className="w-full"
+            onClick={confirmMerge}
+            shortcut="⌘↵"
+            size="sm"
+          >
+            Merge
+          </ShortcutButton>
         </AlertDialogContent>
       </AlertDialog>
     </div>
