@@ -11,9 +11,9 @@
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
-    "@fontsource-variable/fraunces": "catalog:",
     "@fontsource-variable/geist": "catalog:",
     "@fontsource-variable/geist-mono": "catalog:",
+    "@fontsource-variable/source-serif-4": "^5.2.9",
     "@phosphor-icons/react": "catalog:",
     "@pierre/diffs": "catalog:",
     "@shikijs/themes": "catalog:",
@@ -43,6 +43,7 @@
     "@fontsource-variable/cormorant": "^5.2.8",
     "@fontsource-variable/dm-sans": "^5.2.8",
     "@fontsource-variable/familjen-grotesk": "^5.2.8",
+    "@fontsource-variable/fraunces": "^5.2.9",
     "@fontsource-variable/funnel-display": "^5.2.8",
     "@fontsource-variable/gabarito": "^5.2.8",
     "@fontsource-variable/hanken-grotesk": "^5.2.8",
@@ -56,7 +57,6 @@
     "@fontsource-variable/red-hat-display": "^5.2.8",
     "@fontsource-variable/schibsted-grotesk": "^5.2.8",
     "@fontsource-variable/sora": "^5.2.8",
-    "@fontsource-variable/source-serif-4": "^5.2.9",
     "@fontsource-variable/space-grotesk": "^5.2.10",
     "@fontsource-variable/syne": "^5.2.7",
     "@fontsource-variable/unbounded": "^5.2.8",
