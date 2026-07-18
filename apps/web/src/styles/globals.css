@@ -7,7 +7,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: "Instrument Sans Variable", ui-sans-serif, sans-serif;
+  --font-heading: "Funnel Display Variable", ui-sans-serif, sans-serif;
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -290,8 +290,8 @@
 
 @layer base {
   .font-heading {
-    font-weight: 550;
-    letter-spacing: -0.02em;
+    font-weight: 350;
+    letter-spacing: -0.015em;
   }
 }
 

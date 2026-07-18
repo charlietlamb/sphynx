@@ -8,7 +8,7 @@ import { getServerSettings } from "@/lib/server/settings-cookie";
 import { CODE_THEMES, clientSettings } from "@/lib/settings";
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
-import "@fontsource-variable/instrument-sans";
+import "@fontsource-variable/funnel-display";
 import "../styles/globals.css";
 
 export const Route = createRootRoute({
