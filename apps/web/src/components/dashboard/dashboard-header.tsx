@@ -12,7 +12,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ githubUrl, switcher }: DashboardHeaderProps) {
   return (
-    <header className="flex items-center justify-between gap-2 border-border border-b py-2 pr-2 pl-4">
+    <header className="flex items-center justify-between gap-2 border-border border-b px-4 py-2">
       <div className="flex min-w-0 items-center gap-2.5">
         <Link
           aria-label="Sphynx home"
