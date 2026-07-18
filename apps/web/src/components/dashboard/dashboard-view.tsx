@@ -1,3 +1,4 @@
+import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { DossierPane } from "@/components/dashboard/dossier-pane";
 import { DossierSkeleton } from "@/components/dashboard/dossier-skeleton";
@@ -83,7 +84,11 @@ export function DashboardView() {
               onOpen={() => workbench.setOpen(true)}
               unseen={workbench.unseen}
             />
-          ) : null
+          ) : (
+            <div className="flex h-9 w-full shrink-0 items-center border-border border-t px-3">
+              <Skeleton className="h-3 w-20" />
+            </div>
+          )
         }
         switcher={
           selectedRepo ? (

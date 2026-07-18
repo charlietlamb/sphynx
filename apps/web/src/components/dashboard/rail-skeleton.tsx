@@ -7,7 +7,11 @@ export function RailSkeleton() {
       <p className="px-2 font-medium text-[11px] text-muted-foreground/60">
         flow
       </p>
-      <div className="flex flex-col">
+      <div className="relative flex flex-col">
+        <span
+          aria-hidden
+          className="absolute top-1 bottom-[26px] left-[13px] w-[2px] rounded-full bg-gradient-to-b from-border via-muted-foreground/30 to-muted-foreground/30"
+        />
         <RailBranchSkeleton nameWidth="7rem" />
         <RailBranchSkeleton nameWidth="6rem" />
         <RailBranchSkeleton isStage nameWidth="2.5rem" />

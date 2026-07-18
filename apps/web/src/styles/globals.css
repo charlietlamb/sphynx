@@ -210,8 +210,10 @@
   }
 
   .skeleton-shimmer {
-    position: relative;
     overflow: hidden;
+  }
+  :where(.skeleton-shimmer) {
+    position: relative;
   }
   .skeleton-shimmer::after {
     position: absolute;

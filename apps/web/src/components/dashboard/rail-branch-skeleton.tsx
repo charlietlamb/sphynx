@@ -20,13 +20,22 @@ export function RailBranchSkeleton({
       {isStage ? (
         <Skeleton className="absolute left-[9.5px] size-[9px] rounded-full" />
       ) : (
-        <Skeleton className="absolute left-[24px] size-[5px] rounded-full" />
+        <>
+          <span
+            aria-hidden
+            className="absolute top-[-2px] left-[13px] h-[calc(50%+2px)] w-[11px] rounded-bl-[8px] border-border border-b border-l"
+          />
+          <Skeleton className="absolute left-[24px] size-[5px] rounded-full" />
+        </>
       )}
       <span className={cn("min-w-0 flex-1", !isStage && "pl-3")}>
         <Skeleton className="h-3" style={{ width: nameWidth }} />
       </span>
-      <Skeleton className="h-[3px] w-6 rounded-full" />
-      <Skeleton className="h-3 w-4" />
+      <span className="flex shrink-0 items-center gap-1.5">
+        <Skeleton className="h-[3px] w-[17px] rounded-full" />
+        <Skeleton className="h-3 w-4" />
+      </span>
+      <span aria-hidden className="w-[15px] shrink-0" />
     </div>
   );
 }
