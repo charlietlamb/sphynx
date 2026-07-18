@@ -116,7 +116,7 @@ export function ThreadPreviews({
   const shown = orderedThreadPreviews(pull);
   const hidden = pull.unresolvedThreads - shown.length;
   return (
-    <div className="flex flex-col gap-1 px-5 pb-4">
+    <div className="flex flex-col gap-1 px-5 pb-3">
       <SectionHeader
         action={<CopyForAgent value={unresolvedThreadsText(pull)} />}
         label="open threads"

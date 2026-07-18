@@ -82,7 +82,7 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
         </div>
       </div>
       <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <div className="border-border border-b px-5 pb-4">
+        <div className="border-border border-b px-5 pb-3">
           <VerdictMatrix now={now} pull={pull} />
         </div>
         {pull.ciFailures.length > 0 ? (

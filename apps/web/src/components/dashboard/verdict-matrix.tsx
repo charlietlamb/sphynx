@@ -67,7 +67,7 @@ export function VerdictMatrix({ now, pull }: VerdictMatrixProps) {
           {sorted.map((reviewer) => (
             <VerdictRow key={reviewer.name} now={now} reviewer={reviewer} />
           ))}
-          <p className="pt-1 text-[12px] text-muted-foreground">
+          <p className="pt-0.5 text-[12px] text-muted-foreground">
             {consensusLine(pull)}
           </p>
         </>
