@@ -18,7 +18,7 @@ export function SiteHeader() {
         >
           <GithubIcon />
         </SocialLink>
-        <SocialLink href="https://twitter.com" label="Twitter">
+        <SocialLink href="https://x.com/charlietlamb" label="X">
           <TwitterIcon />
         </SocialLink>
       </nav>
