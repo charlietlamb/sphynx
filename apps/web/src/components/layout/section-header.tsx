@@ -15,7 +15,7 @@ export function SectionHeader({
   return (
     <div
       className={cn(
-        "-mx-5 mb-2 flex items-center justify-between border-border border-b px-5 pt-3 pb-2",
+        "sticky top-0 z-10 -mx-5 mb-2 flex items-center justify-between border-border border-b bg-background px-5 pt-3 pb-2",
         className
       )}
     >

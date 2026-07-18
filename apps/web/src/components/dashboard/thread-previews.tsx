@@ -116,12 +116,12 @@ export function ThreadPreviews({
   const shown = orderedThreadPreviews(pull);
   const hidden = pull.unresolvedThreads - shown.length;
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-1 px-5 pb-4">
+    <div className="flex flex-col gap-1 px-5 pb-4">
       <SectionHeader
         action={<CopyForAgent value={unresolvedThreadsText(pull)} />}
         label="open threads"
       />
-      <div className="no-scrollbar -mx-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2">
+      <div className="-mx-2 flex flex-col gap-1 px-2">
         {shown.map((preview) => (
           <ThreadPreviewRow
             canAct={canAct}

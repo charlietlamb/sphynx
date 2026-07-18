@@ -50,8 +50,8 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
     );
   }
   return (
-    <div className="fade-in flex flex-1 animate-in flex-col duration-150">
-      <div className="sticky top-0 z-20 flex flex-col gap-2 border-border border-b bg-background px-5 py-4">
+    <div className="fade-in flex h-full min-h-0 flex-1 animate-in flex-col duration-150">
+      <div className="flex flex-col gap-2 border-border border-b bg-background px-5 py-4">
         <p className="font-mono text-[11px] text-muted-foreground">
           #{pull.number}
           <span className="text-muted-foreground/50">
@@ -81,34 +81,36 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
           <DossierSignals pull={pull} />
         </div>
       </div>
-      <div className="border-border border-b px-5 pb-4">
-        <VerdictMatrix now={now} pull={pull} />
-      </div>
-      {pull.ciFailures.length > 0 ? (
-        <div className="flex flex-col gap-1.5 border-border border-b px-5 pb-3">
-          <SectionHeader label="failing checks" />
-          {pull.ciFailures.map((check) => (
-            <a
-              className="group flex items-center gap-2"
-              href={
-                check.url ??
-                `https://github.com/${pull.owner}/${pull.repo}/pull/${pull.number}/checks`
-              }
-              key={check.name}
-              rel="noreferrer"
-              target="_blank"
-            >
-              <span aria-hidden className="text-[11px] text-deletion">
-                ✕
-              </span>
-              <span className="min-w-0 truncate font-mono text-[11px] text-foreground/80 underline-offset-2 transition-colors group-hover:text-foreground group-hover:underline">
-                {check.name}
-              </span>
-            </a>
-          ))}
+      <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="border-border border-b px-5 pb-4">
+          <VerdictMatrix now={now} pull={pull} />
         </div>
-      ) : null}
-      <ThreadPreviews canAct={canAct} pull={pull} />
+        {pull.ciFailures.length > 0 ? (
+          <div className="flex flex-col gap-1.5 border-border border-b px-5 pb-3">
+            <SectionHeader label="failing checks" />
+            {pull.ciFailures.map((check) => (
+              <a
+                className="group flex items-center gap-2"
+                href={
+                  check.url ??
+                  `https://github.com/${pull.owner}/${pull.repo}/pull/${pull.number}/checks`
+                }
+                key={check.name}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <span aria-hidden className="text-[11px] text-deletion">
+                  ✕
+                </span>
+                <span className="min-w-0 truncate font-mono text-[11px] text-foreground/80 underline-offset-2 transition-colors group-hover:text-foreground group-hover:underline">
+                  {check.name}
+                </span>
+              </a>
+            ))}
+          </div>
+        ) : null}
+        <ThreadPreviews canAct={canAct} pull={pull} />
+      </div>
       <DossierActions canAct={canAct} onOpen={() => onOpen(pull)} pull={pull} />
     </div>
   );

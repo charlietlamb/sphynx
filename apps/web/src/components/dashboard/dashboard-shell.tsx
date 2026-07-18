@@ -50,9 +50,7 @@ export function DashboardShell({
           </ResizablePanel>
           <ResizableHandle className="bg-border" />
           <ResizablePanel defaultSize={30} minSize={20}>
-            <aside className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto">
-              {dossier}
-            </aside>
+            <aside className="flex h-full min-h-0 flex-col">{dossier}</aside>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
