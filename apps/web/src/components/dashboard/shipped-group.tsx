@@ -14,7 +14,7 @@ export function ShippedGroup({ gap, now, onOpenNumber }: ShippedGroupProps) {
   const extra = gap.aheadBy - gap.pulls.length - gap.directCommits;
   return (
     <div className="flex flex-col gap-1">
-      <p className="flex items-baseline gap-2 px-2.5 pt-1 pb-0.5 text-[11px] text-muted-foreground/60">
+      <p className="mb-1 flex items-baseline gap-2 border-border border-b px-2.5 pt-1 pb-2 text-[11px] text-muted-foreground/60">
         shipped to {gap.from} · waiting for {gap.to}
         <span className="tabular-nums">{gap.pulls.length}</span>
       </p>

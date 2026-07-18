@@ -35,7 +35,7 @@ interface DossierPaneProps {
 function ClaimBlock({ now, pull }: { now: number; pull: QueuePull }) {
   const claim = claimFor(pull, now);
   return (
-    <div className="flex flex-col gap-0.5 border-border-faint border-b px-5 py-3.5">
+    <div className="flex flex-col gap-0.5 border-border border-b px-5 py-3.5">
       <p
         className={cn(
           "font-semibold text-[14px] leading-snug",
@@ -61,7 +61,7 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
   }
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-col gap-2 border-border-faint border-b px-5 py-4">
+      <div className="flex flex-col gap-2 border-border border-b px-5 py-4">
         <p className="font-mono text-[11px] text-muted-foreground">
           #{pull.number}
           <span className="text-muted-foreground/50">
@@ -90,13 +90,13 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
         </div>
       </div>
       <ClaimBlock now={now} pull={pull} />
-      <div className="border-border-faint border-b px-5 py-4">
+      <div className="border-border border-b px-5 py-4">
         <VerdictMatrix now={now} pull={pull} />
       </div>
       {pull.ciFailures.length > 0 ? (
-        <div className="flex flex-wrap items-baseline gap-1.5 border-border-faint border-b px-5 py-3">
-          <span className="mr-1 font-medium text-[10px] text-muted-foreground/60 uppercase tracking-[0.12em]">
-            Failing
+        <div className="flex flex-wrap items-baseline gap-1.5 border-border border-b px-5 py-3">
+          <span className="mr-1 font-medium text-[11px] text-muted-foreground/60">
+            failing
           </span>
           {pull.ciFailures.map((name) => (
             <span
@@ -109,7 +109,7 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
         </div>
       ) : null}
       <ThreadPreviews pull={pull} />
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-border-faint border-b px-5 py-3 text-[11px] text-muted-foreground tabular-nums">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-border border-b px-5 py-3 text-[11px] text-muted-foreground tabular-nums">
         <span
           className={cn(
             pull.ci === "failure" && "text-deletion",

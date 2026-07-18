@@ -19,7 +19,7 @@ export function SizeTicks({ pull }: { pull: QueuePull }) {
     <span
       aria-hidden
       className="flex shrink-0 items-center gap-px"
-      title={`${size.toUpperCase()} · +${pull.additions} −${pull.deletions} · ${pull.changedFiles} files`}
+      title={`${size} · +${pull.additions} −${pull.deletions} · ${pull.changedFiles} files`}
     >
       {TICKS.map((tick) => (
         <span

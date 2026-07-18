@@ -30,24 +30,24 @@ export function DashboardShell({
         direction="horizontal"
       >
         <ResizablePanel defaultSize={17} minSize={12}>
-          <aside className="corner-ticks flex h-full min-h-0 flex-col overflow-y-auto px-3 py-3">
+          <aside className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto px-3 py-3">
             {rail}
           </aside>
         </ResizablePanel>
-        <ResizableHandle className="bg-border-faint" />
+        <ResizableHandle className="bg-border" />
         <ResizablePanel defaultSize={53} minSize={30}>
-          <section className="corner-ticks flex h-full min-h-0 flex-col overflow-y-auto px-4 py-3">
+          <section className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto px-4 py-3">
             {queue}
           </section>
         </ResizablePanel>
-        <ResizableHandle className="bg-border-faint" />
+        <ResizableHandle className="bg-border" />
         <ResizablePanel defaultSize={30} minSize={20}>
-          <aside className="corner-ticks flex h-full min-h-0 flex-col overflow-y-auto">
+          <aside className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto">
             {dossier}
           </aside>
         </ResizablePanel>
       </ResizablePanelGroup>
-      <footer className="flex items-center justify-end gap-4 border-border-faint border-t px-4 py-1.5">
+      <footer className="flex items-center justify-end gap-4 border-border border-t px-4 py-1.5">
         {hints}
       </footer>
     </main>

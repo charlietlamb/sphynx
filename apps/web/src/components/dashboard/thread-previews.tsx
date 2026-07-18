@@ -13,9 +13,9 @@ export function ThreadPreviews({ pull }: { pull: QueuePull }) {
   }
   const hidden = pull.unresolvedThreads - pull.threadPreviews.length;
   return (
-    <div className="flex flex-col gap-2 border-border-faint border-b px-5 py-4">
-      <p className="font-medium text-[10px] text-muted-foreground/60 uppercase tracking-[0.12em]">
-        Open threads
+    <div className="flex flex-col gap-2 border-border border-b px-5 py-4">
+      <p className="font-medium text-[11px] text-muted-foreground/60">
+        open threads
       </p>
       {pull.threadPreviews.map((preview) => {
         const login = preview.author?.login.replace(BOT_NAME_SUFFIX, "");

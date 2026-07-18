@@ -40,7 +40,7 @@ export function VerdictRow({ now, reviewer }: VerdictRowProps) {
       </Avatar>
       <span className="min-w-0 flex-1 truncate text-[13px]">{name}</span>
       {reviewer.kind === "bot" ? (
-        <span className="shrink-0 font-medium text-[9px] text-muted-foreground/70 uppercase tracking-[0.1em]">
+        <span className="shrink-0 font-medium text-[10px] text-muted-foreground/70">
           bot
         </span>
       ) : null}

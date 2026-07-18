@@ -26,7 +26,7 @@ export function DossierActions({ canAct, onOpen, pull }: DossierActionsProps) {
   const [reason, setReason] = useState("");
   const disabledTitle = canAct ? undefined : "sign in to act on pulls";
   return (
-    <div className="mt-auto flex flex-col gap-2 border-border-faint border-t px-5 py-3">
+    <div className="mt-auto flex flex-col gap-2 border-border border-t px-5 py-3">
       {merge.isError || block.isError ? (
         <p className="text-[12px] text-deletion">
           Something went wrong — nothing was changed on GitHub.
