@@ -66,7 +66,7 @@ describe("claimFor", () => {
       NOW
     );
     expect(claim.status).toBe("Fix failing checks");
-    expect(claim.detail).toContain("Type Check");
+    expect(claim.detail).toBe("2 failing checks");
   });
 
   test("ready pulls surface the approver", () => {

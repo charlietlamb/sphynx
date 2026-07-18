@@ -94,16 +94,18 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
         <VerdictMatrix now={now} pull={pull} />
       </div>
       {pull.ciFailures.length > 0 ? (
-        <div className="flex flex-wrap items-baseline gap-1.5 border-border border-b px-5 py-3">
-          <span className="mr-1 font-medium text-[11px] text-muted-foreground/60">
-            failing
+        <div className="flex flex-col gap-1.5 border-border border-b px-5 py-3">
+          <span className="font-medium text-[11px] text-muted-foreground/60">
+            failing checks
           </span>
           {pull.ciFailures.map((name) => (
-            <span
-              className="rounded-sm bg-deletion/10 px-1.5 py-0.5 font-mono text-[10px] text-deletion"
-              key={name}
-            >
-              {name}
+            <span className="flex items-center gap-2" key={name}>
+              <span aria-hidden className="text-[11px] text-deletion">
+                ✕
+              </span>
+              <span className="min-w-0 truncate font-mono text-[11px] text-foreground/80">
+                {name}
+              </span>
             </span>
           ))}
         </div>

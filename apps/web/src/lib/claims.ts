@@ -78,7 +78,9 @@ export function claimFor(pull: QueuePull, now: number): Claim {
     return {
       status: "Fix failing checks",
       detail: joinFragments([
-        pull.ciFailures.length > 0 ? pull.ciFailures.join(", ") : null,
+        pull.ciFailures.length > 0
+          ? plural(pull.ciFailures.length, "failing check")
+          : null,
         pull.unresolvedThreads > 0
           ? plural(pull.unresolvedThreads, "open thread")
           : null,
