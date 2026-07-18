@@ -57,6 +57,7 @@ describe("claimFor", () => {
   test("changes requested wins over failing ci", () => {
     const claim = claimFor(pull({ changesRequested: 1, ci: "failure" }), NOW);
     expect(claim.status).toBe("Waiting on changes");
+    expect(claim.detail).toBeNull();
     expect(claim.tone).toBe("blocked");
   });
 

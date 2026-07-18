@@ -32,17 +32,6 @@ function joinFragments(fragments: (string | null)[]) {
   return present.length > 0 ? present.join(" · ") : null;
 }
 
-function changesDetail(pull: QueuePull) {
-  const blockers = pull.reviewers.filter(
-    (reviewer) => reviewer.state === "changes-requested"
-  );
-  const first = blockers[0];
-  if (blockers.length === 1 && first) {
-    return `Requested by ${stripBotSuffix(first.name)}`;
-  }
-  return `Requested by ${plural(blockers.length, "reviewer")}`;
-}
-
 function readyDetail(pull: QueuePull, now: number) {
   const idle = idleFragment(pull, now);
   const approver = pull.reviewers.find(
@@ -70,7 +59,7 @@ export function claimFor(pull: QueuePull, now: number): Claim {
   if (pull.changesRequested > 0) {
     return {
       status: "Waiting on changes",
-      detail: changesDetail(pull),
+      detail: idleFragment(pull, now),
       tone: "blocked",
     };
   }

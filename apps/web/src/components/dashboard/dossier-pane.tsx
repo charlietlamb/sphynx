@@ -32,22 +32,17 @@ interface DossierPaneProps {
   pull: QueuePull | null;
 }
 
-function ClaimBlock({ now, pull }: { now: number; pull: QueuePull }) {
+function ClaimLine({ now, pull }: { now: number; pull: QueuePull }) {
   const claim = claimFor(pull, now);
   return (
-    <div className="flex flex-col gap-0.5 border-border border-b px-5 py-3.5">
-      <p
-        className={cn(
-          "font-semibold text-[14px] leading-snug",
-          TONE_CLASSES[claim.tone]
-        )}
-      >
+    <p className="text-[12px] leading-snug">
+      <span className={cn("font-semibold", TONE_CLASSES[claim.tone])}>
         {claim.status}
-      </p>
+      </span>
       {claim.detail ? (
-        <p className="text-[12px] text-muted-foreground">{claim.detail}</p>
+        <span className="text-muted-foreground"> · {claim.detail}</span>
       ) : null}
-    </div>
+    </p>
   );
 }
 
@@ -72,6 +67,7 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
         <h2 className="text-balance font-heading text-xl leading-snug tracking-tight">
           {pull.title}
         </h2>
+        <ClaimLine now={now} pull={pull} />
         <div className="flex items-center gap-2">
           <Avatar className="size-4 rounded-full">
             <AvatarImage
@@ -89,7 +85,6 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
           </span>
         </div>
       </div>
-      <ClaimBlock now={now} pull={pull} />
       <div className="border-border border-b px-5 py-4">
         <VerdictMatrix now={now} pull={pull} />
       </div>

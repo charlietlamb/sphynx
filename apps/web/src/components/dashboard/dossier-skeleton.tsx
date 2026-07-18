@@ -18,18 +18,13 @@ export function DossierSkeleton() {
             <Skeleton className="h-5 w-3/5" />
           </span>
         </div>
+        <span className="flex h-[18px] items-center">
+          <Skeleton className="h-3 w-3/5" />
+        </span>
         <div className="flex h-[16.5px] items-center gap-2">
           <Skeleton className="size-4 shrink-0 rounded-full" />
           <Skeleton className="h-3 w-36" />
         </div>
-      </div>
-      <div className="flex flex-col gap-0.5 border-border border-b px-5 py-3.5">
-        <span className="flex h-[19px] items-center">
-          <Skeleton className="h-3.5 w-2/5" />
-        </span>
-        <span className="flex h-[18px] items-center">
-          <Skeleton className="h-3 w-2/3" />
-        </span>
       </div>
       <div className="flex flex-col gap-1 border-border border-b px-5 py-4">
         <p className="font-medium text-[11px] text-muted-foreground/60">
