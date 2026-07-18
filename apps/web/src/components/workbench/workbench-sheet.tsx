@@ -140,9 +140,7 @@ export function WorkbenchSheet({
           </span>
         </div>
         <ScrollArea className="min-h-0 flex-1">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-px px-3 py-2">
-            {body}
-          </div>
+          <div className="flex flex-col gap-px px-3 py-2">{body}</div>
         </ScrollArea>
       </SheetContent>
     </Sheet>
