@@ -14,7 +14,7 @@ export function WorkbenchTrigger({ onOpen, unseen }: WorkbenchTriggerProps) {
       type="button"
     >
       <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
-        workbench
+        Workbench
       </span>
       {unseen > 0 ? (
         <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-px font-medium text-[10px] text-primary tabular-nums">

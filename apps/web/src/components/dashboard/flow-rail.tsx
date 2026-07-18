@@ -1,3 +1,4 @@
+import { GitBranchIcon } from "@phosphor-icons/react";
 import type { RepoFlow } from "@sphynx/schema/review-queue";
 import { RailBranch } from "@/components/dashboard/rail-branch";
 import { RailGapQueue } from "@/components/dashboard/rail-gap-queue";
@@ -45,7 +46,8 @@ export function FlowRail({
           ) : null
         }
         className="-mx-3 px-3"
-        label="flow"
+        icon={<GitBranchIcon className="size-3" />}
+        label="Flow"
       />
       <div className="relative flex flex-col">
         <span

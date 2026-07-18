@@ -1,3 +1,4 @@
+import { ChatCircleIcon } from "@phosphor-icons/react";
 import type { QueuePull, ThreadPreview } from "@sphynx/schema/review-queue";
 import { CopyButton } from "@sphynx/ui/components/copy-button";
 import {
@@ -119,7 +120,8 @@ export function ThreadPreviews({
     <div className="flex flex-col gap-1 px-5 pb-3">
       <SectionHeader
         action={<CopyForAgent value={unresolvedThreadsText(pull)} />}
-        label="open threads"
+        icon={<ChatCircleIcon className="size-3" />}
+        label="Open threads"
       />
       <div className="-mx-2 flex flex-col gap-1 px-2">
         {shown.map((preview) => (

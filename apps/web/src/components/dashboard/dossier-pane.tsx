@@ -1,3 +1,4 @@
+import { XCircleIcon } from "@phosphor-icons/react";
 import type { QueuePull } from "@sphynx/schema/review-queue";
 import {
   Avatar,
@@ -87,7 +88,10 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
         </div>
         {pull.ciFailures.length > 0 ? (
           <div className="flex flex-col gap-1.5 border-border border-b px-5 pb-3">
-            <SectionHeader label="failing checks" />
+            <SectionHeader
+              icon={<XCircleIcon className="size-3" />}
+              label="Failing checks"
+            />
             {pull.ciFailures.map((check) => (
               <a
                 className="group flex items-center gap-2"

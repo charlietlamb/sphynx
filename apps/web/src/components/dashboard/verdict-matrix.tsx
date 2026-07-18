@@ -1,3 +1,4 @@
+import { SealCheckIcon } from "@phosphor-icons/react";
 import type { QueuePull, ReviewerVerdict } from "@sphynx/schema/review-queue";
 import { VerdictRow } from "@/components/dashboard/verdict-row";
 import { SectionHeader } from "@/components/layout/section-header";
@@ -57,7 +58,10 @@ export function VerdictMatrix({ now, pull }: VerdictMatrixProps) {
   const sorted = [...pull.reviewers].sort(byImportance);
   return (
     <div className="flex flex-col gap-1">
-      <SectionHeader label="verdicts" />
+      <SectionHeader
+        icon={<SealCheckIcon className="size-3" />}
+        label="Verdicts"
+      />
       {sorted.length === 0 ? (
         <p className="py-1 text-[13px] text-muted-foreground">
           Nobody has reviewed this yet.
