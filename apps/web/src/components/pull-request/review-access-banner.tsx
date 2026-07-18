@@ -15,7 +15,7 @@ export function ReviewAccessBanner({
     return null;
   }
   return (
-    <div className="flex items-center gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm">
+    <div className="mx-4 mt-2 flex items-center gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm">
       <WarningCircleIcon className="size-4 shrink-0 text-amber-500" />
       <p className="min-w-0 flex-1 truncate text-muted-foreground">
         {blockedMessage}

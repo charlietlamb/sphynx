@@ -2,7 +2,8 @@ import { DEFAULT_THEMES } from "@pierre/diffs";
 import { useWorkerPool, WorkerPoolContextProvider } from "@pierre/diffs/react";
 import DiffsWorker from "@pierre/diffs/worker/worker.js?worker";
 import { type ReactNode, useEffect } from "react";
-import { CODE_THEMES, useSettings } from "@/lib/settings";
+import { useSettings } from "@/components/settings/settings-provider";
+import { CODE_THEMES } from "@/lib/settings";
 
 const poolOptions = {
   workerFactory: () => new DiffsWorker(),

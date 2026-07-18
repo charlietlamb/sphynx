@@ -4,9 +4,21 @@ import { HeadContent, Scripts } from "@tanstack/react-router";
 import { NuqsAdapter } from "nuqs/adapters/tanstack-router";
 import type { ReactNode } from "react";
 import { MirroredThemeStyle } from "@/components/settings/mirrored-theme-style";
+import { SettingsProvider } from "@/components/settings/settings-provider";
 import { getQueryClient } from "@/lib/query/query-client";
+import { DEFAULT_SETTINGS, type ReviewSettings } from "@/lib/settings";
 
-export function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+interface RootDocumentProps {
+  children: ReactNode;
+  initialMirroredCss?: string | null;
+  initialSettings?: ReviewSettings;
+}
+
+export function RootDocument({
+  children,
+  initialMirroredCss = null,
+  initialSettings = DEFAULT_SETTINGS,
+}: Readonly<RootDocumentProps>) {
   return (
     <html className="font-sans antialiased" lang="en" suppressHydrationWarning>
       <head>
@@ -16,8 +28,10 @@ export function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <NuqsAdapter>
           <QueryClientProvider client={getQueryClient()}>
             <Providers>
-              <MirroredThemeStyle />
-              {children}
+              <SettingsProvider initial={initialSettings}>
+                <MirroredThemeStyle initialCss={initialMirroredCss} />
+                {children}
+              </SettingsProvider>
             </Providers>
           </QueryClientProvider>
         </NuqsAdapter>

@@ -28,7 +28,7 @@ import type {
   CursorPlacement,
   useTokenCursor,
 } from "@/components/pull-request/use-token-cursor";
-import { toggleSidebarCollapsed } from "@/lib/settings";
+import { useSettings } from "@/components/settings/settings-provider";
 
 const HALF_PAGE_LINES = 15;
 
@@ -209,6 +209,7 @@ export function useReviewActions({
   viewedFiles,
 }: ReviewActionsInput): ReviewKeyHandlers {
   const { start: startHints, cancel: cancelHints, onKey: onHintKey } = hints;
+  const { update: updateSettings } = useSettings();
   return useMemo(() => {
     const scope = () => columnRefs.current[store.read().focusedColumn];
     const applyMove = (
@@ -514,7 +515,10 @@ export function useReviewActions({
       },
       onCancelDraft: () => setDraft(null),
       onToggleHelp: toggleHelp,
-      onToggleSidebar: toggleSidebarCollapsed,
+      onToggleSidebar: () =>
+        updateSettings((previous) => ({
+          sidebarCollapsed: !previous.sidebarCollapsed,
+        })),
       onStartHints: () => startHints(scope()),
       onCancelHints: cancelHints,
       onHintKey,
@@ -538,6 +542,7 @@ export function useReviewActions({
     store,
     stepFile,
     toggleHelp,
+    updateSettings,
     viewedFiles,
   ]);
 }

@@ -70,19 +70,18 @@ export function DefinitionTrailBar({
               {isLast ? (
                 <span
                   aria-current="page"
-                  className="flex h-6 shrink-0 items-center gap-1 rounded-md bg-muted px-1.5 font-mono text-foreground text-xs"
+                  className="flex h-6 shrink-0 items-center gap-1 px-1 font-mono text-foreground text-xs"
                 >
                   {label}
                 </span>
               ) : (
-                <Button
-                  className="shrink-0 px-1.5 font-mono text-muted-foreground"
+                <button
+                  className="flex h-6 shrink-0 items-center gap-1 px-1 font-mono text-muted-foreground text-xs transition-colors hover:text-foreground"
                   onClick={() => onTruncate(index)}
-                  size="xs"
-                  variant="ghost"
+                  type="button"
                 >
                   {label}
-                </Button>
+                </button>
               )}
             </Fragment>
           );

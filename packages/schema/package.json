@@ -7,7 +7,8 @@
     "./api": "./src/api.ts",
     "./pull-request-comments": "./src/pull-request-comments.ts",
     "./pull-request-views": "./src/pull-request-views.ts",
-    "./pull-requests": "./src/pull-requests.ts"
+    "./pull-requests": "./src/pull-requests.ts",
+    "./review-queue": "./src/review-queue.ts"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json --noEmit",

@@ -8,7 +8,8 @@ import {
 } from "@/components/pull-request/diff-symbols";
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
 import type { SymbolIndex } from "@/components/pull-request/symbol-index";
-import { CODE_THEMES, useSettings } from "@/lib/settings";
+import { useSettings } from "@/components/settings/settings-provider";
+import { CODE_THEMES } from "@/lib/settings";
 
 interface TokenClickProps {
   lineNumber: number;

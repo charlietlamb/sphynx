@@ -1,14 +1,14 @@
-import { useCallback, useSyncExternalStore } from "react";
-
 export interface ReviewSettings {
   codeTheme: string;
   mirrorCodeTheme: boolean;
+  selectedRepo: string | null;
   sidebarCollapsed: boolean;
 }
 
-const DEFAULT_SETTINGS: ReviewSettings = {
+export const DEFAULT_SETTINGS: ReviewSettings = {
   codeTheme: "pierre",
   mirrorCodeTheme: false,
+  selectedRepo: null,
   sidebarCollapsed: false,
 };
 
@@ -78,55 +78,40 @@ export const CODE_THEMES: Record<
   },
 };
 
-const STORAGE_KEY = "sphynx.settings";
-const listeners = new Set<() => void>();
-let cached: ReviewSettings | null = null;
+export const SETTINGS_COOKIE = "sphynx-settings";
+export const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+export const LEGACY_STORAGE_KEY = "sphynx.settings";
 
-function readSettings(): ReviewSettings {
-  if (cached) {
-    return cached;
+export function decodeSettings(raw: string): Partial<ReviewSettings> {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return JSON.parse(decodeURIComponent(raw));
+  }
+}
+
+export function parseSettings(raw: string | null | undefined): ReviewSettings {
+  if (!raw) {
+    return DEFAULT_SETTINGS;
   }
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    cached = raw
-      ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
-      : DEFAULT_SETTINGS;
+    return { ...DEFAULT_SETTINGS, ...decodeSettings(raw) };
   } catch {
-    cached = DEFAULT_SETTINGS;
-  }
-  return cached ?? DEFAULT_SETTINGS;
-}
-
-function writeSettings(partial: Partial<ReviewSettings>) {
-  cached = { ...readSettings(), ...partial };
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cached));
-  } catch {
-    // Persisting is best-effort; the in-memory value still applies.
-  }
-  for (const listener of listeners) {
-    listener();
+    return DEFAULT_SETTINGS;
   }
 }
 
-export function toggleSidebarCollapsed() {
-  writeSettings({ sidebarCollapsed: !readSettings().sidebarCollapsed });
+function readCookieValue(): string | null {
+  const match = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(`${SETTINGS_COOKIE}=`));
+  return match ? match.slice(SETTINGS_COOKIE.length + 1) : null;
 }
 
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+export function clientSettings(): ReviewSettings {
+  return parseSettings(readCookieValue());
 }
 
-export function useSettings() {
-  const settings = useSyncExternalStore(
-    subscribe,
-    readSettings,
-    () => DEFAULT_SETTINGS
-  );
-  const update = useCallback(
-    (partial: Partial<ReviewSettings>) => writeSettings(partial),
-    []
-  );
-  return { settings, update };
+export function hasSettingsCookie(): boolean {
+  return readCookieValue() !== null;
 }

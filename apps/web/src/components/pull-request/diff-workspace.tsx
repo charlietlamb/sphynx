@@ -213,9 +213,9 @@ export default function DiffWorkspace({
 
   return (
     <DiffWorkerPool>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {trail.length > 0 || commenting.pendingReview.pendingId ? (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 border-border border-b px-4 py-1.5">
             <div className="min-w-0 flex-1">
               {trail.length > 0 ? (
                 <DefinitionTrailBar
@@ -238,7 +238,7 @@ export default function DiffWorkspace({
             ) : null}
           </div>
         ) : null}
-        <div className="flex min-h-0 min-w-0 flex-1 gap-4">
+        <div className="flex min-h-0 min-w-0 flex-1">
           <aside className="h-full shrink-0">
             <FileList
               files={files}
@@ -250,7 +250,7 @@ export default function DiffWorkspace({
             />
           </aside>
           <div
-            className="grid min-h-0 min-w-0 flex-1 gap-4"
+            className="grid min-h-0 min-w-0 flex-1 gap-4 px-4 py-3"
             style={{
               gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
               gridTemplateRows: "minmax(0, 1fr)",

@@ -37,8 +37,8 @@ export function PullRequestHeader({
   const tone = pullRequest.draft ? "neutral" : STATE_TONES[pullRequest.state];
 
   return (
-    <header className="flex flex-col gap-2 border-border border-b pb-4">
-      <div className="flex items-center justify-between gap-2">
+    <header className="flex flex-col border-border border-b">
+      <div className="flex items-center justify-between gap-2 border-border border-b px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <Link
             aria-label="Sphynx home"
@@ -56,7 +56,7 @@ export function PullRequestHeader({
           <UserMenu />
         </div>
       </div>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 border-border border-b px-4 py-3">
         <h1 className="text-balance font-heading text-2xl tracking-tight">
           {pullRequest.title}
         </h1>
@@ -73,7 +73,7 @@ export function PullRequestHeader({
           </a>
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-sm">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-muted-foreground text-sm">
         <StatusPill label={label} tone={tone} />
         {author ? (
           <span className="flex items-center gap-1.5">

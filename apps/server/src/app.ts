@@ -12,10 +12,13 @@ import { Context, Effect, Layer } from "effect";
 import { ServerConfig, ServerConfigLive } from "./config";
 import { GitHubClientLive } from "./github/client";
 import { GitHubConfigLive } from "./github/config";
+import { GitHubPipelineLive } from "./github/pipeline";
+import { GitHubReviewQueueLive } from "./github/review-queue";
 import { GitHubReviewsLive } from "./github/reviews";
 import { GitHubViewerLive } from "./github/viewer";
 import { PullRequestCommentsApiLive } from "./routes/comments/live";
 import { PullRequestsApiLive } from "./routes/pulls/live";
+import { ReviewQueueApiLive } from "./routes/review-queue/live";
 import { PullRequestViewsApiLive } from "./routes/views/live";
 
 export class HttpServer extends Context.Tag("@sphynx/server/HttpServer")<
@@ -64,7 +67,9 @@ const HealthApiLive = HttpApiBuilder.group(SphynxApi, "health", (handlers) =>
 const GitHubLive = Layer.mergeAll(
   GitHubClientLive,
   GitHubViewerLive,
-  GitHubReviewsLive
+  GitHubReviewsLive,
+  GitHubReviewQueueLive,
+  GitHubPipelineLive
 ).pipe(Layer.provide(Layer.mergeAll(GitHubConfigLive, FetchHttpClient.layer)));
 
 const DatabaseLiveLayer = DatabaseLive.pipe(Layer.provide(DatabaseConfigLive));
@@ -79,12 +84,15 @@ const ApiLive = Layer.mergeAll(
         HealthApiLive,
         PullRequestsApiLive,
         PullRequestViewsApiLive,
-        PullRequestCommentsApiLive
+        PullRequestCommentsApiLive,
+        ReviewQueueApiLive
       )
     )
   ),
   PlatformHttpServer.layerContext
-).pipe(Layer.provide(Layer.mergeAll(GitHubLive, AuthLiveLayer)));
+).pipe(
+  Layer.provide(Layer.mergeAll(GitHubLive, GitHubConfigLive, AuthLiveLayer))
+);
 
 export const main = Effect.scoped(
   Effect.gen(function* () {

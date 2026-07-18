@@ -138,19 +138,24 @@ async function loadAnchors(themeName: string) {
   return themeAnchors(module.default.colors);
 }
 
+export async function loadMirroredCss(themes?: {
+  dark: string;
+  light: string;
+}) {
+  if (!themes) {
+    return null;
+  }
+  const [light, dark] = await Promise.all([
+    loadAnchors(themes.light),
+    loadAnchors(themes.dark),
+  ]);
+  return light && dark ? mirroredThemeCss(light, dark) : null;
+}
+
 export function mirroredThemeQuery(themes?: { dark: string; light: string }) {
   return queryOptions({
     queryKey: ["mirrored-theme", themes?.light, themes?.dark],
-    queryFn: async () => {
-      if (!themes) {
-        return null;
-      }
-      const [light, dark] = await Promise.all([
-        loadAnchors(themes.light),
-        loadAnchors(themes.dark),
-      ]);
-      return light && dark ? mirroredThemeCss(light, dark) : null;
-    },
+    queryFn: () => loadMirroredCss(themes),
     enabled: Boolean(themes),
     staleTime: Number.POSITIVE_INFINITY,
   });

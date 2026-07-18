@@ -4,9 +4,9 @@ import { Button } from "@sphynx/ui/components/ui/button";
 import { ScrollArea } from "@sphynx/ui/components/ui/scroll-area";
 import { useMemo, useState } from "react";
 import { FileTree } from "@/components/pull-request/file-tree";
+import { useSettings } from "@/components/settings/settings-provider";
 import { buildFileTree } from "@/lib/file-tree";
 import type { FileRelations } from "@/lib/import-graph";
-import { toggleSidebarCollapsed, useSettings } from "@/lib/settings";
 
 interface FileListProps {
   files: readonly PullRequestFile[];
@@ -30,7 +30,9 @@ export function FileList({
   selectedPath,
   viewedFiles,
 }: FileListProps) {
-  const { settings } = useSettings();
+  const { settings, update } = useSettings();
+  const toggleSidebar = () =>
+    update((previous) => ({ sidebarCollapsed: !previous.sidebarCollapsed }));
   const [treeState, setTreeState] = useState<TreeState>({
     collapsed: new Set(),
     revealedFor: undefined,
@@ -65,10 +67,10 @@ export function FileList({
   };
   if (settings.sidebarCollapsed) {
     return (
-      <div className="flex h-full w-10 flex-col items-center gap-2 rounded-md border border-border py-1.5">
+      <div className="flex h-full w-10 flex-col items-center gap-2 border-border border-r py-1.5">
         <Button
           aria-label="Expand file sidebar"
-          onClick={toggleSidebarCollapsed}
+          onClick={toggleSidebar}
           size="icon-sm"
           variant="ghost"
         >
@@ -81,13 +83,13 @@ export function FileList({
     );
   }
   return (
-    <div className="flex h-full w-64 flex-col rounded-md border border-border">
+    <div className="flex h-full w-64 flex-col border-border border-r">
       <div className="flex items-center justify-between gap-1 border-border border-b py-1 pr-2 pl-1">
         <div className="flex min-w-0 items-center gap-1">
           <Button
             aria-label="Collapse file sidebar"
             className="text-muted-foreground"
-            onClick={toggleSidebarCollapsed}
+            onClick={toggleSidebar}
             size="icon-sm"
             variant="ghost"
           >

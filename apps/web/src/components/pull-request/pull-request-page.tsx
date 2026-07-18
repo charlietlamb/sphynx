@@ -1,12 +1,11 @@
 import type { PullRequestRef } from "@sphynx/schema/pull-requests";
 import { EmptyState } from "@sphynx/ui/components/empty-state";
 import { Button } from "@sphynx/ui/components/ui/button";
-import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { Navigate, useLocation } from "@tanstack/react-router";
 import { lazy, type ReactNode, Suspense, useMemo, useState } from "react";
 import { ErrorCard } from "@/components/layout/error-card";
-import { SiteLayout } from "@/components/layout/site-layout";
 import { PullRequestHeader } from "@/components/pull-request/pull-request-header";
+import { PullRequestHeaderSkeleton } from "@/components/pull-request/pull-request-header-skeleton";
 import {
   toErrorCardProps,
   useAccessBlock,
@@ -18,6 +17,7 @@ import { PullRequestRefresh } from "@/components/pull-request/pull-request-refre
 import { ReviewAccessBanner } from "@/components/pull-request/review-access-banner";
 import { buildSymbolIndex } from "@/components/pull-request/symbol-index";
 import { ViewedProgress } from "@/components/pull-request/viewed-progress";
+import { WorkspaceSkeleton } from "@/components/pull-request/workspace-skeleton";
 import { useSession } from "@/lib/auth-client";
 import { useDocumentTitle } from "@/lib/use-document-title";
 
@@ -28,12 +28,7 @@ if (typeof window !== "undefined") {
   loadDiffWorkspace().catch(() => undefined);
 }
 
-const workspaceSkeleton = (
-  <div className="flex min-h-0 flex-1 gap-4">
-    <Skeleton className="h-full w-64 shrink-0" />
-    <Skeleton className="h-full min-w-0 flex-1" />
-  </div>
-);
+const workspaceSkeleton = <WorkspaceSkeleton />;
 
 interface PullRequestPageProps {
   pullRequestRef: PullRequestRef;
@@ -69,7 +64,7 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
   if (files.isError) {
     const filesError = toErrorCardProps(files.error, () => files.refetch());
     filesContent = (
-      <div className="flex flex-col items-start gap-3 self-start rounded-md border border-border p-4 text-sm">
+      <div className="mx-4 mt-3 flex flex-col items-start gap-3 self-start rounded-md border border-border p-4 text-sm">
         <p className="font-medium">{filesError.title}</p>
         <p className="text-muted-foreground">{filesError.description}</p>
         {filesError.onRetry ? (
@@ -84,7 +79,7 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
   } else if (files.data.length === 0) {
     filesContent = (
       <EmptyState
-        className="self-start"
+        className="mx-4 mt-3 self-start"
         description="This pull request has no changed files."
         title="No changed files"
       />
@@ -103,20 +98,16 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
   }
 
   return (
-    <SiteLayout fill>
+    <main className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
       <div className="flex flex-1 items-center justify-center md:hidden">
         <EmptyState
           description="Open this pull request on a larger screen to review the diff."
           title="Sphynx is better on desktop"
         />
       </div>
-      <div className="hidden min-h-0 flex-1 flex-col gap-5 pt-2 md:flex">
+      <div className="hidden min-h-0 flex-1 flex-col md:flex">
         {pullRequest.isPending ? (
-          <div className="flex flex-col gap-3 border-border border-b pb-4">
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-8 w-2/3" />
-            <Skeleton className="h-5 w-96" />
-          </div>
+          <PullRequestHeaderSkeleton />
         ) : (
           <PullRequestHeader
             progress={
@@ -148,6 +139,6 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
         />
         {filesContent}
       </div>
-    </SiteLayout>
+    </main>
   );
 }

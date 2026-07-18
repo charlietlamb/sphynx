@@ -7,8 +7,9 @@ import {
 } from "@sphynx/ui/components/ui/select";
 import { Switch } from "@sphynx/ui/components/ui/switch";
 import { SettingRow } from "@/components/settings/setting-row";
+import { useSettings } from "@/components/settings/settings-provider";
 import { ThemePicker } from "@/components/settings/theme-picker";
-import { CODE_THEMES, useSettings } from "@/lib/settings";
+import { CODE_THEMES } from "@/lib/settings";
 
 export function SettingsAppearance() {
   const { settings, update } = useSettings();

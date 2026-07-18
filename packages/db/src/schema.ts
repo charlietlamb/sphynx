@@ -5,6 +5,8 @@ import { organization } from "./schema/auth/organizations";
 import { session } from "./schema/auth/sessions";
 import { user } from "./schema/auth/users";
 import { verification } from "./schema/auth/verifications";
+import { findingState } from "./schema/review/finding-states";
+import { trackedRepo } from "./schema/review/tracked-repos";
 
 export { account } from "./schema/auth/accounts";
 export { invitation } from "./schema/auth/invitations";
@@ -13,6 +15,8 @@ export { organization } from "./schema/auth/organizations";
 export { session } from "./schema/auth/sessions";
 export { user } from "./schema/auth/users";
 export { verification } from "./schema/auth/verifications";
+export { findingState } from "./schema/review/finding-states";
+export { trackedRepo } from "./schema/review/tracked-repos";
 
 export const schema = {
   account,
@@ -22,4 +26,6 @@ export const schema = {
   session,
   user,
   verification,
+  findingState,
+  trackedRepo,
 };

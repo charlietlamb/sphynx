@@ -1,0 +1,21 @@
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { PullRequestHeaderSkeleton } from "@/components/pull-request/pull-request-header-skeleton";
+import { WorkspaceSkeleton } from "@/components/pull-request/workspace-skeleton";
+
+function PullSkeletonGallery() {
+  return (
+    <main className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
+      <PullRequestHeaderSkeleton />
+      <WorkspaceSkeleton />
+    </main>
+  );
+}
+
+export const Route = createFileRoute("/dev/skeleton-pr")({
+  beforeLoad: () => {
+    if (!import.meta.env.DEV) {
+      throw notFound();
+    }
+  },
+  component: PullSkeletonGallery,
+});

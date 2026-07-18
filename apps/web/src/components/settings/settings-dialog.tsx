@@ -53,7 +53,7 @@ export function SettingsDialog() {
           </Button>
         }
       />
-      <DialogContent className="overflow-hidden p-0 md:max-w-xl">
+      <DialogContent className="overflow-hidden p-0 md:max-w-3xl">
         <DialogHeader className="sr-only">
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
