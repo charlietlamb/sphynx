@@ -21,6 +21,7 @@ export function DashboardHeader({ githubUrl, switcher }: DashboardHeaderProps) {
         >
           <SphynxMark className="size-4" />
         </Link>
+        <span aria-hidden className="h-5 w-px shrink-0 bg-border" />
         {switcher}
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
