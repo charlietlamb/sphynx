@@ -1,6 +1,7 @@
 import type { RepoFlow } from "@sphynx/schema/review-queue";
 import { RailBranch } from "@/components/dashboard/rail-branch";
 import { RailGapQueue } from "@/components/dashboard/rail-gap-queue";
+import { SectionHeader } from "@/components/layout/section-header";
 import type { RailBranchItem } from "@/lib/attention";
 
 interface FlowRailProps {
@@ -31,18 +32,21 @@ export function FlowRail({
   const stages = items.filter((item) => item.isStage);
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-baseline justify-between px-2">
-        <p className="font-medium text-[11px] text-muted-foreground/60">flow</p>
-        {selected ? (
-          <button
-            className="text-[11px] text-muted-foreground/60 underline-offset-2 transition-colors hover:text-foreground hover:underline"
-            onClick={() => onSelect(null)}
-            type="button"
-          >
-            show all
-          </button>
-        ) : null}
-      </div>
+      <SectionHeader
+        action={
+          selected ? (
+            <button
+              className="text-[11px] text-muted-foreground/60 underline-offset-2 transition-colors hover:text-foreground hover:underline"
+              onClick={() => onSelect(null)}
+              type="button"
+            >
+              show all
+            </button>
+          ) : null
+        }
+        className="-mx-3 px-3"
+        label="flow"
+      />
       <div className="relative flex flex-col">
         <span
           aria-hidden

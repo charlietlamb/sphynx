@@ -4,9 +4,9 @@ import { RailBranchSkeleton } from "@/components/dashboard/rail-branch-skeleton"
 export function RailSkeleton() {
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="px-2 font-medium text-[11px] text-muted-foreground/60">
-        flow
-      </p>
+      <div className="-mx-3 mb-2 flex items-center border-border border-b bg-background px-3 pt-3 pb-2">
+        <p className="font-medium text-[11px] text-muted-foreground/60">flow</p>
+      </div>
       <div className="relative flex flex-col">
         <span
           aria-hidden

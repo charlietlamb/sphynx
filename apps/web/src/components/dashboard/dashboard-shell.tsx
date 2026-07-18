@@ -41,7 +41,7 @@ export function DashboardShell({
         >
           <ResizablePanel defaultSize={17} minSize={12}>
             <aside className="flex h-full min-h-0 flex-col">
-              <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3">
+              <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3">
                 {rail}
               </div>
               {railFooter}
