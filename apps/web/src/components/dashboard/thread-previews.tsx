@@ -6,12 +6,14 @@ import {
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
 import { cn } from "@sphynx/ui/lib/utils";
-import { unresolvedThreadsText } from "@/components/dashboard/thread-copy-all";
+import {
+  orderedThreadPreviews,
+  splitSeverity,
+  unresolvedThreadsText,
+} from "@/components/dashboard/thread-copy-all";
 import { useResolveThread } from "@/components/dashboard/use-resolve-thread";
 import { plural, stripBotSuffix } from "@/lib/claims";
 import { baseName } from "@/lib/paths";
-
-const SEVERITY_PATTERN = /^(P[0-3])\b[:\s]*/;
 
 const SEVERITY_CLASSES: Record<string, string> = {
   P0: "text-deletion",
@@ -19,14 +21,6 @@ const SEVERITY_CLASSES: Record<string, string> = {
   P2: "text-amber-500",
   P3: "text-muted-foreground",
 };
-
-function splitSeverity(body: string) {
-  const match = SEVERITY_PATTERN.exec(body);
-  if (!match?.[1]) {
-    return { severity: null, text: body };
-  }
-  return { severity: match[1], text: body.slice(match[0].length) };
-}
 
 function ThreadPreviewRow({
   canAct,
@@ -111,7 +105,7 @@ export function ThreadPreviews({
   if (pull.threadPreviews.length === 0) {
     return null;
   }
-  const shown = pull.threadPreviews.slice(0, MAX_SHOWN_THREADS);
+  const shown = orderedThreadPreviews(pull).slice(0, MAX_SHOWN_THREADS);
   const hidden = pull.unresolvedThreads - shown.length;
   return (
     <div className="flex flex-col gap-1 border-border border-b px-5 py-4">
