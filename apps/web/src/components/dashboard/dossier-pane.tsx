@@ -9,6 +9,7 @@ import { DossierActions } from "@/components/dashboard/dossier-actions";
 import { DossierSignals } from "@/components/dashboard/dossier-signals";
 import { ThreadPreviews } from "@/components/dashboard/thread-previews";
 import { VerdictMatrix } from "@/components/dashboard/verdict-matrix";
+import { SectionHeader } from "@/components/layout/section-header";
 import { shortAge } from "@/lib/age";
 import { type ClaimTone, claimFor } from "@/lib/claims";
 
@@ -85,9 +86,7 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
       </div>
       {pull.ciFailures.length > 0 ? (
         <div className="flex flex-col gap-1.5 border-border border-b px-5 py-3">
-          <span className="font-medium text-[11px] text-muted-foreground/60">
-            failing checks
-          </span>
+          <SectionHeader label="failing checks" />
           {pull.ciFailures.map((check) => (
             <a
               className="group flex items-center gap-2"

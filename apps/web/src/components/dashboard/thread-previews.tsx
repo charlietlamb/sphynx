@@ -14,6 +14,7 @@ import {
   unresolvedThreadsText,
 } from "@/components/dashboard/thread-copy-all";
 import { useResolveThread } from "@/components/dashboard/use-resolve-thread";
+import { SectionHeader } from "@/components/layout/section-header";
 import { plural, stripBotSuffix } from "@/lib/claims";
 import { baseName } from "@/lib/paths";
 
@@ -116,12 +117,10 @@ export function ThreadPreviews({
   const hidden = pull.unresolvedThreads - shown.length;
   return (
     <div className="flex min-h-0 flex-col gap-1 border-border border-b px-5 py-4">
-      <div className="-mx-5 mb-2 flex items-center justify-between border-border border-b px-5 pb-2">
-        <p className="font-medium text-[11px] text-muted-foreground/60">
-          open threads
-        </p>
-        <CopyForAgent value={unresolvedThreadsText(pull)} />
-      </div>
+      <SectionHeader
+        action={<CopyForAgent value={unresolvedThreadsText(pull)} />}
+        label="open threads"
+      />
       <div className="no-scrollbar -mx-2 flex max-h-[320px] flex-col gap-1 overflow-y-auto px-2">
         {shown.map((preview) => (
           <ThreadPreviewRow
