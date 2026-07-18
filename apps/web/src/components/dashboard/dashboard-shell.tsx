@@ -10,7 +10,6 @@ import { NoticePanel } from "@/components/layout/notice-panel";
 interface DashboardShellProps {
   dossier: ReactNode;
   githubUrl: string | null;
-  hints: ReactNode;
   queue: ReactNode;
   rail: ReactNode;
   switcher: ReactNode;
@@ -19,7 +18,6 @@ interface DashboardShellProps {
 export function DashboardShell({
   dossier,
   githubUrl,
-  hints,
   queue,
   rail,
   switcher,
@@ -57,9 +55,6 @@ export function DashboardShell({
             </aside>
           </ResizablePanel>
         </ResizablePanelGroup>
-        <footer className="flex items-center justify-end gap-4 border-border border-t px-4 py-1.5">
-          {hints}
-        </footer>
       </div>
     </main>
   );

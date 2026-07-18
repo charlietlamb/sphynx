@@ -1,9 +1,7 @@
-import { DASHBOARD_KEY_HELP } from "@/components/dashboard/dashboard-key-help";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { DossierPane } from "@/components/dashboard/dossier-pane";
 import { DossierSkeleton } from "@/components/dashboard/dossier-skeleton";
 import { FlowRail } from "@/components/dashboard/flow-rail";
-import { KeyHint } from "@/components/dashboard/key-hint";
 import { QueuePane } from "@/components/dashboard/queue-pane";
 import { QueueSkeleton } from "@/components/dashboard/queue-skeleton";
 import { RailSkeleton } from "@/components/dashboard/rail-skeleton";
@@ -45,13 +43,6 @@ export function DashboardView() {
         )
       }
       githubUrl={flow ? `https://github.com/${flow.owner}/${flow.repo}` : null}
-      hints={DASHBOARD_KEY_HELP.map((binding) => (
-        <KeyHint
-          action={binding.action}
-          key={binding.action}
-          keys={binding.keys}
-        />
-      ))}
       queue={
         queue && flow ? (
           <QueuePane
