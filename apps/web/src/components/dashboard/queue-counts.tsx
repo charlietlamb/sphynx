@@ -28,7 +28,10 @@ export function QueueCounts({ contested, mergeable, total }: QueueCountsProps) {
       className="flex shrink-0 items-center gap-1.5"
       label={countsLabel(mergeable, contested, other)}
     >
-      <span className="flex h-[3px] w-7 gap-[1.5px] overflow-hidden rounded-full">
+      <span
+        className="flex h-[3px] gap-[1.5px] overflow-hidden rounded-full"
+        style={{ width: Math.min(16 + total * 1.1, 34) }}
+      >
         {mergeable > 0 ? (
           <span
             className="rounded-full bg-addition"

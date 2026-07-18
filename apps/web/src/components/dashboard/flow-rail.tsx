@@ -46,7 +46,7 @@ export function FlowRail({
       <div className="relative flex flex-col">
         <span
           aria-hidden
-          className="absolute top-1 bottom-[26px] left-[13px] w-px bg-border"
+          className="absolute top-1 bottom-[26px] left-[13px] w-[2px] rounded-full bg-gradient-to-b from-border via-muted-foreground/30 to-muted-foreground/30"
         />
         {tributaries.map((item) => (
           <RailBranch
@@ -86,7 +86,11 @@ export function FlowRail({
             </div>
           );
         })}
-        <div className="flex h-[26px] items-center gap-2 pr-2 pl-7">
+        <div className="relative flex h-[26px] items-center gap-2 pr-2 pl-7">
+          <span
+            aria-hidden
+            className="absolute left-[11px] size-[6px] rounded-[1.5px] bg-muted-foreground/60"
+          />
           <span className="text-[10px] text-muted-foreground/40">
             production
           </span>

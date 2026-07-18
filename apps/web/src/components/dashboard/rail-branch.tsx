@@ -14,8 +14,9 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
   return (
     <button
       className={cn(
-        "group relative flex h-7 w-full items-center gap-2 rounded-md pr-2 pl-7 text-left transition-colors",
-        active ? "bg-primary/5" : "hover:bg-alpha-2"
+        "group relative flex w-full items-center gap-2 rounded-md pr-2 pl-7 text-left transition-colors",
+        item.isStage ? "h-8" : "h-7",
+        active ? "bg-primary/5" : "hover:bg-alpha-4"
       )}
       onClick={onSelect}
       type="button"
@@ -23,24 +24,30 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
       {item.isStage ? (
         <span
           aria-hidden
-          className="absolute left-[10px] size-[7px] rounded-full bg-foreground"
+          className={cn(
+            "absolute left-[9.5px] size-[9px] rounded-full border-[2px] bg-background transition-colors",
+            active ? "border-primary" : "border-foreground"
+          )}
         />
       ) : (
         <>
           <span
             aria-hidden
-            className="absolute top-[-2px] left-[13px] h-[calc(50%+2px)] w-[11px] rounded-bl-md border-border border-b border-l"
+            className="absolute top-[-2px] left-[13px] h-[calc(50%+2px)] w-[11px] rounded-bl-[8px] border-border border-b border-l"
           />
           <span
             aria-hidden
-            className="absolute left-[26px] size-[5px] rounded-full border border-muted-foreground bg-background"
+            className={cn(
+              "absolute left-[24px] size-[5px] rounded-full transition-colors",
+              active ? "bg-primary" : "bg-muted-foreground/70"
+            )}
           />
         </>
       )}
       <SignalTip
         className={cn(
-          "block min-w-0 flex-1 truncate text-left font-mono text-xs [direction:rtl]",
-          !item.isStage && "pl-4",
+          "block min-w-0 flex-1 truncate text-left font-mono [direction:rtl]",
+          item.isStage ? "font-medium text-[13px]" : "pl-3 text-xs",
           active && "text-primary",
           !active &&
             (item.isStage ? "text-foreground" : "text-muted-foreground")

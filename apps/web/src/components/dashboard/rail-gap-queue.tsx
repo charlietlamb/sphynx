@@ -26,8 +26,12 @@ export function RailGapQueue({
 }: RailGapQueueProps) {
   if (gap.aheadBy === 0) {
     return (
-      <div className="relative py-0.5 pl-7">
-        <p className="py-0.5 text-[11px] text-muted-foreground/40">
+      <div className="relative flex h-6 items-center pl-7">
+        <span
+          aria-hidden
+          className="absolute left-[15px] h-px w-[9px] bg-border"
+        />
+        <p className="text-[10px] text-muted-foreground/40">
           in sync with {gap.to}
         </p>
       </div>
@@ -41,7 +45,7 @@ export function RailGapQueue({
     <div className="relative py-0.5 pl-7">
       <span
         aria-hidden
-        className="absolute top-0 bottom-0 left-[13px] w-px bg-amber-500/60"
+        className="absolute top-0 bottom-0 left-[13px] w-[2px] rounded-full bg-amber-500/70"
       />
       <p className="flex items-baseline gap-2 py-0.5 text-[11px] text-muted-foreground">
         waiting for {gap.to}
