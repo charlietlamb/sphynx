@@ -25,13 +25,9 @@ export function WorkbenchFilters({
         onValueChange={(value) => onFilter(value as WorkbenchFilter)}
         value={filter}
       >
-        <TabsList className="min-h-6">
+        <TabsList>
           {WORKBENCH_FILTERS.map(({ value, label }) => (
-            <TabsTrigger
-              className="h-5 px-2.5 text-[11px]"
-              key={value}
-              value={value}
-            >
+            <TabsTrigger className="px-3 text-xs" key={value} value={value}>
               {label}
             </TabsTrigger>
           ))}

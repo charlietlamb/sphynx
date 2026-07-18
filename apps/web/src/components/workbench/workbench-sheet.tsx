@@ -120,13 +120,13 @@ export function WorkbenchSheet({
   return (
     <Sheet onOpenChange={onOpenChange} open={open}>
       <SheetContent
-        className="flex h-[65svh] max-h-[640px] flex-col rounded-t-lg border-border bg-background p-0 [transition-timing-function:cubic-bezier(.25,.1,.25,1)]"
+        className="flex h-[65svh] max-h-[640px] flex-col gap-0 border-border bg-background p-0 [transition-timing-function:cubic-bezier(.25,.1,.25,1)]"
         showCloseButton={false}
         side="bottom"
       >
         <SheetTitle className="sr-only">Repo workbench</SheetTitle>
-        <div className="flex h-11 shrink-0 items-center gap-3 border-border border-b px-4">
-          <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+        <div className="flex h-12 shrink-0 items-center gap-4 border-border border-b px-4">
+          <span className="shrink-0 font-mono text-muted-foreground text-xs">
             {owner}/{repo}
           </span>
           <WorkbenchFilters
@@ -140,7 +140,9 @@ export function WorkbenchSheet({
           </span>
         </div>
         <ScrollArea className="min-h-0 flex-1">
-          <div className="flex flex-col gap-px px-2 py-2">{body}</div>
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-px px-3 py-2">
+            {body}
+          </div>
         </ScrollArea>
       </SheetContent>
     </Sheet>
