@@ -49,7 +49,7 @@ export function SettingsDialog() {
       <DialogTrigger
         render={
           <Button aria-label="Settings" size="icon-sm" variant="outline">
-            <GearIcon />
+            <GearIcon className="size-[1.125rem]" />
           </Button>
         }
       />
