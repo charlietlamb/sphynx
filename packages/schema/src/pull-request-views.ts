@@ -1,10 +1,12 @@
 import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform";
 import { Schema } from "effect";
 import {
+  GitHubTimeout,
   GitHubUnavailable,
   PullRequestNotFound,
   PullRequestRefSchema,
 } from "./pull-requests";
+import { cookieHeaders } from "./shared";
 
 export const ViewedFileSchema = Schema.Struct({
   path: Schema.String,
@@ -23,10 +25,6 @@ export class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   "Unauthorized",
   { message: Schema.String }
 ) {}
-
-const cookieHeaders = Schema.Struct({
-  cookie: Schema.optional(Schema.String),
-});
 
 const listViewedFiles = HttpApiEndpoint.get(
   "listViewedFiles",
@@ -66,4 +64,5 @@ export const PullRequestViewsApi = HttpApiGroup.make("pullRequestViews")
   .add(setAllFilesViewed)
   .addError(Unauthorized, { status: 401 })
   .addError(PullRequestNotFound, { status: 404 })
-  .addError(GitHubUnavailable, { status: 502 });
+  .addError(GitHubUnavailable, { status: 502 })
+  .addError(GitHubTimeout, { status: 504 });

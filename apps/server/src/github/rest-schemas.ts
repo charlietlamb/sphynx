@@ -72,6 +72,7 @@ export type RawReviewComment = typeof RawReviewCommentSchema.Type;
 
 export const RawReviewCommentsSchema = Schema.Array(RawReviewCommentSchema);
 
-export const RawFileContentsSchema = Schema.Struct({
-  content: Schema.String,
-});
+export const RawFileContentsSchema = Schema.Union(
+  Schema.Struct({ content: Schema.optional(Schema.String) }),
+  Schema.Array(Schema.Unknown)
+);

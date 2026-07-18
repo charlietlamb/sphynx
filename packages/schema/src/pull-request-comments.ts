@@ -8,6 +8,7 @@ import {
   PullRequestNotFound,
   PullRequestRefSchema,
 } from "./pull-requests";
+import { cookieHeaders, OkSchema } from "./shared";
 
 const CommentSideSchema = Schema.Literal("additions", "deletions");
 
@@ -91,12 +92,6 @@ export const SubmitReviewSchema = Schema.Struct({
 });
 
 export type SubmitReview = typeof SubmitReviewSchema.Type;
-
-const OkSchema = Schema.Struct({ ok: Schema.Boolean });
-
-const cookieHeaders = Schema.Struct({
-  cookie: Schema.optional(Schema.String),
-});
 
 const listCommentThreads = HttpApiEndpoint.get(
   "listCommentThreads",

@@ -6,6 +6,7 @@ import {
 import { Unauthorized } from "@sphynx/schema/pull-request-views";
 import {
   GitHubRateLimited,
+  GitHubTimeout,
   GitHubUnavailable,
   type PullRequestRef,
 } from "@sphynx/schema/pull-requests";
@@ -117,6 +118,6 @@ export const makeRest =
       Effect.timeoutFail({
         duration: config.timeout,
         onTimeout: () =>
-          new GitHubUnavailable({ message: "GitHub request timed out" }),
+          new GitHubTimeout({ message: "GitHub request timed out" }),
       })
     );

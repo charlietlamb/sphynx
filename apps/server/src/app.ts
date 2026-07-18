@@ -65,16 +65,18 @@ const HealthApiLive = HttpApiBuilder.group(SphynxApi, "health", (handlers) =>
   handlers.handle("health", () => Effect.succeed({ ok: true }))
 );
 
-const GitHubLive = Layer.mergeAll(
-  GitHubClientLive,
-  GitHubViewerLive,
-  GitHubReviewsLive,
-  GitHubReviewQueueLive,
-  GitHubPipelineLive.pipe(Layer.provide(GitHubReviewQueueLive)),
-  PipelineCacheLive.pipe(
-    Layer.provide(GitHubPipelineLive.pipe(Layer.provide(GitHubReviewQueueLive)))
-  )
-).pipe(Layer.provide(Layer.mergeAll(GitHubConfigLive, FetchHttpClient.layer)));
+const GitHubLive = PipelineCacheLive.pipe(
+  Layer.provideMerge(GitHubPipelineLive),
+  Layer.provideMerge(
+    Layer.mergeAll(
+      GitHubClientLive,
+      GitHubViewerLive,
+      GitHubReviewsLive,
+      GitHubReviewQueueLive
+    )
+  ),
+  Layer.provide(Layer.mergeAll(GitHubConfigLive, FetchHttpClient.layer))
+);
 
 const DatabaseLiveLayer = DatabaseLive.pipe(Layer.provide(DatabaseConfigLive));
 const AuthLiveLayer = AuthLive.pipe(

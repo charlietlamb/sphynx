@@ -9,7 +9,7 @@ import {
   type DiscoveredRepo,
   type QueuePull,
 } from "@sphynx/schema/review-queue";
-import { Context, Effect, Layer, Schema } from "effect";
+import { Array as Arr, Context, Effect, Layer, Schema } from "effect";
 import { GitHubConfig } from "./config";
 import type { GitHubAuthedError } from "./errors";
 import { makeGraphql, refAnnotations } from "./graphql";
@@ -107,10 +107,9 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
     if (repos.length === 0) {
       return Effect.succeed(new Map());
     }
-    const chunks: { owner: string; repo: string }[][] = [];
-    for (let index = 0; index < repos.length; index += PULLS_CHUNK_SIZE) {
-      chunks.push([...repos.slice(index, index + PULLS_CHUNK_SIZE)]);
-    }
+    const chunks = Arr.chunksOf(repos, PULLS_CHUNK_SIZE).map((chunk) => [
+      ...chunk,
+    ]);
     return Effect.forEach(chunks, (chunk) => openPullsChunk(chunk, token), {
       concurrency: 4,
     }).pipe(

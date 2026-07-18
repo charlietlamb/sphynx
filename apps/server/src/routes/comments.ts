@@ -24,7 +24,9 @@ export const PullRequestCommentsApiLive = HttpApiBuilder.group(
         .handle("listCommentThreads", ({ path, headers }) =>
           githubToken(headers.cookie).pipe(
             Effect.flatMap((token) => reviews.listReviewThreads(path, token)),
-            Effect.orElse(() => github.listReviewThreads(path)),
+            Effect.catchTag("Unauthorized", () =>
+              github.listReviewThreads(path)
+            ),
             Effect.map((threads) => ({ threads }))
           )
         )

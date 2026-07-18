@@ -1,13 +1,13 @@
 import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform";
 import { Schema } from "effect";
 
-const GitHubOwnerSchema = Schema.String.pipe(
+export const GitHubOwnerSchema = Schema.String.pipe(
   Schema.minLength(1),
   Schema.maxLength(39),
   Schema.pattern(/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/)
 );
 
-const GitHubRepositorySchema = Schema.String.pipe(
+export const GitHubRepositorySchema = Schema.String.pipe(
   Schema.minLength(1),
   Schema.maxLength(100),
   Schema.pattern(/^[A-Za-z0-9._-]+$/)

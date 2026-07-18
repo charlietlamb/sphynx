@@ -270,6 +270,9 @@ query($owner: String!, $name: String!) {
             initial[0] ?? ""
           ).pipe(
             Effect.map((compare) => compare.ahead_by),
+            Effect.tapErrorCause((cause) =>
+              Effect.logWarning("middle stage check failed", cause)
+            ),
             Effect.orElseSucceed(() => null)
           )
         : Effect.succeed(null);
@@ -365,7 +368,7 @@ query($owner: String!, $name: String!) {
       return yield* flowsFor(entries, token);
     }).pipe(Effect.withSpan("GitHubPipeline.build"));
 
-  return { build, flowsFor };
+  return { build };
 });
 
 export class GitHubPipeline extends Context.Tag(

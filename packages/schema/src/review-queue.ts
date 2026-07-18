@@ -2,12 +2,16 @@ import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform";
 import { Schema } from "effect";
 import { Unauthorized } from "./pull-request-views";
 import {
+  GitHubOwnerSchema,
   GitHubRateLimited,
+  GitHubRepositorySchema,
+  GitHubTimeout,
   GitHubUnavailable,
   GitHubUserSchema,
   PullRequestNotFound,
   PullRequestRefSchema,
 } from "./pull-requests";
+import { cookieHeaders, OkSchema } from "./shared";
 
 export const DiscoveredRepoSchema = Schema.Struct({
   owner: Schema.String,
@@ -83,12 +87,6 @@ export const BlockPullSchema = Schema.Struct({
   body: Schema.String.pipe(Schema.minLength(1)),
 });
 
-const OkSchema = Schema.Struct({ ok: Schema.Boolean });
-
-const cookieHeaders = Schema.Struct({
-  cookie: Schema.optional(Schema.String),
-});
-
 export const PromotedPullSchema = Schema.Struct({
   number: Schema.Number,
   title: Schema.String,
@@ -126,8 +124,8 @@ export const PipelineSchema = Schema.Struct({
 export type Pipeline = typeof PipelineSchema.Type;
 
 export const RepoRefSchema = Schema.Struct({
-  owner: Schema.String.pipe(Schema.minLength(1)),
-  repo: Schema.String.pipe(Schema.minLength(1)),
+  owner: GitHubOwnerSchema,
+  repo: GitHubRepositorySchema,
 });
 
 export const PromoteSchema = Schema.Struct({
@@ -181,4 +179,5 @@ export const ReviewQueueApi = HttpApiGroup.make("reviewQueue")
   .addError(Unauthorized, { status: 401 })
   .addError(PullRequestNotFound, { status: 404 })
   .addError(GitHubRateLimited, { status: 429 })
-  .addError(GitHubUnavailable, { status: 502 });
+  .addError(GitHubUnavailable, { status: 502 })
+  .addError(GitHubTimeout, { status: 504 });

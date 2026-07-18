@@ -5,6 +5,7 @@ import {
 } from "@effect/platform";
 import { Unauthorized } from "@sphynx/schema/pull-request-views";
 import {
+  GitHubTimeout,
   GitHubUnavailable,
   type PullRequestRef,
 } from "@sphynx/schema/pull-requests";
@@ -51,6 +52,32 @@ const PullRequestIdSchema = Schema.Struct({ id: Schema.String });
 
 type GitHubConfigService = typeof GitHubConfig.Service;
 
+const rejectFailedStatus = (
+  status: number
+): Effect.Effect<
+  void,
+  Unauthorized | RetryableGitHubError | GitHubUnavailable
+> => {
+  if (status === 401 || status === 403) {
+    return Effect.fail(
+      new Unauthorized({ message: "GitHub rejected the request" })
+    );
+  }
+  if (status >= 500) {
+    return Effect.fail(
+      new RetryableGitHubError({ message: `GitHub returned ${status}` })
+    );
+  }
+  if (status >= 400) {
+    return Effect.fail(
+      new GitHubUnavailable({
+        message: `GitHub rejected the request with ${status}`,
+      })
+    );
+  }
+  return Effect.void;
+};
+
 export const makeGraphql = (
   config: GitHubConfigService,
   client: HttpClient.HttpClient
@@ -73,25 +100,7 @@ export const makeGraphql = (
             () => new GitHubUnavailable({ message: "GitHub is unreachable" })
           )
         );
-      if (response.status === 401 || response.status === 403) {
-        return yield* Effect.fail(
-          new Unauthorized({ message: "GitHub rejected the request" })
-        );
-      }
-      if (response.status >= 500) {
-        return yield* Effect.fail(
-          new RetryableGitHubError({
-            message: `GitHub returned ${response.status}`,
-          })
-        );
-      }
-      if (response.status >= 400) {
-        return yield* Effect.fail(
-          new GitHubUnavailable({
-            message: `GitHub rejected the request with ${response.status}`,
-          })
-        );
-      }
+      yield* rejectFailedStatus(response.status);
       const envelope = yield* HttpClientResponse.schemaBodyJson(
         Schema.Struct({
           data: Schema.NullishOr(dataSchema),
@@ -102,16 +111,19 @@ export const makeGraphql = (
           () => new GitHubUnavailable({ message: "Invalid GitHub response" })
         )
       );
-      if (envelope.errors && envelope.errors.length > 0) {
+      const firstError = envelope.errors?.[0];
+      if (envelope.data === null || envelope.data === undefined) {
         return yield* Effect.fail(
           new GitHubUnavailable({
-            message: friendlyErrorMessage(envelope.errors[0].message),
+            message: firstError
+              ? friendlyErrorMessage(firstError.message)
+              : "Empty GitHub response",
           })
         );
       }
-      if (envelope.data === null || envelope.data === undefined) {
-        return yield* Effect.fail(
-          new GitHubUnavailable({ message: "Empty GitHub response" })
+      if (firstError) {
+        yield* Effect.logWarning("GitHub returned partial data").pipe(
+          Effect.annotateLogs({ "github.graphql_error": firstError.message })
         );
       }
       return envelope.data;
@@ -128,7 +140,7 @@ export const makeGraphql = (
       Effect.timeoutFail({
         duration: config.timeout,
         onTimeout: () =>
-          new GitHubUnavailable({ message: "GitHub request timed out" }),
+          new GitHubTimeout({ message: "GitHub request timed out" }),
       })
     );
 

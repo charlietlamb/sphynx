@@ -84,6 +84,8 @@ describe("parseScore", () => {
   test("returns null when no score is present", () => {
     expect(parseScore("Looks good to me")).toBeNull();
     expect(parseScore("fixes 3/4 of the issues listed")).toBeNull();
+    expect(parseScore("we fixed 2/10 issues in this pass")).toBeNull();
+    expect(parseScore("8/10")).toBe("8/10");
   });
 });
 

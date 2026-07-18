@@ -1,6 +1,7 @@
 import type { Unauthorized } from "@sphynx/schema/pull-request-views";
 import {
   type GitHubRateLimited,
+  type GitHubTimeout,
   type GitHubUnavailable,
   PullRequestNotFound,
 } from "@sphynx/schema/pull-requests";
@@ -9,7 +10,8 @@ import { Data, Schedule } from "effect";
 export type GitHubAuthedError =
   | Unauthorized
   | PullRequestNotFound
-  | GitHubUnavailable;
+  | GitHubUnavailable
+  | GitHubTimeout;
 
 export type GitHubAuthedRestError = GitHubAuthedError | GitHubRateLimited;
 

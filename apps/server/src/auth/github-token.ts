@@ -22,20 +22,24 @@ export const githubTokenFor =
       if (!session) {
         return yield* Effect.fail(new Unauthorized({ message }));
       }
-      const rows = yield* Effect.tryPromise({
-        try: () =>
-          db
-            .select({ accessToken: account.accessToken })
-            .from(account)
-            .where(
-              and(
-                eq(account.userId, session.user.id),
-                eq(account.providerId, "github")
-              )
+      const rows = yield* Effect.tryPromise(() =>
+        db
+          .select({ accessToken: account.accessToken })
+          .from(account)
+          .where(
+            and(
+              eq(account.userId, session.user.id),
+              eq(account.providerId, "github")
             )
-            .limit(1),
-        catch: () => new Unauthorized({ message }),
-      });
+          )
+          .limit(1)
+      ).pipe(
+        Effect.tapErrorCause((cause) =>
+          Effect.logError("github token lookup failed", cause)
+        ),
+        Effect.orDie,
+        Effect.annotateLogs({ "user.id": session.user.id })
+      );
       const token = rows[0]?.accessToken;
       if (!token) {
         return yield* Effect.fail(new Unauthorized({ message }));

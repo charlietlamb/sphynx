@@ -51,16 +51,8 @@ const ActorSchema = Schema.NullOr(
   })
 );
 
-const ReviewStateSchema = Schema.Literal(
-  "APPROVED",
-  "CHANGES_REQUESTED",
-  "COMMENTED",
-  "DISMISSED",
-  "PENDING"
-);
-
 const RawReviewSchema = Schema.Struct({
-  state: ReviewStateSchema,
+  state: Schema.String,
   body: Schema.String,
   submittedAt: Schema.NullOr(Schema.String),
   author: ActorSchema,
@@ -227,9 +219,7 @@ function ciState(rollup: { state: string } | null): QueuePull["ci"] {
   }
 }
 
-function verdictState(
-  state: typeof ReviewStateSchema.Type
-): ReviewerVerdict["state"] {
+function verdictState(state: string): ReviewerVerdict["state"] {
   if (state === "APPROVED") {
     return "approved";
   }

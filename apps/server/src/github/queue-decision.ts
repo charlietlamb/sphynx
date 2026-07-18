@@ -90,8 +90,8 @@ export function blockerFor(signals: PullSignals): string | null {
 
 const SCORE_PATTERNS = [
   /<!--\s*cubic:review-summary:confidence-score:(\d{1,3}(?:\.\d)?)\/(5|10|100)\s*-->/,
-  /(?:score|rating|grade)[:\s]*\*{0,2}\s*(\d{1,3}(?:\.\d)?)\s*\/\s*(5|10|100)/i,
-  /\b(\d{1,3}(?:\.\d)?)\s*\/\s*(10|100)\b/,
+  /(?:score|rating|grade|quality|confidence)[:\s]*\*{0,2}\s*(\d{1,3}(?:\.\d)?)\s*\/\s*(100|10|5)\b/i,
+  /(?:^|\n)\s*\*{0,2}(\d{1,3}(?:\.\d)?)\s*\/\s*(10|100)\b\*{0,2}\s*(?:\n|$)/,
 ];
 
 export function parseScore(body: string): string | null {

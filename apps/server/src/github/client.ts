@@ -29,6 +29,15 @@ import {
 } from "./rest-schemas";
 import { groupReviewThreads } from "./review-threads";
 
+const MAX_COMMENT_PAGES = 5;
+
+const fileContentOf = (
+  value: typeof RawFileContentsSchema.Type
+): string | null =>
+  "content" in value && typeof value.content === "string"
+    ? value.content
+    : null;
+
 type GitHubError =
   | PullRequestNotFound
   | GitHubRateLimited
@@ -274,7 +283,7 @@ const makeClient = Effect.gen(function* () {
     Effect.gen(function* () {
       const comments: RawReviewComment[] = [];
       let page: number | null = 1;
-      while (page !== null && page <= 5) {
+      while (page !== null && page <= MAX_COMMENT_PAGES) {
         const result: GitHubResult<typeof RawReviewCommentsSchema.Type> =
           yield* request(
             pullPath(ref, `/comments?per_page=100&page=${page}`),
@@ -297,11 +306,13 @@ const makeClient = Effect.gen(function* () {
       `/repos/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/contents/${encodeFilePath(path)}?ref=${encodeURIComponent(sha)}`,
       RawFileContentsSchema
     ).pipe(
-      Effect.map((result) =>
-        result._tag === "Modified" && result.value.content
-          ? Buffer.from(result.value.content, "base64").toString("utf8")
-          : null
-      ),
+      Effect.map((result) => {
+        if (result._tag !== "Modified") {
+          return null;
+        }
+        const content = fileContentOf(result.value);
+        return content ? Buffer.from(content, "base64").toString("utf8") : null;
+      }),
       Effect.catchTag("PullRequestNotFound", () => Effect.succeed(null)),
       Effect.withSpan("GitHubClient.getFileContents"),
       Effect.annotateLogs({ ...refAnnotations(ref), "github.path": path })
