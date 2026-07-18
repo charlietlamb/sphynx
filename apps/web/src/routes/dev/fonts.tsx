@@ -11,6 +11,20 @@ import "@fontsource-variable/sora";
 import "@fontsource-variable/funnel-display";
 import "@fontsource-variable/newsreader";
 import "@fontsource-variable/manrope";
+import "@fontsource-variable/playfair-display";
+import "@fontsource/young-serif";
+import "@fontsource-variable/cormorant";
+import "@fontsource-variable/source-serif-4";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/plus-jakarta-sans";
+import "@fontsource-variable/outfit";
+import "@fontsource-variable/gabarito";
+import "@fontsource-variable/hanken-grotesk";
+import "@fontsource-variable/familjen-grotesk";
+import "@fontsource-variable/syne";
+import "@fontsource-variable/red-hat-display";
+import "@fontsource-variable/archivo";
+import "@fontsource-variable/unbounded";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 
 const CANDIDATES = [
@@ -83,6 +97,76 @@ const CANDIDATES = [
     name: "Manrope",
     note: "neutral modern sans",
     stack: '"Manrope Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Playfair Display",
+    note: "classic high-contrast serif",
+    stack: '"Playfair Display Variable", ui-serif, Georgia, serif',
+  },
+  {
+    name: "Young Serif",
+    note: "chunky warm serif, single weight",
+    stack: '"Young Serif", ui-serif, Georgia, serif',
+  },
+  {
+    name: "Cormorant",
+    note: "light elegant serif",
+    stack: '"Cormorant Variable", ui-serif, Georgia, serif',
+  },
+  {
+    name: "Source Serif 4",
+    note: "sturdy editorial serif",
+    stack: '"Source Serif 4 Variable", ui-serif, Georgia, serif',
+  },
+  {
+    name: "Inter",
+    note: "the default everyone knows",
+    stack: '"Inter Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Plus Jakarta Sans",
+    note: "rounded geometric sans",
+    stack: '"Plus Jakarta Sans Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Outfit",
+    note: "clean geometric display",
+    stack: '"Outfit Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Gabarito",
+    note: "friendly geometric sans",
+    stack: '"Gabarito Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Hanken Grotesk",
+    note: "quiet modern grotesque",
+    stack: '"Hanken Grotesk Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Familjen Grotesk",
+    note: "compact swedish grotesque",
+    stack: '"Familjen Grotesk Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Syne",
+    note: "wide arty display",
+    stack: '"Syne Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Red Hat Display",
+    note: "geometric display sans",
+    stack: '"Red Hat Display Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Archivo",
+    note: "grotesque workhorse",
+    stack: '"Archivo Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Unbounded",
+    note: "wide techy display",
+    stack: '"Unbounded Variable", ui-sans-serif, sans-serif',
   },
 ];
 
