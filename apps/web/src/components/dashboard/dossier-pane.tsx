@@ -51,7 +51,7 @@ export function DossierPane({ canAct, now, onOpen, pull }: DossierPaneProps) {
   }
   return (
     <div className="fade-in flex flex-1 animate-in flex-col duration-150">
-      <div className="flex flex-col gap-2 border-border border-b px-5 py-4">
+      <div className="sticky top-0 z-10 flex flex-col gap-2 border-border border-b bg-background px-5 py-4">
         <p className="font-mono text-[11px] text-muted-foreground">
           #{pull.number}
           <span className="text-muted-foreground/50">
