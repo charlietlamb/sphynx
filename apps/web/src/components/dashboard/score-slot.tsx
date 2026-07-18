@@ -17,6 +17,18 @@ function scoreClass(ratio: number) {
   return "text-amber-500";
 }
 
+function scoreStroke(ratio: number) {
+  if (ratio >= STRONG_SCORE) {
+    return "stroke-addition";
+  }
+  if (ratio < WEAK_SCORE) {
+    return "stroke-deletion";
+  }
+  return "stroke-amber-500";
+}
+
+const ARC_CIRCUMFERENCE = 2 * Math.PI * 6;
+
 function scoresLabel(scores: ScoreSummary[]) {
   if (scores.length === 1) {
     const only = scores[0];
@@ -31,17 +43,45 @@ function scoresLabel(scores: ScoreSummary[]) {
 export function ScoreSlot({ pull }: { pull: QueuePull }) {
   const scores = pullScores(pull);
   const latest = scores.at(-1);
+  const value = latest?.label.split("/")[0];
   return (
     <span className="flex w-8 shrink-0 items-center justify-end">
       {latest ? (
-        <SignalTip label={scoresLabel(scores)}>
+        <SignalTip
+          className="flex items-center gap-1"
+          label={scoresLabel(scores)}
+        >
+          <svg
+            aria-hidden="true"
+            className="size-3.5 -rotate-90"
+            viewBox="0 0 16 16"
+          >
+            <circle
+              className="stroke-muted-foreground/20"
+              cx="8"
+              cy="8"
+              fill="none"
+              r="6"
+              strokeWidth="2.5"
+            />
+            <circle
+              className={scoreStroke(latest.ratio)}
+              cx="8"
+              cy="8"
+              fill="none"
+              r="6"
+              strokeDasharray={`${latest.ratio * ARC_CIRCUMFERENCE} ${ARC_CIRCUMFERENCE}`}
+              strokeLinecap="round"
+              strokeWidth="2.5"
+            />
+          </svg>
           <span
             className={cn(
-              "font-medium text-[11px] tabular-nums",
+              "font-semibold text-[12px] tabular-nums leading-none",
               scoreClass(latest.ratio)
             )}
           >
-            {latest.label}
+            {value}
           </span>
         </SignalTip>
       ) : null}
