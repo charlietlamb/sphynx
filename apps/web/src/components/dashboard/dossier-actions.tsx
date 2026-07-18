@@ -38,7 +38,7 @@ export function DossierActions({ canAct, onOpen, pull }: DossierActionsProps) {
           Merge
         </ShortcutButton>
         <ShortcutButton
-          className="btn-primary-glow"
+          className="btn-primary-glow flex-1"
           onClick={onOpen}
           shortcut="p"
           size="sm"
