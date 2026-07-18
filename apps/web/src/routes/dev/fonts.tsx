@@ -3,6 +3,14 @@ import "@fontsource/instrument-serif";
 import "@fontsource-variable/instrument-sans";
 import "@fontsource-variable/space-grotesk";
 import "@fontsource-variable/schibsted-grotesk";
+import "@fontsource-variable/dm-sans";
+import "@fontsource/dm-serif-display";
+import "@fontsource/gloock";
+import "@fontsource-variable/bricolage-grotesque";
+import "@fontsource-variable/sora";
+import "@fontsource-variable/funnel-display";
+import "@fontsource-variable/newsreader";
+import "@fontsource-variable/manrope";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 
 const CANDIDATES = [
@@ -35,6 +43,46 @@ const CANDIDATES = [
     name: "Geist",
     note: "same as body, monobrand",
     stack: '"Geist Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "DM Serif Display",
+    note: "sharp display serif, single weight",
+    stack: '"DM Serif Display", ui-serif, Georgia, serif',
+  },
+  {
+    name: "Gloock",
+    note: "high-contrast modern serif, single weight",
+    stack: '"Gloock", ui-serif, Georgia, serif',
+  },
+  {
+    name: "Newsreader",
+    note: "elegant editorial serif",
+    stack: '"Newsreader Variable", ui-serif, Georgia, serif',
+  },
+  {
+    name: "Bricolage Grotesque",
+    note: "characterful grotesque",
+    stack: '"Bricolage Grotesque Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "DM Sans",
+    note: "clean geometric sans",
+    stack: '"DM Sans Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Sora",
+    note: "geometric, techy",
+    stack: '"Sora Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Funnel Display",
+    note: "narrow display sans",
+    stack: '"Funnel Display Variable", ui-sans-serif, sans-serif',
+  },
+  {
+    name: "Manrope",
+    note: "neutral modern sans",
+    stack: '"Manrope Variable", ui-sans-serif, sans-serif',
   },
 ];
 
