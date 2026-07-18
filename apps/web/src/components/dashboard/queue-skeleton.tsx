@@ -14,7 +14,7 @@ function BranchHeaderSkeleton({
   return (
     <div
       className={cn(
-        "-mx-4 mb-1 flex items-center gap-2 border-border border-b px-[26px] pt-1 pb-2",
+        "-mx-4 mb-1 flex items-center gap-2 border-border border-b px-[26px] pt-3 pb-2",
         !first && "border-t"
       )}
     >
@@ -26,7 +26,7 @@ function BranchHeaderSkeleton({
 
 export function QueueSkeleton() {
   return (
-    <div className="flex flex-col gap-4 px-4 pt-3 pb-3">
+    <div className="flex flex-col gap-4 px-4 pb-3">
       <div className="flex flex-col gap-1">
         <BranchHeaderSkeleton nameWidth="2.5rem" />
         {TITLE_WIDTHS.map((width) => (

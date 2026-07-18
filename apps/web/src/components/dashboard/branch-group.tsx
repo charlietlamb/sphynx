@@ -24,7 +24,7 @@ export function BranchGroup({
     <div className="flex flex-col gap-1">
       <p
         className={cn(
-          "sticky top-0 z-10 -mx-4 mb-1 flex items-baseline gap-2 border-border border-b bg-background px-[26px] pt-1 pb-2",
+          "sticky top-0 z-10 -mx-4 mb-1 flex items-baseline gap-2 border-border border-b bg-background px-[26px] pt-3 pb-2",
           !first && "border-t"
         )}
       >
