@@ -67,7 +67,7 @@ export function DossierPane({
   if (!pull) {
     return (
       <p className="px-5 py-4 text-[13px] text-muted-foreground">
-        Queue clear — nothing to decide.
+        Queue clear, nothing to decide.
       </p>
     );
   }

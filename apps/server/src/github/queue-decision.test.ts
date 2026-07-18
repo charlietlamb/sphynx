@@ -5,6 +5,7 @@ import {
   isBotLogin,
   type PullSignals,
   parseScore,
+  scoreVerdict,
 } from "./queue-decision";
 
 const signals = (overrides: Partial<PullSignals>): PullSignals => ({
@@ -83,6 +84,24 @@ describe("parseScore", () => {
   test("returns null when no score is present", () => {
     expect(parseScore("Looks good to me")).toBeNull();
     expect(parseScore("fixes 3/4 of the issues listed")).toBeNull();
+  });
+});
+
+describe("scoreVerdict", () => {
+  test("high scores read as approval", () => {
+    expect(scoreVerdict("5/5")).toBe("approved");
+    expect(scoreVerdict("4/5")).toBe("approved");
+    expect(scoreVerdict("8/10")).toBe("approved");
+  });
+
+  test("low scores read as changes requested", () => {
+    expect(scoreVerdict("2/5")).toBe("changes-requested");
+    expect(scoreVerdict("3/10")).toBe("changes-requested");
+  });
+
+  test("middling or missing scores stay inconclusive", () => {
+    expect(scoreVerdict("3/5")).toBeNull();
+    expect(scoreVerdict(null)).toBeNull();
   });
 });
 

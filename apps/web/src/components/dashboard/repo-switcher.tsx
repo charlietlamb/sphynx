@@ -60,7 +60,7 @@ export function RepoSwitcher({ onSelect, repos, selected }: RepoSwitcherProps) {
             <>
               <span
                 className="text-addition"
-                title="approved and green — ready to merge"
+                title="approved and green, ready to merge"
               >
                 {selected.mergeable} mergeable
               </span>

@@ -25,7 +25,7 @@ function consensusLine(pull: QueuePull) {
     return "no verdicts yet";
   }
   if (pull.approvals > 0 && pull.changesRequested > 0) {
-    return `split verdict — ${pull.approvals} approve · ${pull.changesRequested} want changes`;
+    return `split verdict · ${pull.approvals} approve · ${pull.changesRequested} want changes`;
   }
   if (pull.changesRequested > 0) {
     return `${pull.changesRequested} want changes`;
@@ -36,7 +36,7 @@ function consensusLine(pull: QueuePull) {
   if (pull.approvals > 0) {
     return `${pull.approvals} approve · ${commented} commented`;
   }
-  return "comments only — no verdicts";
+  return "comments only";
 }
 
 interface VerdictMatrixProps {

@@ -25,7 +25,13 @@ import {
   pullRequestNotFound,
   refAnnotations,
 } from "./graphql";
-import { blockerFor, decide, isBotLogin, parseScore } from "./queue-decision";
+import {
+  blockerFor,
+  decide,
+  isBotLogin,
+  parseScore,
+  scoreVerdict,
+} from "./queue-decision";
 
 const PULL_FIELDS_FRAGMENT = `
 fragment PullFields on PullRequest {
@@ -297,12 +303,21 @@ function toVerdicts(
     if (!author) {
       continue;
     }
+    const kind = isBotLogin(author.login, author.__typename)
+      ? ("bot" as const)
+      : ("human" as const);
+    const score = scores.get(author.login) ?? null;
+    const state = verdictState(review.state);
+    const effectiveState =
+      kind === "bot" && state === "commented"
+        ? (scoreVerdict(score) ?? state)
+        : state;
     verdicts.push({
       name: author.login,
-      kind: isBotLogin(author.login, author.__typename) ? "bot" : "human",
+      kind,
       avatarUrl: author.avatarUrl,
-      state: verdictState(review.state),
-      score: scores.get(author.login) ?? null,
+      state: effectiveState,
+      score,
       submittedAt: review.submittedAt ?? "",
     });
   }

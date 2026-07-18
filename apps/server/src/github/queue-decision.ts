@@ -105,3 +105,26 @@ export function parseScore(body: string): string | null {
   }
   return null;
 }
+
+const APPROVE_RATIO = 0.8;
+const REJECT_RATIO = 0.4;
+
+export function scoreVerdict(
+  score: string | null
+): "approved" | "changes-requested" | null {
+  if (!score) {
+    return null;
+  }
+  const [value, scale] = score.split("/").map(Number);
+  if (!(value !== undefined && scale)) {
+    return null;
+  }
+  const ratio = value / scale;
+  if (ratio >= APPROVE_RATIO) {
+    return "approved";
+  }
+  if (ratio <= REJECT_RATIO) {
+    return "changes-requested";
+  }
+  return null;
+}

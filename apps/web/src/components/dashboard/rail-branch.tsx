@@ -52,7 +52,7 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
           <>
             <span
               className="text-addition"
-              title={`${item.mergeable} approved and green — ready to merge`}
+              title={`${item.mergeable} approved and green, ready to merge`}
             >
               {item.mergeable}
             </span>
@@ -63,7 +63,7 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
           <>
             <span
               className="text-deletion"
-              title={`${item.contested} contested — failing checks or changes requested`}
+              title={`${item.contested} contested, failing checks or changes requested`}
             >
               {item.contested}
             </span>
