@@ -8,7 +8,10 @@ import { makeRest } from "./http";
 import { toWorkbenchEvents } from "./workbench-mappers";
 
 const EVENTS_TTL = Duration.seconds(45);
+const VIEWER_TTL = Duration.hours(1);
 const EVENTS_PER_PAGE = 100;
+
+const RawViewerSchema = Schema.Struct({ login: Schema.String });
 
 class FeedKey extends Data.Class<{
   readonly token: string;
@@ -20,6 +23,20 @@ const makeGitHubRepoEvents = Effect.gen(function* () {
   const config = yield* GitHubConfig;
   const client = yield* HttpClient.HttpClient;
   const rest = makeRest(config, client);
+
+  const viewerCache = yield* Cache.make({
+    capacity: 128,
+    timeToLive: VIEWER_TTL,
+    lookup: (token: string) =>
+      rest(token, "GET", "/user").pipe(
+        Effect.flatMap((response) =>
+          HttpClientResponse.schemaBodyJson(RawViewerSchema)(response)
+        ),
+        Effect.map((viewer) => viewer.login),
+        Effect.orElseSucceed(() => null),
+        Effect.withSpan("GitHubRepoEvents.fetchViewer")
+      ),
+  });
 
   const fetchFeed = (
     key: FeedKey
@@ -38,8 +55,10 @@ const makeGitHubRepoEvents = Effect.gen(function* () {
           )
         )
       ),
-      Effect.map((raw) => ({
+      Effect.zip(viewerCache.get(key.token)),
+      Effect.map(([raw, viewer]) => ({
         events: toWorkbenchEvents(key.owner, key.repo, raw),
+        viewer,
       })),
       Effect.withSpan("GitHubRepoEvents.fetchFeed"),
       Effect.annotateLogs({

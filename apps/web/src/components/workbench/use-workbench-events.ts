@@ -15,10 +15,9 @@ async function fetchWorkbenchEvents(
   if (!response.ok) {
     throw new Error(`events unavailable (${response.status})`);
   }
-  const decoded = await Schema.decodeUnknownPromise(WorkbenchFeedSchema)(
+  return await Schema.decodeUnknownPromise(WorkbenchFeedSchema)(
     await response.json()
   );
-  return decoded.events;
 }
 
 function workbenchEventsQuery(owner: string, repo: string, authed: boolean) {
@@ -44,7 +43,7 @@ export function useWorkbenchEvents(
   const local = useWorkbenchStore(owner, repo);
 
   const events = useMemo<readonly MergedWorkbenchEvent[]>(() => {
-    const github = (server.data ?? []).map(
+    const github = (server.data?.events ?? []).map(
       (event): MergedWorkbenchEvent => ({
         ...event,
         pull: event.pull
@@ -72,6 +71,7 @@ export function useWorkbenchEvents(
     events,
     unseen,
     latest: events[0] ?? null,
+    viewer: server.data?.viewer ?? null,
     isPending: server.isPending,
     isError: server.isError,
     refetch: server.refetch,

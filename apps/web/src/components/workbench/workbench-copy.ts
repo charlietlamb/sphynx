@@ -95,12 +95,19 @@ export function actorLabel(event: MergedWorkbenchEvent) {
 export function filterWorkbenchEvents(
   events: readonly MergedWorkbenchEvent[],
   filter: WorkbenchFilter,
-  search: string
+  search: string,
+  viewer: string | null
 ): readonly MergedWorkbenchEvent[] {
   const needle = search.trim().toLowerCase();
+  const viewerLogin = viewer?.toLowerCase() ?? null;
   return events.filter((event) => {
-    if (filter === "yours" && event.source !== "sphynx") {
-      return false;
+    if (filter === "yours") {
+      const isViewer =
+        viewerLogin !== null &&
+        event.actor?.login.toLowerCase() === viewerLogin;
+      if (event.source !== "sphynx" && !isViewer) {
+        return false;
+      }
     }
     if (
       filter !== "all" &&

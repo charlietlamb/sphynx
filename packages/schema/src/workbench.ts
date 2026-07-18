@@ -48,6 +48,7 @@ export type WorkbenchEvent = typeof WorkbenchEventSchema.Type;
 
 export const WorkbenchFeedSchema = Schema.Struct({
   events: Schema.Array(WorkbenchEventSchema),
+  viewer: Schema.NullOr(Schema.String),
 });
 
 export type WorkbenchFeed = typeof WorkbenchFeedSchema.Type;

@@ -108,6 +108,7 @@ export function DashboardView() {
           open={workbench.open}
           owner={flow.owner}
           repo={flow.repo}
+          viewer={workbench.viewer}
         />
       ) : null}
     </>

@@ -36,6 +36,7 @@ interface WorkbenchSheetProps {
   open: boolean;
   owner: string;
   repo: string;
+  viewer: string | null;
 }
 
 export function WorkbenchSheet({
@@ -47,6 +48,7 @@ export function WorkbenchSheet({
   open,
   owner,
   repo,
+  viewer,
 }: WorkbenchSheetProps) {
   const [filter, setFilter] = useState<WorkbenchFilter>("all");
   const [search, setSearch] = useState("");
@@ -73,7 +75,7 @@ export function WorkbenchSheet({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
-  const filtered = filterWorkbenchEvents(events, filter, search);
+  const filtered = filterWorkbenchEvents(events, filter, search, viewer);
 
   let body: React.ReactNode;
   if (isPending) {
