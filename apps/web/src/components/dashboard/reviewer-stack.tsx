@@ -32,8 +32,11 @@ export function ReviewerStack({
 }: {
   reviewers: readonly ReviewerVerdict[];
 }) {
-  const shown = reviewers.slice(0, MAX_SHOWN);
-  const hidden = reviewers.slice(MAX_SHOWN);
+  const shown =
+    reviewers.length > MAX_SHOWN
+      ? reviewers.slice(0, MAX_SHOWN - 1)
+      : reviewers;
+  const hidden = reviewers.slice(shown.length);
   return (
     <span className="flex items-center">
       {shown.map((reviewer) => (
