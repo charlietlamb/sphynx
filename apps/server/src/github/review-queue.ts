@@ -166,14 +166,26 @@ export function failingChecks(contexts: readonly RawContext[]): string[] {
   return names;
 }
 
+const IMG_TAG = /<img[^>]*\balt="([^"]*)"[^>]*>/g;
+const HTML_TAG = /<[^>]+>/g;
+
+function stripHtml(line: string) {
+  return line
+    .replace(IMG_TAG, "$1 ")
+    .replace(HTML_TAG, "")
+    .replace(/\s{2,}/g, " ");
+}
+
 export function previewBody(body: string): string {
   const line =
     body
       .split("\n")
-      .map((candidate) => candidate.replace(/[*_#>`~]/g, "").trim())
-      .find(
-        (candidate) => candidate.length > 0 && !candidate.startsWith("<!--")
-      ) ?? "";
+      .map((candidate) =>
+        stripHtml(candidate.replace(/<!--[\s\S]*?-->/g, ""))
+          .replace(/[*_#>`~]/g, "")
+          .trim()
+      )
+      .find((candidate) => candidate.length > 0) ?? "";
   return line.length > MAX_PREVIEW_BODY
     ? `${line.slice(0, MAX_PREVIEW_BODY - 1)}…`
     : line;

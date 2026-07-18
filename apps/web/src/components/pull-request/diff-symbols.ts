@@ -31,13 +31,17 @@ export const DIFF_UNSAFE_CSS = `
   height: 1px;
   background: transparent;
 }
+:host([data-active]) [data-diffs-header]::after {
+  height: 2px;
+  background: var(--primary);
+}
 @container scroll-state(stuck: top) {
   [data-diffs-header]::after {
     background: var(--border);
   }
   :host([data-active]) [data-diffs-header]::after {
     height: 2px;
-    background: var(--ring);
+    background: var(--primary);
   }
 }
 [data-diffs-header]::before {

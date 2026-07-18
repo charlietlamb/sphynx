@@ -48,6 +48,14 @@ describe("previewBody", () => {
     ).toBe("Restart indicator cleared");
   });
 
+  test("strips html tags but keeps image alt text", () => {
+    expect(
+      previewBody(
+        '<a href=""><img alt="P1" src="https://x/badges/p1.svg" align="top"></a> Missing cleanup on expiry'
+      )
+    ).toBe("P1 Missing cleanup on expiry");
+  });
+
   test("truncates long bodies", () => {
     const body = "a".repeat(400);
     const preview = previewBody(body);
