@@ -21,32 +21,47 @@ function ciLabel(pull: QueuePull) {
   return parts.length > 0 ? parts.join(" · ") : plural(0, "check");
 }
 
-function allocateDots(counts: QueuePull["ciCounts"]) {
+interface CiDot {
+  className: string;
+  key: string;
+}
+
+function bucketDots(name: string, className: string, count: number): CiDot[] {
+  return Array.from({ length: count }, (_, position) => ({
+    className,
+    key: `${name}-${position}`,
+  }));
+}
+
+function allocateDots(counts: QueuePull["ciCounts"]): CiDot[] {
   const buckets = [
-    { className: "bg-deletion", count: counts.failed },
-    { className: "animate-pulse bg-amber-500", count: counts.pending },
-    { className: "bg-addition", count: counts.passed },
+    { name: "failed", className: "bg-deletion", count: counts.failed },
+    {
+      name: "pending",
+      className: "animate-pulse bg-amber-500",
+      count: counts.pending,
+    },
+    { name: "passed", className: "bg-addition", count: counts.passed },
   ].filter((bucket) => bucket.count > 0);
   const total = buckets.reduce((sum, bucket) => sum + bucket.count, 0);
   if (total <= MAX_DOTS) {
     return buckets.flatMap((bucket) =>
-      Array.from({ length: bucket.count }, () => bucket.className)
+      bucketDots(bucket.name, bucket.className, bucket.count)
     );
   }
-  const dots: string[] = [];
-  let remaining = MAX_DOTS - buckets.length;
-  for (const bucket of buckets) {
-    const extra = Math.round(((bucket.count - 1) / total) * remaining);
-    dots.push(
-      ...Array.from(
-        { length: 1 + Math.min(extra, remaining) },
-        () => bucket.className
-      )
+  const spare = MAX_DOTS - buckets.length;
+  let used = 0;
+  const dots = buckets.flatMap((bucket) => {
+    const extra = Math.min(
+      Math.round(((bucket.count - 1) / total) * spare),
+      spare - used
     );
-    remaining -= Math.min(extra, remaining);
-  }
-  while (dots.length < MAX_DOTS && dots.length > 0) {
-    dots.push(dots.at(-1) ?? "");
+    used += extra;
+    return bucketDots(bucket.name, bucket.className, 1 + extra);
+  });
+  const last = dots.at(-1);
+  while (last && dots.length < MAX_DOTS) {
+    dots.push({ ...last, key: `${last.key}-fill-${dots.length}` });
   }
   return dots.slice(0, MAX_DOTS);
 }
@@ -59,13 +74,10 @@ export function CiBar({ pull }: { pull: QueuePull }) {
   const dots = allocateDots(pull.ciCounts);
   return (
     <SignalTip className="flex items-center gap-[3px]" label={ciLabel(pull)}>
-      {dots.map((className, index) => (
+      {dots.map((dot) => (
         <span
-          className={cn("size-[4px] rounded-full", className)}
-          key={`${className}-${
-            // biome-ignore lint/suspicious/noArrayIndexKey: dots are positional
-            index
-          }`}
+          className={cn("size-[4px] rounded-full", dot.className)}
+          key={dot.key}
         />
       ))}
     </SignalTip>
