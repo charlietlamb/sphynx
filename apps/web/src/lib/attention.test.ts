@@ -46,6 +46,7 @@ function pull(overrides: Partial<QueuePull>): QueuePull {
     changesRequested: 0,
     unresolvedThreads: 0,
     ciFailures: [],
+    ciCounts: { failed: 0, passed: 0, pending: 0 },
     threadPreviews: [],
     decision: "needs-eyes",
     blocker: null,

@@ -127,6 +127,47 @@ type RawThread = typeof RawThreadSchema.Type;
 
 const FAILED_CONCLUSIONS = new Set(["FAILURE", "TIMED_OUT", "STARTUP_FAILURE"]);
 const FAILED_STATUS_STATES = new Set(["FAILURE", "ERROR"]);
+const PASSED_CONCLUSIONS = new Set(["SUCCESS", "NEUTRAL", "SKIPPED"]);
+const PENDING_STATUS_STATES = new Set(["PENDING", "EXPECTED"]);
+
+type CiBucket = "failed" | "passed" | "pending" | null;
+
+function checkRunBucket(conclusion: string | null): CiBucket {
+  if (conclusion === null) {
+    return "pending";
+  }
+  if (FAILED_CONCLUSIONS.has(conclusion)) {
+    return "failed";
+  }
+  return PASSED_CONCLUSIONS.has(conclusion) ? "passed" : null;
+}
+
+function statusBucket(state: string | null): CiBucket {
+  if (state === null) {
+    return null;
+  }
+  if (FAILED_STATUS_STATES.has(state)) {
+    return "failed";
+  }
+  if (state === "SUCCESS") {
+    return "passed";
+  }
+  return PENDING_STATUS_STATES.has(state) ? "pending" : null;
+}
+
+function ciCounts(contexts: readonly RawContext[]): QueuePull["ciCounts"] {
+  const counts = { failed: 0, passed: 0, pending: 0 };
+  for (const context of contexts) {
+    const bucket =
+      context.__typename === "CheckRun"
+        ? checkRunBucket(context.conclusion)
+        : statusBucket(context.state);
+    if (bucket) {
+      counts[bucket] += 1;
+    }
+  }
+  return counts;
+}
 const MAX_CI_FAILURES = 6;
 const MAX_THREAD_PREVIEWS = 50;
 const MAX_PREVIEW_BODY = 400;
@@ -358,6 +399,7 @@ export function toQueuePull(
     changesRequested: signals.changesRequested,
     unresolvedThreads,
     ciFailures: failingChecks(pull.statusCheckRollup?.contexts.nodes ?? []),
+    ciCounts: ciCounts(pull.statusCheckRollup?.contexts.nodes ?? []),
     threadPreviews: threadPreviews(pull.reviewThreads.nodes),
     decision: decide(signals),
     blocker: blockerFor(signals),

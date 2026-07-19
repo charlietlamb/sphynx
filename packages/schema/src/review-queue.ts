@@ -84,6 +84,11 @@ export const QueuePullSchema = Schema.Struct({
   changesRequested: Schema.Number,
   unresolvedThreads: Schema.Number,
   ciFailures: Schema.Array(FailingCheckSchema),
+  ciCounts: Schema.Struct({
+    failed: Schema.Number,
+    passed: Schema.Number,
+    pending: Schema.Number,
+  }),
   threadPreviews: Schema.Array(ThreadPreviewSchema),
   decision: DecisionSchema,
   blocker: Schema.NullOr(Schema.String),
