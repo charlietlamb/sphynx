@@ -1,9 +1,6 @@
 import type { QueuePull } from "@sphynx/schema/review-queue";
-import { cn } from "@sphynx/ui/lib/utils";
 import { SignalTip } from "@/components/dashboard/signal-tip";
 import { plural } from "@/lib/claims";
-
-const MAX_DOTS = 5;
 
 function ciLabel(pull: QueuePull) {
   const { failed, passed, pending } = pull.ciCounts;
@@ -21,49 +18,34 @@ function ciLabel(pull: QueuePull) {
   return parts.length > 0 ? parts.join(" · ") : plural(0, "check");
 }
 
-interface CiDot {
-  className: string;
-  key: string;
-}
+const CHIP_CLASS =
+  "flex size-[16px] items-center justify-center rounded-[5px] font-medium text-[9px] ring-1 tabular-nums";
 
-function bucketDots(name: string, className: string, count: number): CiDot[] {
-  return Array.from({ length: count }, (_, position) => ({
-    className,
-    key: `${name}-${position}`,
-  }));
-}
-
-function allocateDots(counts: QueuePull["ciCounts"]): CiDot[] {
-  const buckets = [
-    { name: "failed", className: "bg-deletion", count: counts.failed },
-    {
-      name: "pending",
-      className: "animate-pulse bg-amber-500",
-      count: counts.pending,
-    },
-    { name: "passed", className: "bg-addition", count: counts.passed },
-  ].filter((bucket) => bucket.count > 0);
-  const total = buckets.reduce((sum, bucket) => sum + bucket.count, 0);
-  if (total <= MAX_DOTS) {
-    return buckets.flatMap((bucket) =>
-      bucketDots(bucket.name, bucket.className, bucket.count)
+function CiChip({ pull }: { pull: QueuePull }) {
+  const { failed, pending } = pull.ciCounts;
+  if (failed > 0) {
+    return (
+      <span
+        className={`${CHIP_CLASS} bg-deletion/10 text-deletion ring-deletion/30`}
+      >
+        {failed}
+      </span>
     );
   }
-  const spare = MAX_DOTS - buckets.length;
-  let used = 0;
-  const dots = buckets.flatMap((bucket) => {
-    const extra = Math.min(
-      Math.round(((bucket.count - 1) / total) * spare),
-      spare - used
+  if (pending > 0) {
+    return (
+      <span className={`${CHIP_CLASS} bg-amber-500/10 ring-amber-500/30`}>
+        <span className="size-1.5 animate-pulse rounded-full bg-amber-500" />
+      </span>
     );
-    used += extra;
-    return bucketDots(bucket.name, bucket.className, 1 + extra);
-  });
-  const last = dots.at(-1);
-  while (last && dots.length < MAX_DOTS) {
-    dots.push({ ...last, key: `${last.key}-fill-${dots.length}` });
   }
-  return dots.slice(0, MAX_DOTS);
+  return (
+    <span
+      className={`${CHIP_CLASS} bg-addition/10 text-addition ring-addition/25`}
+    >
+      ✓
+    </span>
+  );
 }
 
 export function CiBar({ pull }: { pull: QueuePull }) {
@@ -71,15 +53,9 @@ export function CiBar({ pull }: { pull: QueuePull }) {
   if (failed + passed + pending === 0) {
     return null;
   }
-  const dots = allocateDots(pull.ciCounts);
   return (
-    <SignalTip className="flex items-center gap-[3px]" label={ciLabel(pull)}>
-      {dots.map((dot) => (
-        <span
-          className={cn("size-[4px] rounded-full", dot.className)}
-          key={dot.key}
-        />
-      ))}
+    <SignalTip className="inline-flex" label={ciLabel(pull)}>
+      <CiChip pull={pull} />
     </SignalTip>
   );
 }
