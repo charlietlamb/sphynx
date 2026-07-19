@@ -8,6 +8,7 @@ import {
 } from "@sphynx/ui/components/ui/avatar";
 import { cn } from "@sphynx/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { CopyForAgent } from "@/components/dashboard/copy-for-agent";
 import {
   orderedThreadPreviews,
@@ -37,15 +38,16 @@ function ThreadPreviewRow({
 }) {
   const resolve = useResolveThread(pull);
   const login = preview.author ? stripBotSuffix(preview.author.login) : null;
+  const [expanded, setExpanded] = useState(false);
   const { severity, text } = splitSeverity(preview.body);
   return (
     <div className="group relative -mx-2 flex flex-col gap-1 rounded-md px-2 py-1.5 transition-colors hover:bg-alpha-2">
-      <Link
-        aria-label="Open the thread in the review workspace"
+      <button
+        aria-expanded={expanded}
+        aria-label="Expand the thread"
         className="absolute inset-0 rounded-md"
-        params={{ owner: pull.owner, repo: pull.repo, number: pull.number }}
-        search={preview.path ? { file: preview.path } : undefined}
-        to="/$owner/$repo/pull/$number"
+        onClick={() => setExpanded(!expanded)}
+        type="button"
       />
       <div className="flex h-5 items-center gap-1.5">
         <Avatar className="size-3.5 shrink-0 rounded-full">
@@ -87,7 +89,12 @@ function ThreadPreviewRow({
           ) : null}
         </span>
       </div>
-      <p className="line-clamp-2 text-pretty text-[12px] text-muted-foreground leading-snug">
+      <p
+        className={cn(
+          "text-pretty text-[12px] text-muted-foreground leading-snug",
+          !expanded && "line-clamp-2"
+        )}
+      >
         {severity ? (
           <span
             className={cn(
@@ -100,6 +107,27 @@ function ThreadPreviewRow({
         ) : null}
         {text}
       </p>
+      {expanded ? (
+        <div className="relative z-10 flex min-w-0 items-center gap-3 pt-0.5">
+          <Link
+            className="shrink-0 text-[11px] text-primary underline-offset-2 hover:underline"
+            params={{
+              owner: pull.owner,
+              repo: pull.repo,
+              number: pull.number,
+            }}
+            search={preview.path ? { file: preview.path } : undefined}
+            to="/$owner/$repo/pull/$number"
+          >
+            open in review
+          </Link>
+          {preview.path ? (
+            <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground/50">
+              {preview.path}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
