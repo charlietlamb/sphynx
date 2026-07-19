@@ -21,6 +21,12 @@ export function CiSlot({ pull }: { pull: QueuePull }) {
         <span className="inline-flex size-1.5 animate-pulse rounded-full bg-amber-500" />
       </SignalTip>
     );
+  } else if (pull.ci === "success") {
+    signal = (
+      <SignalTip label="Checks green">
+        <span className="font-medium text-[11px] text-addition">✓</span>
+      </SignalTip>
+    );
   }
   return (
     <span className="flex w-4 shrink-0 items-center justify-center">
