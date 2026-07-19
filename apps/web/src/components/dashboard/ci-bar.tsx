@@ -18,34 +18,22 @@ function ciLabel(pull: QueuePull) {
   return parts.length > 0 ? parts.join(" · ") : plural(0, "check");
 }
 
-const CHIP_CLASS =
-  "flex size-[16px] items-center justify-center rounded-[5px] font-medium text-[9px] ring-1 tabular-nums";
-
 function CiChip({ pull }: { pull: QueuePull }) {
   const { failed, pending } = pull.ciCounts;
   if (failed > 0) {
     return (
-      <span
-        className={`${CHIP_CLASS} bg-deletion/10 text-deletion ring-deletion/30`}
-      >
+      <span className="flex items-baseline gap-[3px] font-medium text-[11px] text-deletion tabular-nums">
+        <span className="text-[10px]">✕</span>
         {failed}
       </span>
     );
   }
   if (pending > 0) {
     return (
-      <span className={`${CHIP_CLASS} bg-amber-500/10 ring-amber-500/30`}>
-        <span className="size-1.5 animate-pulse rounded-full bg-amber-500" />
-      </span>
+      <span className="size-1.5 animate-pulse rounded-full bg-amber-500" />
     );
   }
-  return (
-    <span
-      className={`${CHIP_CLASS} bg-addition/10 text-addition ring-addition/25`}
-    >
-      ✓
-    </span>
-  );
+  return <span className="font-medium text-[11px] text-addition/60">✓</span>;
 }
 
 export function CiBar({ pull }: { pull: QueuePull }) {
