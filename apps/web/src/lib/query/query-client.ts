@@ -7,11 +7,11 @@ const queryClientOptions = {
       gcTime: 5 * 60_000,
       retry: 1,
       /**
-       * Refetch when the user comes back to the tab, bounded by `staleTime` so
-       * a quick alt-tab costs nothing. Without this, returning to a dashboard
-       * left open shows whatever was true when it was last focused.
+       * Off by default so returning to a tab doesn't refire every query on the
+       * page. The dashboard opts in per-query, where the freshness probe makes
+       * the refetch cheap.
        */
-      refetchOnWindowFocus: true,
+      refetchOnWindowFocus: false,
     },
   },
 };

@@ -143,17 +143,17 @@ const makePipelineCache = Effect.gen(function* () {
       yield* Ref.update(credentials, (live) =>
         new Map(live).set(credential.id, credential)
       );
-      /**
-       * The caller has seen a fingerprint the cached build predates, so serving
-       * it would knowingly return stale data. Drop the entry and rebuild inline.
-       */
-      if (since !== undefined) {
-        const built = yield* Ref.get(builtVersions);
-        if (built.get(token) !== since) {
-          yield* cache.invalidate(token);
-        }
-      }
       const wasCached = yield* cache.contains(token);
+      /**
+       * The caller has seen a fingerprint this build predates. Refresh in the
+       * background and still serve the current value — rebuilding inline would
+       * block the response on a full pipeline build, which costs several GitHub
+       * round trips per repo.
+       */
+      const behind =
+        since !== undefined &&
+        wasCached &&
+        (yield* Ref.get(builtVersions)).get(token) !== since;
       const value = yield* cache
         .get(token)
         .pipe(
@@ -163,7 +163,7 @@ const makePipelineCache = Effect.gen(function* () {
         );
       const now = yield* Clock.currentTimeMillis;
       if (wasCached) {
-        const shouldRefresh = yield* markStale(token, now);
+        const shouldRefresh = behind || (yield* markStale(token, now));
         if (shouldRefresh) {
           yield* refreshInBackground(token);
         }

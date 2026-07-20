@@ -33,6 +33,11 @@ export function usePipelineFreshness(
     enabled,
     retry: false,
     staleTime: POLL_MS,
+    /**
+     * The probe is a single cheap request, so re-checking on focus is worth it
+     * — it is what surfaces changes made while the tab was in the background.
+     */
+    refetchOnWindowFocus: true,
   });
 
   useVisiblePoll({

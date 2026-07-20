@@ -30,6 +30,7 @@ import { PullRequestsApiLive } from "./routes/pulls";
 import { ReviewQueueApiLive } from "./routes/review-queue";
 import { PullRequestViewsApiLive } from "./routes/views";
 import { WorkbenchApiLive } from "./routes/workbench";
+import { TracingLive } from "./tracing";
 
 const REQUEST_IDLE_TIMEOUT_SECONDS = 60;
 
@@ -131,7 +132,8 @@ const ApiLive = Layer.mergeAll(
       AuthLiveLayer,
       GitHubAuthLiveLayer
     )
-  )
+  ),
+  Layer.provide(TracingLive)
 );
 
 export const main = Effect.scoped(

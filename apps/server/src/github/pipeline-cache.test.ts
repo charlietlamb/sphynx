@@ -79,8 +79,8 @@ describe("PipelineCache", () => {
     expect(calls).toBe(1);
   });
 
-  test("rebuilds when the reported version is ahead of the cached build", async () => {
-    const calls = await Effect.runPromise(
+  test("serves immediately and refreshes in the background when behind", async () => {
+    const result = await Effect.runPromise(
       Effect.scoped(
         Effect.gen(function* () {
           const counter = yield* Ref.make(0);
@@ -91,12 +91,21 @@ describe("PipelineCache", () => {
           );
           const cache = yield* Effect.provide(PipelineCache, layer);
           yield* cache.get(credential("t"));
+          const duringCall = yield* Ref.get(counter);
           yield* cache.get(credential("t"), "useautumn/autumn:3");
-          return yield* Ref.get(counter);
+          /**
+           * The second read must not have blocked on a rebuild: the build count
+           * is unchanged at the moment it returns. The refresh is forked, so it
+           * lands afterwards.
+           */
+          const afterCall = yield* Ref.get(counter);
+          yield* Effect.yieldNow();
+          return { duringCall, afterCall };
         })
       )
     );
-    expect(calls).toBe(2);
+    expect(result.duringCall).toBe(1);
+    expect(result.afterCall).toBe(1);
   });
 
   test("does not rebuild on every request while rate limited", async () => {
