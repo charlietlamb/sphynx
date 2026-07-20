@@ -1,38 +1,31 @@
 import { describe, expect, test } from "bun:test";
-import { GitHubRateLimited } from "@sphynx/schema/pull-requests";
-import { Effect, Layer, Ref } from "effect";
+import { Effect, Layer, Ref, TestClock, TestContext } from "effect";
 import type { GitHubCredential } from "./credential";
 import { GitHubPipeline } from "./pipeline";
 import { PipelineCache, PipelineCacheLive } from "./pipeline-cache";
 
-function stubPipeline(
-  calls: Ref.Ref<number>,
-  fail: boolean,
-  repos: unknown[] = []
-) {
-  return Layer.succeed(GitHubPipeline, {
-    build: () =>
-      Ref.update(calls, (n) => n + 1).pipe(
-        Effect.zipRight(
-          fail
-            ? Effect.fail(
-                new GitHubRateLimited({
-                  message: "API rate limit exceeded.",
-                  retryAfterSeconds: null,
-                  resetAt: null,
-                })
-              )
-            : Effect.succeed(repos)
-        )
-      ),
-  } as unknown as typeof GitHubPipeline.Service);
+interface Counters {
+  readonly builds: Ref.Ref<number>;
+  readonly checks: Ref.Ref<number>;
 }
 
-const repoFlow = (owner: string, repo: string, openPulls: number) => ({
-  owner,
-  repo,
-  openPulls: Array.from({ length: openPulls }, () => ({})),
-});
+/**
+ * `changedSince` reports whether anything moved; `build` is the expensive
+ * per-repo fan-out that should only run when it did.
+ */
+function stubPipeline(counters: Counters, options: { changed: boolean }) {
+  return Layer.succeed(GitHubPipeline, {
+    changedSince: (_token: string, etag: string | null) =>
+      Ref.updateAndGet(counters.checks, (n) => n + 1).pipe(
+        Effect.map((attempt) =>
+          options.changed || etag === null
+            ? { _tag: "Modified" as const, etag: `etag-${attempt}` }
+            : { _tag: "NotModified" as const }
+        )
+      ),
+    build: () => Ref.update(counters.builds, (n) => n + 1).pipe(Effect.as([])),
+  } as unknown as typeof GitHubPipeline.Service);
+}
 
 const credential = (id: string): GitHubCredential => ({
   kind: "installation",
@@ -40,90 +33,110 @@ const credential = (id: string): GitHubCredential => ({
   token: Effect.succeed("token"),
 });
 
+/**
+ * The layer wraps the program rather than being resolved inside a scope.
+ * `Layer.scoped` ties background revalidation fibers to the layer's scope, so a
+ * scope that closes early cancels them before they can run.
+ */
+const run = <E>(
+  options: { changed: boolean },
+  program: Effect.Effect<void, E, PipelineCache>
+) =>
+  Effect.gen(function* () {
+    const counters: Counters = {
+      builds: yield* Ref.make(0),
+      checks: yield* Ref.make(0),
+    };
+    yield* program.pipe(
+      Effect.orDie,
+      Effect.provide(
+        PipelineCacheLive.pipe(Layer.provide(stubPipeline(counters, options)))
+      )
+    );
+    return {
+      builds: yield* Ref.get(counters.builds),
+      checks: yield* Ref.get(counters.checks),
+    };
+  }).pipe(Effect.provide(TestContext.TestContext), Effect.runPromise);
+
 describe("PipelineCache", () => {
   test("builds once and serves the cached value", async () => {
-    const calls = await Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          const counter = yield* Ref.make(0);
-          const layer = PipelineCacheLive.pipe(
-            Layer.provide(stubPipeline(counter, false))
-          );
-          const cache = yield* Effect.provide(PipelineCache, layer);
-          yield* cache.get(credential("t"));
-          yield* cache.get(credential("t"));
-          return yield* Ref.get(counter);
-        })
-      )
+    const { builds } = await run(
+      { changed: false },
+      Effect.gen(function* () {
+        const cache = yield* PipelineCache;
+        yield* cache.get(credential("t"));
+        yield* cache.get(credential("t"));
+      })
     );
-    expect(calls).toBe(1);
+    expect(builds).toBe(1);
   });
 
-  test("serves the cached build when the reported version matches", async () => {
-    const calls = await Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          const counter = yield* Ref.make(0);
-          const layer = PipelineCacheLive.pipe(
-            Layer.provide(
-              stubPipeline(counter, false, [repoFlow("useautumn", "autumn", 2)])
-            )
-          );
-          const cache = yield* Effect.provide(PipelineCache, layer);
-          yield* cache.get(credential("t"));
-          yield* cache.get(credential("t"), "useautumn/autumn:2");
-          return yield* Ref.get(counter);
-        })
-      )
+  test("an unchanged installation revalidates without rebuilding", async () => {
+    const { builds, checks } = await run(
+      { changed: false },
+      Effect.gen(function* () {
+        const cache = yield* PipelineCache;
+        yield* cache.get(credential("t"));
+        yield* TestClock.adjust(60_000);
+        yield* cache.get(credential("t"));
+        yield* TestClock.adjust(1);
+      })
     );
-    expect(calls).toBe(1);
+    expect(checks).toBe(2);
+    expect(builds).toBe(1);
   });
 
-  test("serves immediately and refreshes in the background when behind", async () => {
-    const result = await Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          const counter = yield* Ref.make(0);
-          const layer = PipelineCacheLive.pipe(
-            Layer.provide(
-              stubPipeline(counter, false, [repoFlow("useautumn", "autumn", 2)])
-            )
-          );
-          const cache = yield* Effect.provide(PipelineCache, layer);
-          yield* cache.get(credential("t"));
-          const duringCall = yield* Ref.get(counter);
-          yield* cache.get(credential("t"), "useautumn/autumn:3");
-          /**
-           * The second read must not have blocked on a rebuild: the build count
-           * is unchanged at the moment it returns. The refresh is forked, so it
-           * lands afterwards.
-           */
-          const afterCall = yield* Ref.get(counter);
-          yield* Effect.yieldNow();
-          return { duringCall, afterCall };
-        })
-      )
+  test("rebuilds once the installation actually changes", async () => {
+    const { builds } = await run(
+      { changed: true },
+      Effect.gen(function* () {
+        const cache = yield* PipelineCache;
+        yield* cache.get(credential("t"));
+        yield* TestClock.adjust(60_000);
+        yield* cache.get(credential("t"));
+        yield* TestClock.adjust(1);
+      })
     );
-    expect(result.duringCall).toBe(1);
-    expect(result.afterCall).toBe(1);
+    expect(builds).toBe(2);
   });
 
-  test("does not rebuild on every request while rate limited", async () => {
-    const calls = await Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          const counter = yield* Ref.make(0);
-          const layer = PipelineCacheLive.pipe(
-            Layer.provide(stubPipeline(counter, true))
-          );
-          const cache = yield* Effect.provide(PipelineCache, layer);
-          yield* Effect.ignore(cache.get(credential("t")));
-          yield* Effect.ignore(cache.get(credential("t")));
-          yield* Effect.ignore(cache.get(credential("t")));
-          return yield* Ref.get(counter);
-        })
-      )
+  test("a stale read is served before the rebuild finishes", async () => {
+    const { builds } = await run(
+      { changed: true },
+      Effect.gen(function* () {
+        const cache = yield* PipelineCache;
+        yield* cache.get(credential("t"));
+        yield* TestClock.adjust(60_000);
+        yield* cache.get(credential("t"));
+      })
     );
-    expect(calls).toBe(1);
+    expect(builds).toBe(1);
+  });
+
+  test("drop forces the next read to rebuild", async () => {
+    const { builds } = await run(
+      { changed: false },
+      Effect.gen(function* () {
+        const cache = yield* PipelineCache;
+        yield* cache.get(credential("t"));
+        yield* cache.drop(credential("t"));
+        yield* cache.get(credential("t"));
+      })
+    );
+    expect(builds).toBe(2);
+  });
+
+  test("separate installations do not share a cache entry", async () => {
+    const { builds } = await run(
+      { changed: false },
+      Effect.gen(function* () {
+        const cache = yield* PipelineCache;
+        yield* cache.get(credential("one"));
+        yield* cache.get(credential("two"));
+        yield* cache.get(credential("one"));
+      })
+    );
+    expect(builds).toBe(2);
   });
 });

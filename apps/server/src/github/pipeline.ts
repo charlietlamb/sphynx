@@ -11,6 +11,7 @@ import {
   type StageGap,
 } from "@sphynx/schema/review-queue";
 import { Context, Effect, Layer, Schema } from "effect";
+import { composeEtag, etagFor } from "./composite-etag";
 import { GitHubConfig } from "./config";
 import type { GitHubAuthedError } from "./errors";
 import { makeGraphql } from "./graphql";
@@ -53,6 +54,11 @@ const CompareSchema = Schema.Struct({
     })
   ),
 });
+
+/** Whether an installation's pulls moved since a known composite ETag. */
+type PipelineCheck =
+  | { readonly _tag: "Modified"; readonly etag: string }
+  | { readonly _tag: "NotModified" };
 
 const PR_NUMBER_PATTERN = /#(\d+)\b/;
 const MAX_GAP_PULLS = 20;
@@ -356,6 +362,43 @@ query($owner: String!, $name: String!) {
       Effect.annotateLogs({ repoCount: entries.length })
     );
 
+  /**
+   * Cheap "did anything move?" check for a whole installation.
+   *
+   * Each repo's open-pull list is revalidated conditionally. Authorized 304s
+   * cost no rate limit, so an idle installation is confirmed unchanged for
+   * free — and the expensive per-repo compare fan-out in `build` is skipped.
+   *
+   * The composite ETag is the per-repo tags joined; any repo moving changes it.
+   */
+  const changedSince = (
+    token: string,
+    etag: string | null
+  ): Effect.Effect<PipelineCheck, GitHubAuthedError> =>
+    Effect.gen(function* () {
+      const discovered = yield* queue.discoverRepos(token);
+      const checks = yield* Effect.forEach(
+        discovered,
+        (entry) =>
+          queue
+            .openPullsEtag(entry, token, etagFor(etag, repoKey(entry)))
+            .pipe(Effect.map((check) => ({ entry, check }))),
+        { concurrency: 6 }
+      );
+      const next = composeEtag(
+        checks.map(({ entry, check }) => ({
+          key: repoKey(entry),
+          etag:
+            check._tag === "NotModified"
+              ? (etagFor(etag, repoKey(entry)) ?? "")
+              : (check.etag ?? ""),
+        }))
+      );
+      return next === etag
+        ? ({ _tag: "NotModified" } as const)
+        : ({ _tag: "Modified", etag: next } as const);
+    }).pipe(Effect.withSpan("GitHubPipeline.changedSince"));
+
   const build = (token: string): Effect.Effect<RepoFlow[], GitHubAuthedError> =>
     Effect.gen(function* () {
       const discovered = yield* queue.discoverRepos(token);
@@ -368,7 +411,7 @@ query($owner: String!, $name: String!) {
       return yield* flowsFor(entries, token);
     }).pipe(Effect.withSpan("GitHubPipeline.build"));
 
-  return { build };
+  return { build, changedSince };
 });
 
 export class GitHubPipeline extends Context.Tag(

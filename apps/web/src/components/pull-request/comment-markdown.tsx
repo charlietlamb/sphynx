@@ -52,7 +52,7 @@ interface CommentMarkdownProps {
 
 export function CommentMarkdown({ text }: CommentMarkdownProps) {
   return (
-    <div className="flex flex-col gap-1.5 break-words text-foreground/90 text-xs leading-relaxed">
+    <div className="flex min-w-0 flex-col gap-1.5 text-foreground/90 text-xs leading-relaxed [&_*]:[overflow-wrap:anywhere] [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto">
       <Markdown components={components} remarkPlugins={[remarkGfm]}>
         {text}
       </Markdown>

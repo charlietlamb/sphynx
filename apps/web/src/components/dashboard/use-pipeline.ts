@@ -1,21 +1,12 @@
 import { PipelineSchema, type RepoFlow } from "@sphynx/schema/review-queue";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Schema } from "effect";
 import type { RepoOption } from "@/components/dashboard/repo-switcher";
 import { isContested, isMergeable, repoKeyOf } from "@/lib/attention";
 import { fetchGithub } from "@/lib/github-api";
 
-async function fetchPipeline(
-  installationId: number | null,
-  since: string | null
-) {
-  const response = await fetchGithub(
-    since === null
-      ? "/pipeline"
-      : `/pipeline?since=${encodeURIComponent(since)}`,
-    "pipeline",
-    installationId
-  );
+async function fetchPipeline(installationId: number | null) {
+  const response = await fetchGithub("/pipeline", "pipeline", installationId);
   return Schema.decodeUnknownPromise(PipelineSchema)(await response.json());
 }
 
@@ -40,20 +31,20 @@ export function toRepoOption(flow: RepoFlow): RepoOption {
   };
 }
 
+const REFRESH_MS = 45_000;
+
 /**
- * `version` keys the query, so a fingerprint change refetches and tells the
- * server which build the client has already seen.
+ * The key carries identity only. Freshness is the server's job: it revalidates
+ * each repo's pulls with a conditional request, which costs no rate limit when
+ * nothing changed, so refetching on an interval is cheap.
  */
-export function usePipeline(
-  installationId: number | null,
-  enabled: boolean,
-  version: string | null = null
-) {
+export function usePipeline(installationId: number | null, enabled: boolean) {
   return useQuery({
-    queryKey: ["pipeline", installationId, version],
-    queryFn: () => fetchPipeline(installationId, version),
+    queryKey: ["pipeline", installationId],
+    queryFn: () => fetchPipeline(installationId),
     enabled,
-    staleTime: 60_000,
-    placeholderData: keepPreviousData,
+    staleTime: REFRESH_MS,
+    refetchInterval: REFRESH_MS,
+    refetchOnWindowFocus: true,
   });
 }

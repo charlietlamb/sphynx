@@ -5,7 +5,6 @@ import { useDialog } from "@/components/dashboard/dashboard-dialogs";
 import { useDashboardKeys } from "@/components/dashboard/use-dashboard-keys";
 import { useInstallations } from "@/components/dashboard/use-installations";
 import { toRepoOption, usePipeline } from "@/components/dashboard/use-pipeline";
-import { usePipelineFreshness } from "@/components/dashboard/use-pipeline-freshness";
 import { usePullSearch } from "@/components/dashboard/use-pull-search";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useWorkbench } from "@/components/workbench/use-workbench";
@@ -42,8 +41,7 @@ export function useDashboardState() {
    */
   const needsReauth = settled && orgs.isError;
 
-  const version = usePipelineFreshness(installationId, ready);
-  const pipeline = usePipeline(installationId, ready, version);
+  const pipeline = usePipeline(installationId, ready);
   const dialogs = useDialog();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [branchFilter, setBranchFilter] = useState<string | null>(null);

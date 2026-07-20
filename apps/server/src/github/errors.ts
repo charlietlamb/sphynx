@@ -19,10 +19,6 @@ export type GitHubAuthedRestError = GitHubAuthedError;
 export const pullRequestNotFound = () =>
   new PullRequestNotFound({ message: "Pull request not found" });
 
-export const isRateLimited = (
-  error: GitHubAuthedError
-): error is GitHubRateLimited => error._tag === "GitHubRateLimited";
-
 export class RetryableGitHubError extends Data.TaggedError(
   "RetryableGitHubError"
 )<{

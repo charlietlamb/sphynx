@@ -83,7 +83,8 @@ export const makeRest =
     token: string,
     method: RestMethod,
     path: string,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
+    ifNoneMatch?: string | null
   ): Effect.Effect<
     HttpClientResponse.HttpClientResponse,
     GitHubAuthedRestError
@@ -95,6 +96,7 @@ export const makeRest =
         HttpClientRequest.setHeaders({
           accept: "application/vnd.github+json",
           "x-github-api-version": config.apiVersion,
+          ...(ifNoneMatch ? { "if-none-match": ifNoneMatch } : {}),
         })
       );
       const base = token

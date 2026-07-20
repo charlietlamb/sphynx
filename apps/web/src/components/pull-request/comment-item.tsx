@@ -29,7 +29,7 @@ export function CommentItem({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 px-3.5 py-3",
+        "flex min-w-0 flex-col gap-2 px-3.5 py-3",
         topBorder && "border-border border-t"
       )}
     >

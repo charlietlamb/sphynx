@@ -256,7 +256,7 @@ export default function DiffWorkspace({
             />
           </aside>
           <div
-            className="grid min-h-0 min-w-0 flex-1 gap-4 px-4 py-3"
+            className="grid min-h-0 min-w-0 flex-1 gap-4 py-3 pl-4"
             style={{
               gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
               gridTemplateRows: "minmax(0, 1fr)",

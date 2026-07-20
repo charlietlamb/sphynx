@@ -47,6 +47,11 @@ const InstallationReposSchema = Schema.Struct({
 });
 
 const MAX_DISCOVERED_REPOS = 12;
+
+/** Whether a conditional read found new data or confirmed the cache. */
+type EtagCheck =
+  | { readonly _tag: "Modified"; readonly etag: string | null }
+  | { readonly _tag: "NotModified" };
 /** Repos probed for open-PR counts before trimming to the discovery cap. */
 const MAX_COUNTED_REPOS = 40;
 const PULLS_CHUNK_SIZE = 3;
@@ -209,6 +214,39 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
       );
   };
 
+  /**
+   * Conditional read of one repo's open pull requests.
+   *
+   * This is the pipeline's change signal. The repository list is not usable for
+   * it: a review, approval or comment pushes no commits, so `pushed_at` and the
+   * list's ETag would not move and the dashboard would miss exactly the events
+   * it exists to surface. A pull's `updated_at` does move, so this list's ETag
+   * tracks review activity.
+   */
+  const openPullsEtag = (
+    entry: { owner: string; repo: string },
+    token: string,
+    etag: string | null
+  ): Effect.Effect<EtagCheck, GitHubAuthedError> =>
+    rest(
+      token,
+      "GET",
+      `/repos/${entry.owner}/${entry.repo}/pulls?state=open&per_page=100&sort=updated&direction=desc`,
+      undefined,
+      etag
+    ).pipe(
+      Effect.map((response) =>
+        response.status === 304
+          ? ({ _tag: "NotModified" } as const)
+          : ({
+              _tag: "Modified",
+              etag: response.headers.etag ?? null,
+            } as const)
+      ),
+      Effect.withSpan("GitHubReviewQueue.openPullsEtag"),
+      Effect.annotateLogs({ "github.repo": repoKey(entry) })
+    );
+
   const discoverRepos = (
     token: string
   ): Effect.Effect<DiscoveredRepo[], GitHubAuthedError> =>
@@ -328,6 +366,7 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
 
   return {
     discoverRepos,
+    openPullsEtag,
     openPullsForRepos,
     mergePull,
     blockPull,

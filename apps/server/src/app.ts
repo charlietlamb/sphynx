@@ -17,8 +17,6 @@ import { GitHubConfigLive } from "./github/config";
 import { GitHubConversationLive } from "./github/conversation";
 import { GitHubPipelineLive } from "./github/pipeline";
 import { PipelineCacheLive } from "./github/pipeline-cache";
-import { GitHubPipelineVersionLive } from "./github/pipeline-version";
-import { PipelineVersionCacheLive } from "./github/pipeline-version-cache";
 import { GitHubRepoEventsLive } from "./github/repo-events";
 import { GitHubReviewQueueLive } from "./github/review-queue";
 import { GitHubReviewsLive } from "./github/reviews";
@@ -78,14 +76,8 @@ const HealthApiLive = HttpApiBuilder.group(SphynxApi, "health", (handlers) =>
   handlers.handle("health", () => Effect.succeed({ ok: true }))
 );
 
-const GitHubLive = Layer.mergeAll(
-  PipelineCacheLive,
-  SearchCacheLive,
-  PipelineVersionCacheLive
-).pipe(
-  Layer.provideMerge(
-    Layer.mergeAll(GitHubPipelineLive, GitHubPipelineVersionLive)
-  ),
+const GitHubLive = Layer.mergeAll(PipelineCacheLive, SearchCacheLive).pipe(
+  Layer.provideMerge(GitHubPipelineLive),
   Layer.provideMerge(
     Layer.mergeAll(
       GitHubClientLive,

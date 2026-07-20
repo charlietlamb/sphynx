@@ -195,17 +195,6 @@ const listInstallations = HttpApiEndpoint.get(
 
 const getPipeline = HttpApiEndpoint.get("getPipeline", "/api/github/pipeline")
   .setHeaders(installationHeaders)
-  .setUrlParams(
-    Schema.Struct({
-      /**
-       * Version fingerprint the client has already seen. When it differs from
-       * the cached build's, the server rebuilds rather than serving a value it
-       * knows is behind — otherwise a client-side invalidation just re-reads
-       * the same stale entry.
-       */
-      since: Schema.optional(Schema.String),
-    })
-  )
   .addSuccess(PipelineSchema);
 
 export const PullBodySchema = Schema.Struct({
@@ -245,19 +234,6 @@ const searchPulls = HttpApiEndpoint.get(
   .setHeaders(installationHeaders)
   .addSuccess(SearchResultsSchema);
 
-export const PipelineVersionSchema = Schema.Struct({
-  version: Schema.String,
-});
-
-export type PipelineVersion = typeof PipelineVersionSchema.Type;
-
-const getPipelineVersion = HttpApiEndpoint.get(
-  "getPipelineVersion",
-  "/api/github/pipeline/version"
-)
-  .setHeaders(installationHeaders)
-  .addSuccess(PipelineVersionSchema);
-
 const mergePull = HttpApiEndpoint.post(
   "mergePull",
   "/api/github/repos/:owner/:repo/pulls/:number/merge"
@@ -278,7 +254,6 @@ const blockPull = HttpApiEndpoint.post(
 export const ReviewQueueApi = HttpApiGroup.make("reviewQueue")
   .add(listInstallations)
   .add(getPipeline)
-  .add(getPipelineVersion)
   .add(getPullBody)
   .add(searchPulls)
   .add(mergePull)

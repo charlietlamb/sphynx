@@ -57,7 +57,7 @@ interface CommentBodyProps {
 
 export function CommentBody({ body, originalLines }: CommentBodyProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       {segmentBody(body).map((segment) => (
         <Fragment key={segment.offset}>
           {segment.text === "" ? null : <CommentMarkdown text={segment.text} />}

@@ -4,7 +4,6 @@ import { INSTALLATION_HEADER } from "@sphynx/schema/review-queue";
 import { Effect } from "effect";
 import { GitHubAuth } from "../auth/github-auth";
 import { PipelineCache } from "../github/pipeline-cache";
-import { PipelineVersionCache } from "../github/pipeline-version-cache";
 import { GitHubReviewQueue } from "../github/review-queue";
 import { SearchCache } from "../github/search-cache";
 
@@ -18,7 +17,6 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
       const queue = yield* GitHubReviewQueue;
       const cache = yield* PipelineCache;
       const search = yield* SearchCache;
-      const version = yield* PipelineVersionCache;
       const { listInstallations, readCredential, readToken, writeToken } =
         yield* GitHubAuth;
 
@@ -58,16 +56,9 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
             }))
           )
         )
-        .handle("getPipeline", ({ headers, urlParams }) =>
+        .handle("getPipeline", ({ headers }) =>
           readCredential(headers.cookie, requested(headers)).pipe(
-            Effect.flatMap((credential) =>
-              cache.get(credential, urlParams.since)
-            )
-          )
-        )
-        .handle("getPipelineVersion", ({ headers }) =>
-          readCredential(headers.cookie, requested(headers)).pipe(
-            Effect.flatMap(version.get)
+            Effect.flatMap(cache.get)
           )
         )
         .handle("getPullBody", ({ path, headers }) =>
