@@ -10,11 +10,17 @@ export const WorkbenchApiLive = HttpApiBuilder.group(
   (handlers) =>
     Effect.gen(function* () {
       const events = yield* GitHubRepoEvents;
-      const { readToken } = yield* GitHubAuth;
+      const { readCredential } = yield* GitHubAuth;
 
       return handlers.handle("getRepoEvents", ({ path, headers }) =>
-        readToken(headers.cookie).pipe(
-          Effect.flatMap((token) => events.get(path.owner, path.repo, token))
+        readCredential(headers.cookie).pipe(
+          Effect.flatMap((credential) =>
+            credential.token.pipe(
+              Effect.flatMap((token) =>
+                events.get(path.owner, path.repo, credential.id, token)
+              )
+            )
+          )
         )
       );
     })
