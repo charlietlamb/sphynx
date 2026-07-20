@@ -20,12 +20,6 @@ const PullNumberSchema = Schema.NumberFromString.pipe(
 
 export const MAX_FILE_PAGES = 30;
 
-const PageSchema = Schema.NumberFromString.pipe(
-  Schema.int(),
-  Schema.greaterThanOrEqualTo(1),
-  Schema.lessThanOrEqualTo(MAX_FILE_PAGES)
-);
-
 export const PullRequestRefSchema = Schema.Struct({
   owner: GitHubOwnerSchema,
   repo: GitHubRepositorySchema,
@@ -137,6 +131,11 @@ export const PullRequestFileContentsSchema = Schema.Struct({
  * Navigation needs all of them synchronously, so this stays one request.
  */
 export const PullRequestPatchesSchema = Schema.Struct({
+  /**
+   * The file list is returned alongside the patches because both come from the
+   * same GitHub pages. Fetching them separately walked those pages twice.
+   */
+  files: Schema.Array(PullRequestFileSchema),
   patches: Schema.Record({ key: Schema.String, value: Schema.String }),
   symbols: SymbolIndexSchema,
 });
@@ -203,19 +202,6 @@ const getPullRequest = HttpApiEndpoint.get(
   .setHeaders(requestHeaders)
   .addSuccess(PullRequestSummarySchema);
 
-const listPullRequestFiles = HttpApiEndpoint.get(
-  "listPullRequestFiles",
-  "/api/github/repos/:owner/:repo/pulls/:number/files"
-)
-  .setPath(PullRequestRefSchema)
-  .setUrlParams(
-    Schema.Struct({
-      page: Schema.optionalWith(PageSchema, { default: () => 1 }),
-    })
-  )
-  .setHeaders(requestHeaders)
-  .addSuccess(PullRequestFilesPageSchema);
-
 const getPullRequestFileContents = HttpApiEndpoint.get(
   "getPullRequestFileContents",
   "/api/github/repos/:owner/:repo/pulls/:number/file-contents"
@@ -235,7 +221,6 @@ const getPullRequestPatches = HttpApiEndpoint.get(
 
 export const PullRequestsApi = HttpApiGroup.make("pullRequests")
   .add(getPullRequest)
-  .add(listPullRequestFiles)
   .add(getPullRequestFileContents)
   .add(getPullRequestPatches)
   .addError(Unauthorized, { status: 401 })

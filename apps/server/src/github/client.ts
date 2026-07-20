@@ -126,6 +126,28 @@ const normalizeStatus = (status: string): PullRequestFile["status"] => {
   return "unknown";
 };
 
+/**
+ * `renderability` is derived from patch presence here, before the patch text
+ * is dropped from the file list. Computing it later would report every file as
+ * unrenderable.
+ */
+const toFile = (
+  ref: PullRequestRef,
+  file: (typeof RawPullRequestFilesSchema.Type)[number]
+): PullRequestFile => ({
+  path: file.filename,
+  previousPath: file.previous_filename ?? null,
+  sha: file.sha,
+  status: normalizeStatus(file.status),
+  additions: file.additions,
+  deletions: file.deletions,
+  changes: file.changes,
+  renderability: file.patch ? "patch" : "binary-or-large",
+  githubUrl:
+    file.blob_url ??
+    `https://github.com/${ref.owner}/${ref.repo}/pull/${ref.number}/files`,
+});
+
 const responseError = (
   response: HttpClientResponse.HttpClientResponse
 ): GitHubError | RetryableGitHubError | null => {
@@ -258,19 +280,9 @@ const makeClient = Effect.gen(function* () {
         if (result._tag === "NotModified") {
           return result;
         }
-        const files: readonly PullRequestFile[] = result.value.map((file) => ({
-          path: file.filename,
-          previousPath: file.previous_filename ?? null,
-          sha: file.sha,
-          status: normalizeStatus(file.status),
-          additions: file.additions,
-          deletions: file.deletions,
-          changes: file.changes,
-          renderability: file.patch ? "patch" : "binary-or-large",
-          githubUrl:
-            file.blob_url ??
-            `https://github.com/${ref.owner}/${ref.repo}/pull/${ref.number}/files`,
-        }));
+        const files: readonly PullRequestFile[] = result.value.map((file) =>
+          toFile(ref, file)
+        );
         return {
           _tag: "Modified",
           etag: result.etag,
@@ -292,6 +304,7 @@ const makeClient = Effect.gen(function* () {
   const collectPatches = (token: string, ref: PullRequestRef) =>
     Effect.gen(function* () {
       const patches = new Map<string, string>();
+      const files: PullRequestFile[] = [];
       let page: number | null = 1;
       while (page !== null && page <= MAX_FILE_PAGES) {
         const result: GitHubResult<typeof RawPullRequestFilesSchema.Type> =
@@ -307,15 +320,17 @@ const makeClient = Effect.gen(function* () {
           if (file.patch) {
             patches.set(file.filename, file.patch);
           }
+          files.push(toFile(ref, file));
         }
         page = nextPageFrom(result.link ?? undefined);
       }
-      return patches;
+      return { files, patches };
     });
 
   const listAllPatches = (token: string, ref: PullRequestRef) =>
     collectPatches(token, ref).pipe(
-      Effect.map((patches) => ({
+      Effect.map(({ files, patches }) => ({
+        files,
         patches: Object.fromEntries(patches),
         symbols: buildSymbolIndex(patches),
       })),

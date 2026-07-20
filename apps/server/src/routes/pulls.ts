@@ -1,9 +1,6 @@
 import { HttpApiBuilder, HttpServerResponse } from "@effect/platform";
 import { SphynxApi } from "@sphynx/schema/api";
-import {
-  PullRequestFilesPageSchema,
-  PullRequestSummarySchema,
-} from "@sphynx/schema/pull-requests";
+import { PullRequestSummarySchema } from "@sphynx/schema/pull-requests";
 import { INSTALLATION_HEADER } from "@sphynx/schema/review-queue";
 import { Effect, type Schema } from "effect";
 import { GitHubAuth } from "../auth/github-auth";
@@ -57,23 +54,6 @@ export const PullRequestsApiLive = HttpApiBuilder.group(
               response(PullRequestSummarySchema, result)
             )
           )
-        )
-        .handleRaw(
-          "listPullRequestFiles",
-          ({ path, urlParams: { page }, headers }) =>
-            tokenFor(headers).pipe(
-              Effect.flatMap((token) =>
-                github.listPullRequestFiles(
-                  token,
-                  path,
-                  page,
-                  headers["if-none-match"]
-                )
-              ),
-              Effect.flatMap((result) =>
-                response(PullRequestFilesPageSchema, result)
-              )
-            )
         )
         .handle("getPullRequestPatches", ({ path, headers }) =>
           tokenFor(headers).pipe(

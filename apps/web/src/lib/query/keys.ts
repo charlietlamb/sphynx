@@ -34,7 +34,6 @@ export const keys = {
     [...keys.repo(ref), "pull", ref.number] as const,
   pullSummary: (ref: PullRequestRef) => [...keys.pull(ref), "summary"] as const,
   pullBody: (ref: PullRequestRef) => [...keys.pull(ref), "body"] as const,
-  pullFiles: (ref: PullRequestRef) => [...keys.pull(ref), "files"] as const,
   pullPatches: (ref: PullRequestRef) => [...keys.pull(ref), "patches"] as const,
   pullConversation: (ref: PullRequestRef) =>
     [...keys.pull(ref), "conversation"] as const,

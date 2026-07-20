@@ -225,6 +225,14 @@ describe("GitHubClient", () => {
       "src/first.ts",
       "src/second.ts",
     ]);
+    expect(result.files.map((file) => file.path).sort()).toEqual([
+      "logo.png",
+      "src/first.ts",
+      "src/second.ts",
+    ]);
+    expect(
+      result.files.find((file) => file.path === "logo.png")?.renderability
+    ).toBe("binary-or-large");
     expect(result.symbols.computeTotal).toMatchObject({
       kind: "top",
       path: "src/first.ts",

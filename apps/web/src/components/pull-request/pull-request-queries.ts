@@ -13,11 +13,8 @@ import {
 } from "@sphynx/schema/pull-request-conversation";
 import { ViewedFilesSchema } from "@sphynx/schema/pull-request-views";
 import {
-  MAX_FILE_PAGES,
   type PullRequestFile,
   PullRequestFileContentsSchema,
-  type PullRequestFilesPage,
-  PullRequestFilesPageSchema,
   PullRequestPatchesSchema,
   type PullRequestRef,
   PullRequestSummarySchema,
@@ -129,29 +126,11 @@ function pullRequestQuery(ref: PullRequestRef) {
   });
 }
 
-function pullRequestFilesQuery(ref: PullRequestRef) {
-  return queryOptions({
-    queryKey: keys.pullFiles(ref),
-    queryFn: async () => {
-      const files: PullRequestFile[] = [];
-      let page: number | null = 1;
-      while (page !== null && page <= MAX_FILE_PAGES) {
-        const result: PullRequestFilesPage = await fetchDecoded(
-          `${pullUrl(ref)}/files?page=${page}`,
-          PullRequestFilesPageSchema
-        );
-        files.push(...result.files);
-        page = result.nextPage;
-      }
-      return files;
-    },
-  });
-}
-
 /**
- * Diff text for the whole pull request. Kept out of the file list so the first
- * paint isn't blocked on it, but fetched as one request because navigation
- * reads patches synchronously and can't await a per-file query.
+ * The file list, its diff text, and the symbol index in one request.
+ *
+ * These all come from the same GitHub pages, so fetching the list separately
+ * walked those pages twice — once on the client and once on the server.
  */
 function pullRequestPatchesQuery(ref: PullRequestRef) {
   return queryOptions({
@@ -164,9 +143,8 @@ function pullRequestPatchesQuery(ref: PullRequestRef) {
 
 export function usePullRequest(ref: PullRequestRef) {
   const pullRequest = useQuery(pullRequestQuery(ref));
-  const files = useQuery(pullRequestFilesQuery(ref));
   const patches = useQuery(pullRequestPatchesQuery(ref));
-  return { pullRequest, files, patches };
+  return { pullRequest, patches };
 }
 
 export function fileContentsQuery(

@@ -12,7 +12,6 @@ describe("query keys", () => {
     for (const key of [
       keys.pullSummary(ref),
       keys.pullBody(ref),
-      keys.pullFiles(ref),
       keys.pullPatches(ref),
       keys.pullConversation(ref),
       keys.pullThreads(ref),
