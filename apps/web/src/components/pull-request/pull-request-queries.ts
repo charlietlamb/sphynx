@@ -20,7 +20,6 @@ import {
   PullRequestSummarySchema,
 } from "@sphynx/schema/pull-requests";
 import {
-  type QueryClient,
   queryOptions,
   useMutation,
   useQuery,
@@ -29,6 +28,7 @@ import {
 import { Schema } from "effect";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { recordAccessBlock } from "@/components/pull-request/access-block-store";
 import { useSession } from "@/lib/auth-client";
 import { keys } from "@/lib/query/keys";
 
@@ -73,12 +73,11 @@ function showMutationError(title: string, error: unknown) {
  */
 const ACCESS_BLOCK = /not accessible by integration|Resource not accessible/i;
 
-function accessBlockKey(ref: PullRequestRef) {
-  return ["pull-request", ref.owner, ref.repo, ref.number, "access-block"];
-}
-
+/**
+ * Surfaces a failed write, and remembers it when GitHub refused because the
+ * app cannot reach the repository, so the page can explain why.
+ */
 function reportMutationError(
-  queryClient: QueryClient,
   ref: PullRequestRef,
   title: string,
   error: unknown
@@ -88,18 +87,9 @@ function reportMutationError(
     error.body.message &&
     ACCESS_BLOCK.test(error.body.message)
   ) {
-    queryClient.setQueryData(accessBlockKey(ref), error.body.message);
+    recordAccessBlock(ref, error.body.message);
   }
   showMutationError(title, error);
-}
-
-export function useAccessBlock(ref: PullRequestRef) {
-  const query = useQuery({
-    queryKey: accessBlockKey(ref),
-    queryFn: () => null as string | null,
-    enabled: false,
-  });
-  return query.data ?? null;
 }
 
 async function fetchDecoded<A, I>(
@@ -296,7 +286,7 @@ export function useAddConversationComment(ref: PullRequestRef) {
             }
           : current
       );
-      reportMutationError(queryClient, ref, "Couldn't post comment", error);
+      reportMutationError(ref, "Couldn't post comment", error);
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
@@ -369,7 +359,7 @@ export function useCreateComment(ref: PullRequestRef) {
       queryClient.setQueryData(queryKey, (current) =>
         current ? { threads: dropOptimisticComments(current.threads) } : current
       );
-      reportMutationError(queryClient, ref, "Couldn't post comment", error);
+      reportMutationError(ref, "Couldn't post comment", error);
     },
     onSettled: () =>
       Promise.all([
@@ -412,7 +402,7 @@ export function useReplyToComment(ref: PullRequestRef) {
       queryClient.setQueryData(queryKey, (current) =>
         current ? { threads: dropOptimisticComments(current.threads) } : current
       );
-      reportMutationError(queryClient, ref, "Couldn't post reply", error);
+      reportMutationError(ref, "Couldn't post reply", error);
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
@@ -440,7 +430,7 @@ export function useResolveThread(ref: PullRequestRef) {
       );
     },
     onError: (error) =>
-      reportMutationError(queryClient, ref, "Couldn't update thread", error),
+      reportMutationError(ref, "Couldn't update thread", error),
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
   return { resolve: mutation.mutate, resolving: mutation.isPending };
@@ -479,14 +469,14 @@ export function useReviewSubmission(ref: PullRequestRef) {
     mutationFn: (payload: SubmitReview) =>
       postJson(`${commentsUrl(ref)}/pending-review/submit`, payload),
     onError: (error) =>
-      reportMutationError(queryClient, ref, "Couldn't submit review", error),
+      reportMutationError(ref, "Couldn't submit review", error),
     onSettled: invalidate,
   });
   const discard = useMutation({
     mutationFn: () =>
       postJson(`${commentsUrl(ref)}/pending-review/discard`, {}),
     onError: (error) =>
-      reportMutationError(queryClient, ref, "Couldn't discard review", error),
+      reportMutationError(ref, "Couldn't discard review", error),
     onSettled: invalidate,
   });
   return {
@@ -564,12 +554,7 @@ export function useViewedFiles(ref: PullRequestRef) {
           context.previous
         );
       }
-      reportMutationError(
-        queryClient,
-        ref,
-        "Couldn't update viewed state",
-        error
-      );
+      reportMutationError(ref, "Couldn't update viewed state", error);
     },
     onSettled: () => {
       if (queryClient.isMutating({ mutationKey }) === 1) {
@@ -605,12 +590,7 @@ export function useViewedFiles(ref: PullRequestRef) {
           context.previous
         );
       }
-      reportMutationError(
-        queryClient,
-        ref,
-        "Couldn't mark all files viewed",
-        error
-      );
+      reportMutationError(ref, "Couldn't mark all files viewed", error);
     },
     onSettled: () => {
       if (queryClient.isMutating({ mutationKey }) === 1) {

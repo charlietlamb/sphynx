@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "@tanstack/react-router";
 import { lazy, type ReactNode, Suspense, useMemo, useState } from "react";
 import { ErrorCard } from "@/components/layout/error-card";
 import { NoticePanel } from "@/components/layout/notice-panel";
+import { useAccessBlock } from "@/components/pull-request/access-block-store";
 import { ConversationSkeleton } from "@/components/pull-request/conversation-skeleton";
 import { DiffPanel } from "@/components/pull-request/diff-panel";
 import {
@@ -14,7 +15,6 @@ import { PullRequestHeader } from "@/components/pull-request/pull-request-header
 import { PullRequestHeaderSkeleton } from "@/components/pull-request/pull-request-header-skeleton";
 import {
   toErrorCardProps,
-  useAccessBlock,
   usePullRequest,
   usePullRequestFreshness,
   useViewedFiles,
