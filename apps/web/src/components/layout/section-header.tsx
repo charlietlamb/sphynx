@@ -17,13 +17,19 @@ export function SectionHeader({
   return (
     <div
       className={cn(
-        "sticky top-0 z-10 -mx-5 mb-2 flex items-center justify-between border-border border-b bg-background px-5 py-2.5",
+        "sticky top-0 z-10 -mx-4 flex h-9 items-center justify-between gap-2 border-border border-b bg-card px-4",
         className
       )}
     >
-      <span className="flex items-center gap-1.5">
-        <span className="text-muted-foreground/60">{icon}</span>
-        <p className="font-medium text-[11px] text-foreground">{label}</p>
+      <span className="flex min-w-0 shrink-0 items-center gap-2">
+        {icon ? (
+          <span className="flex size-4 shrink-0 items-center justify-center rounded-[4px] bg-muted/60 text-muted-foreground [&_svg]:size-2.5">
+            {icon}
+          </span>
+        ) : null}
+        <p className="font-heading font-medium text-[13px] text-foreground tracking-tight">
+          {label}
+        </p>
       </span>
       {action ?? null}
     </div>

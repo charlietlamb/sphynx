@@ -1,4 +1,4 @@
-import { CaretDownIcon, CheckIcon } from "@phosphor-icons/react";
+import { CaretDownIcon, CheckCircleIcon } from "@phosphor-icons/react";
 import {
   Avatar,
   AvatarFallback,
@@ -52,21 +52,24 @@ export function RepoSwitcher({ onSelect, repos, selected }: RepoSwitcherProps) {
   }
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="group flex items-center gap-2 rounded-md border border-transparent py-1 pr-2 pl-2.5 outline-none transition-colors hover:border-border hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:border-border data-[state=open]:bg-muted/30">
-        <Avatar className="size-5 rounded-sm after:rounded-sm">
+      <DropdownMenuTrigger className="group flex h-7 items-center gap-2 rounded-md border border-transparent px-2 outline-none transition-colors hover:border-border hover:bg-muted/30 focus-visible:border-border data-[state=open]:border-border data-[state=open]:bg-muted/30">
+        <Avatar className="size-4 rounded-[4px] after:rounded-[4px]">
           <AvatarImage
             alt={selected.owner}
-            className="rounded-sm"
+            className="rounded-[4px]"
             src={`https://github.com/${selected.owner}.png?size=40`}
           />
-          <AvatarFallback className="rounded-sm text-[9px]">
+          <AvatarFallback className="rounded-[4px] text-[8px]">
             {selected.owner[0]}
           </AvatarFallback>
         </Avatar>
-        <span className="font-heading text-lg leading-none tracking-tight">
+        <span className="font-medium text-[13px] leading-none">
           {selected.repo}
         </span>
-        <CaretDownIcon className="size-3 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+        <CaretDownIcon
+          aria-hidden
+          className="size-3 shrink-0 text-muted-foreground/50 transition-[transform,color] duration-200 ease-out group-hover:text-foreground group-data-[state=open]:rotate-180"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-80 p-0">
         <Command>
@@ -79,25 +82,41 @@ export function RepoSwitcher({ onSelect, repos, selected }: RepoSwitcherProps) {
                   const active = repo.key === selected.key;
                   return (
                     <CommandItem
+                      className="gap-2.5"
                       key={repo.key}
                       onSelect={() => onSelect(repo.key)}
                       value={repo.key}
                     >
+                      <Avatar className="size-4 shrink-0 rounded-[4px] after:rounded-[4px]">
+                        <AvatarImage
+                          alt={repo.owner}
+                          className="rounded-[4px]"
+                          src={`https://github.com/${repo.owner}.png?size=40`}
+                        />
+                        <AvatarFallback className="rounded-[4px] text-[8px]">
+                          {repo.owner[0]}
+                        </AvatarFallback>
+                      </Avatar>
                       <span
                         className={cn(
                           "min-w-0 flex-1 truncate text-[13px]",
-                          active ? "text-foreground" : "text-foreground/90"
+                          active ? "text-foreground" : "text-muted-foreground"
                         )}
                       >
                         {repo.repo}
                       </span>
-                      {active ? (
-                        <CheckIcon className="size-3.5 shrink-0 text-primary" />
-                      ) : null}
                       <QueueCounts
                         contested={repo.contested}
                         mergeable={repo.mergeable}
                         total={repo.openCount}
+                      />
+                      <CheckCircleIcon
+                        aria-hidden
+                        className={cn(
+                          "size-4 shrink-0 transition-colors",
+                          active ? "text-addition" : "text-transparent"
+                        )}
+                        weight="fill"
                       />
                     </CommandItem>
                   );

@@ -17,6 +17,21 @@
   },
   "overrides": [
     {
+      // These render GitHub's own sanitized bodyHTML, the same HTML github.com
+      // serves — the only sanctioned innerHTML sinks.
+      "includes": [
+        "apps/web/src/components/dashboard/dossier-description.tsx",
+        "apps/web/src/components/pull-request/conversation-body.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "security": {
+            "noDangerouslySetInnerHtml": "off"
+          }
+        }
+      }
+    },
+    {
       // The Drizzle schema barrel re-exports tables so drizzle-kit can discover
       // them from a single entry point — the barrel is intentional here.
       "includes": ["packages/db/src/schema.ts"],

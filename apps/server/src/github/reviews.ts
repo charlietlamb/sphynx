@@ -10,6 +10,7 @@ import type {
 import {
   type GitHubRateLimited,
   GitHubUnavailable,
+  GitHubUserSchema,
   type PullRequestRef,
 } from "@sphynx/schema/pull-requests";
 import { Context, Effect, Layer, Schema } from "effect";
@@ -90,18 +91,13 @@ mutation($id: ID!) {
   }
 }`;
 
-const AuthorSchema = Schema.Struct({
-  login: Schema.String,
-  avatarUrl: Schema.String,
-});
-
 const ThreadCommentSchema = Schema.Struct({
   fullDatabaseId: Schema.NullishOr(Schema.String),
   body: Schema.String,
   state: Schema.NullishOr(Schema.String),
   createdAt: Schema.String,
   url: Schema.String,
-  author: Schema.NullishOr(AuthorSchema),
+  author: Schema.NullishOr(GitHubUserSchema),
 });
 
 const ThreadNodeSchema = Schema.Struct({

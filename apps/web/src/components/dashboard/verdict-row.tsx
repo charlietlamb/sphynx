@@ -5,17 +5,26 @@ import {
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
 import { cn } from "@sphynx/ui/lib/utils";
-import { shortAge } from "@/lib/age";
+import { ScoreArc } from "@/components/dashboard/score-arc";
+import { SignalTip } from "@/components/dashboard/signal-tip";
+import { VerdictIcon } from "@/components/pull-request/verdict-icon";
+import { fullDate, shortAge } from "@/lib/age";
 import { stripBotSuffix } from "@/lib/claims";
+import { scoreClass } from "@/lib/score";
 
-const VERDICT_LABELS: Record<
-  ReviewerVerdict["state"],
-  { label: string; className: string }
-> = {
-  approved: { label: "approved", className: "text-addition" },
-  "changes-requested": { label: "wants changes", className: "text-deletion" },
-  commented: { label: "commented", className: "text-muted-foreground" },
+const VERDICT_LABELS: Record<ReviewerVerdict["state"], string> = {
+  approved: "approved",
+  "changes-requested": "wants changes",
+  commented: "commented",
 };
+
+function scoreRatio(score: string) {
+  const [value, scale] = score.split("/").map(Number);
+  if (value === undefined || !scale) {
+    return null;
+  }
+  return value / scale;
+}
 
 interface VerdictRowProps {
   now: number;
@@ -23,10 +32,10 @@ interface VerdictRowProps {
 }
 
 export function VerdictRow({ now, reviewer }: VerdictRowProps) {
-  const verdict = VERDICT_LABELS[reviewer.state];
   const name = stripBotSuffix(reviewer.name);
+  const ratio = reviewer.score ? scoreRatio(reviewer.score) : null;
   return (
-    <div className="flex h-9 items-center gap-2.5">
+    <div className="-mx-4 flex h-10 items-center gap-2.5 px-4">
       <Avatar className="size-5 shrink-0 rounded-[5px] after:rounded-[5px]">
         <AvatarImage
           alt={name}
@@ -38,22 +47,33 @@ export function VerdictRow({ now, reviewer }: VerdictRowProps) {
         </AvatarFallback>
       </Avatar>
       <span className="min-w-0 flex-1 truncate text-[13px]">{name}</span>
-      {reviewer.kind === "bot" ? (
-        <span className="shrink-0 font-medium text-[10px] text-muted-foreground/70">
-          bot
-        </span>
+      {ratio !== null && reviewer.score ? (
+        <SignalTip
+          className="flex shrink-0 items-center gap-1"
+          label={`Scored ${reviewer.score}`}
+        >
+          <ScoreArc ratio={ratio} />
+          <span
+            className={cn(
+              "font-semibold text-[12px] tabular-nums leading-none",
+              scoreClass(ratio)
+            )}
+          >
+            {reviewer.score.split("/")[0]}
+          </span>
+        </SignalTip>
       ) : null}
-      {reviewer.score ? (
-        <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
-          {reviewer.score}
-        </span>
-      ) : null}
-      <span className={cn("shrink-0 text-[12px]", verdict.className)}>
-        {verdict.label}
-      </span>
-      <span className="w-7 shrink-0 text-right text-[11px] text-muted-foreground/60 tabular-nums">
+      <span
+        className="w-7 shrink-0 text-right text-[11px] text-muted-foreground/60 tabular-nums"
+        title={
+          reviewer.submittedAt ? fullDate(reviewer.submittedAt) : undefined
+        }
+      >
         {reviewer.submittedAt ? shortAge(reviewer.submittedAt, now) : ""}
       </span>
+      <SignalTip className="shrink-0" label={VERDICT_LABELS[reviewer.state]}>
+        <VerdictIcon verdict={reviewer.state} />
+      </SignalTip>
     </div>
   );
 }

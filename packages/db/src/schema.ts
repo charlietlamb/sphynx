@@ -1,4 +1,5 @@
 import { account } from "./schema/auth/accounts";
+import { githubInstallation } from "./schema/auth/github-installations";
 import { invitation } from "./schema/auth/invitations";
 import { member } from "./schema/auth/members";
 import { organization } from "./schema/auth/organizations";
@@ -9,6 +10,7 @@ import { findingState } from "./schema/review/finding-states";
 import { trackedRepo } from "./schema/review/tracked-repos";
 
 export { account } from "./schema/auth/accounts";
+export { githubInstallation } from "./schema/auth/github-installations";
 export { invitation } from "./schema/auth/invitations";
 export { member } from "./schema/auth/members";
 export { organization } from "./schema/auth/organizations";
@@ -26,6 +28,7 @@ export const schema = {
   session,
   user,
   verification,
+  githubInstallation,
   findingState,
   trackedRepo,
 };

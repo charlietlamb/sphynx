@@ -10,8 +10,11 @@ function pull(overrides: Partial<QueuePull>): QueuePull {
     repo: "widgets",
     number: 1,
     title: "Test pull",
+    hasBody: false,
     author: null,
     isDraft: false,
+    state: "open",
+    mergedAt: null,
     updatedAt: "2026-07-09T00:00:00Z",
     additions: 10,
     deletions: 5,
@@ -49,6 +52,21 @@ describe("plural", () => {
 });
 
 describe("claimFor", () => {
+  test("merged pulls read as merged, not mergeable", () => {
+    const claim = claimFor(
+      pull({ state: "merged", decision: "ready", approvals: 2 }),
+      NOW
+    );
+    expect(claim.status).toBe("Merged");
+    expect(claim.tone).toBe("neutral");
+  });
+
+  test("closed pulls read as closed", () => {
+    const claim = claimFor(pull({ state: "closed", ci: "failure" }), NOW);
+    expect(claim.status).toBe("Closed");
+    expect(claim.tone).toBe("neutral");
+  });
+
   test("drafts are neutral", () => {
     const claim = claimFor(pull({ isDraft: true }), NOW);
     expect(claim.status).toBe("Draft");

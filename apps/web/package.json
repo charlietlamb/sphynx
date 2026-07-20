@@ -24,6 +24,7 @@
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
     "better-auth": "catalog:",
+    "dompurify": "catalog:",
     "effect": "catalog:",
     "next-themes": "catalog:",
     "nitro": "catalog:",

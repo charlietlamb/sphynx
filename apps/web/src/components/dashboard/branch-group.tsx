@@ -21,10 +21,10 @@ export function BranchGroup({
   onOpen,
 }: BranchGroupProps) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col">
       <p
         className={cn(
-          "sticky top-0 z-10 -mx-4 mb-1 flex items-baseline gap-2 border-border border-b bg-background px-[26px] pt-3 pb-2",
+          "sticky top-[37px] z-[9] -mx-4 flex items-baseline gap-2 border-border border-b bg-background px-[26px] pt-3 pb-2",
           !first && "border-t"
         )}
       >

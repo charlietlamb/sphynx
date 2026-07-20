@@ -12,7 +12,6 @@ import {
 import { Effect, Schema } from "effect";
 import type { GitHubConfig } from "./config";
 import {
-  friendlyErrorMessage,
   type GitHubAuthedError,
   pullRequestNotFound,
   RetryableGitHubError,
@@ -115,9 +114,7 @@ export const makeGraphql = (
       if (envelope.data === null || envelope.data === undefined) {
         return yield* Effect.fail(
           new GitHubUnavailable({
-            message: firstError
-              ? friendlyErrorMessage(firstError.message)
-              : "Empty GitHub response",
+            message: firstError ? firstError.message : "Empty GitHub response",
           })
         );
       }

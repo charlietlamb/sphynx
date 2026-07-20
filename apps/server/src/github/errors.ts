@@ -11,19 +11,17 @@ export type GitHubAuthedError =
   | Unauthorized
   | PullRequestNotFound
   | GitHubUnavailable
-  | GitHubTimeout;
+  | GitHubTimeout
+  | GitHubRateLimited;
 
-export type GitHubAuthedRestError = GitHubAuthedError | GitHubRateLimited;
+export type GitHubAuthedRestError = GitHubAuthedError;
 
 export const pullRequestNotFound = () =>
   new PullRequestNotFound({ message: "Pull request not found" });
 
-const OAUTH_RESTRICTIONS = "OAuth App access restrictions";
-
-export const friendlyErrorMessage = (message: string) =>
-  message.includes(OAUTH_RESTRICTIONS)
-    ? "This organization restricts OAuth apps, so GitHub blocked the request. An organization owner can approve Sphynx in the organization's third-party access settings."
-    : message;
+export const isRateLimited = (
+  error: GitHubAuthedError
+): error is GitHubRateLimited => error._tag === "GitHubRateLimited";
 
 export class RetryableGitHubError extends Data.TaggedError(
   "RetryableGitHubError"

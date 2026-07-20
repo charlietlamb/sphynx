@@ -1,15 +1,18 @@
 import type { Pipeline } from "@sphynx/schema/review-queue";
 import { Cache, Clock, Context, Duration, Effect, Layer, Ref } from "effect";
-import type { GitHubAuthedError } from "./errors";
+import type { GitHubCredential } from "./credential";
+import { type GitHubAuthedError, isRateLimited } from "./errors";
 import { GitHubPipeline } from "./pipeline";
 
 const PIPELINE_TTL = Duration.minutes(10);
-const PIPELINE_REFRESH_MS = Duration.toMillis(Duration.seconds(45));
+const PIPELINE_REFRESH_MS = Duration.toMillis(Duration.minutes(2));
 const MARK_RETENTION_MS = Duration.toMillis(PIPELINE_TTL);
 
 export interface PipelineCacheShape {
-  readonly drop: (token: string) => Effect.Effect<void>;
-  readonly get: (token: string) => Effect.Effect<Pipeline, GitHubAuthedError>;
+  readonly drop: (credential: GitHubCredential) => Effect.Effect<void>;
+  readonly get: (
+    credential: GitHubCredential
+  ) => Effect.Effect<Pipeline, GitHubAuthedError>;
 }
 
 interface TokenState {
@@ -17,15 +20,33 @@ interface TokenState {
   readonly generation: number;
 }
 
+const RATE_LIMIT_BACKOFF_MS = Duration.toMillis(Duration.minutes(5));
+
 const makePipelineCache = Effect.gen(function* () {
   const pipeline = yield* GitHubPipeline;
   const scope = yield* Effect.scope;
 
+  /**
+   * Cache entries are keyed by credential id, which is stable across token
+   * rotation. The live credential is held here so the lookup can resolve a
+   * fresh token at build time.
+   */
+  const credentials = yield* Ref.make(new Map<string, GitHubCredential>());
+
   const cache = yield* Cache.make({
     capacity: 64,
     timeToLive: PIPELINE_TTL,
-    lookup: (token: string): Effect.Effect<Pipeline, GitHubAuthedError> =>
-      pipeline.build(token).pipe(Effect.map((repos) => ({ repos }))),
+    lookup: (key: string): Effect.Effect<Pipeline, GitHubAuthedError> =>
+      Ref.get(credentials).pipe(
+        Effect.flatMap((live) => {
+          const credential = live.get(key);
+          return credential
+            ? credential.token
+            : Effect.dieMessage(`no credential registered for ${key}`);
+        }),
+        Effect.flatMap(pipeline.build),
+        Effect.map((repos) => ({ repos }))
+      ),
   });
 
   const tokenStates = yield* Ref.make(new Map<string, TokenState>());
@@ -70,6 +91,19 @@ const makePipelineCache = Effect.gen(function* () {
     Effect.gen(function* () {
       const generation = yield* generationOf(token);
       yield* cache.refresh(token).pipe(
+        Effect.tapError((error) =>
+          isRateLimited(error)
+            ? Ref.update(tokenStates, (states) => {
+                const next = new Map(states);
+                const current = next.get(token);
+                next.set(token, {
+                  at: (current?.at ?? 0) + RATE_LIMIT_BACKOFF_MS,
+                  generation: current?.generation ?? 0,
+                });
+                return next;
+              })
+            : Effect.void
+        ),
         Effect.tapErrorCause((cause) =>
           Effect.logWarning("pipeline refresh failed", cause)
         ),
@@ -81,12 +115,20 @@ const makePipelineCache = Effect.gen(function* () {
       }
     }).pipe(Effect.forkIn(scope));
 
-  const get = (token: string) =>
+  const get = (credential: GitHubCredential) =>
     Effect.gen(function* () {
+      const token = credential.id;
+      yield* Ref.update(credentials, (live) =>
+        new Map(live).set(credential.id, credential)
+      );
       const wasCached = yield* cache.contains(token);
       const value = yield* cache
         .get(token)
-        .pipe(Effect.tapError(() => cache.invalidate(token)));
+        .pipe(
+          Effect.tapError((error) =>
+            isRateLimited(error) ? Effect.void : cache.invalidate(token)
+          )
+        );
       const now = yield* Clock.currentTimeMillis;
       if (wasCached) {
         const shouldRefresh = yield* markStale(token, now);
@@ -99,13 +141,13 @@ const makePipelineCache = Effect.gen(function* () {
       return value;
     }).pipe(Effect.withSpan("PipelineCache.get"));
 
-  const drop = (token: string) =>
-    cache.invalidate(token).pipe(
+  const drop = (credential: GitHubCredential) =>
+    cache.invalidate(credential.id).pipe(
       Effect.zipRight(
         Ref.update(tokenStates, (states) => {
           const next = new Map(states);
-          const current = next.get(token);
-          next.set(token, {
+          const current = next.get(credential.id);
+          next.set(credential.id, {
             at: 0,
             generation: (current?.generation ?? 0) + 1,
           });

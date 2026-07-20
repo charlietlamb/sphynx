@@ -10,5 +10,6 @@ export const DASHBOARD_KEY_HELP: readonly DashboardKeyHelp[] = [
   { chord: "b", description: "Block (with confirmation)" },
   { chord: "1-9", description: "Filter to a branch (again to clear)" },
   { chord: "[ ]", description: "Switch repo" },
+  { chord: "/", description: "Search pulls on GitHub" },
   { chord: "w", description: "Open the workbench" },
 ];

@@ -51,7 +51,7 @@ export const RawPullRequestFilesSchema = Schema.Array(
     deletions: Schema.Number,
     changes: Schema.Number,
     patch: Schema.optional(Schema.String),
-    blob_url: Schema.String,
+    blob_url: Schema.NullishOr(Schema.String),
   })
 );
 
@@ -71,6 +71,31 @@ const RawReviewCommentSchema = Schema.Struct({
 export type RawReviewComment = typeof RawReviewCommentSchema.Type;
 
 export const RawReviewCommentsSchema = Schema.Array(RawReviewCommentSchema);
+
+export const RawIssueCommentSchema = Schema.Struct({
+  id: Schema.Number,
+  body: Schema.NullishOr(Schema.String),
+  user: Schema.NullOr(RawUserSchema),
+  created_at: Schema.String,
+  html_url: Schema.String,
+});
+
+export type RawIssueComment = typeof RawIssueCommentSchema.Type;
+
+export const RawIssueCommentsSchema = Schema.Array(RawIssueCommentSchema);
+
+const RawPullReviewSchema = Schema.Struct({
+  id: Schema.Number,
+  state: Schema.String,
+  body: Schema.NullishOr(Schema.String),
+  user: Schema.NullOr(RawUserSchema),
+  submitted_at: Schema.NullishOr(Schema.String),
+  html_url: Schema.String,
+});
+
+export type RawPullReview = typeof RawPullReviewSchema.Type;
+
+export const RawPullReviewsSchema = Schema.Array(RawPullReviewSchema);
 
 export const RawFileContentsSchema = Schema.Union(
   Schema.Struct({ content: Schema.optional(Schema.String) }),

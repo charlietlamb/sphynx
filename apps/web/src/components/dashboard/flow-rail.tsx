@@ -32,7 +32,7 @@ export function FlowRail({
   const tributaries = items.filter((item) => !item.isStage);
   const stages = items.filter((item) => item.isStage);
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col">
       <SectionHeader
         action={
           selected ? (
@@ -45,14 +45,14 @@ export function FlowRail({
             </button>
           ) : null
         }
-        className="-mx-3 px-3"
+        className="-mx-3 mb-3 px-3"
         icon={<GitBranchIcon className="size-3" weight="fill" />}
         label="Flow"
       />
       <div className="relative flex flex-col">
         <span
           aria-hidden
-          className="absolute top-1 bottom-[26px] left-[13px] w-[2px] rounded-full bg-gradient-to-b from-border via-muted-foreground/30 to-muted-foreground/30"
+          className="absolute top-1 bottom-[13px] left-[13px] w-[2px] rounded-full bg-gradient-to-b from-border via-muted-foreground/30 to-muted-foreground/30"
         />
         {tributaries.map((item) => (
           <RailBranch
@@ -95,12 +95,12 @@ export function FlowRail({
         <div className="relative flex h-[26px] items-center gap-2 pr-2 pl-7">
           <span
             aria-hidden
-            className="absolute left-[11px] size-[6px] rounded-[1.5px] bg-muted-foreground/60"
+            className="absolute left-[10.5px] size-[7px] rounded-full bg-muted-foreground/50 ring-2 ring-background"
           />
           <span className="text-[10px] text-muted-foreground/40">
             production
           </span>
-          <span aria-hidden className="h-px flex-1 bg-border" />
+          <span aria-hidden className="h-px flex-1 bg-border/40" />
         </div>
       </div>
     </div>

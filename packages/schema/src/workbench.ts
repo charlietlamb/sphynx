@@ -6,6 +6,7 @@ import {
   GitHubTimeout,
   GitHubUnavailable,
   GitHubUserSchema,
+  InstallationRequired,
   PullRequestNotFound,
 } from "./pull-requests";
 import { RepoRefSchema } from "./review-queue";
@@ -61,17 +62,10 @@ const getRepoEvents = HttpApiEndpoint.get(
   .setHeaders(cookieHeaders)
   .addSuccess(WorkbenchFeedSchema);
 
-const getDevRepoEvents = HttpApiEndpoint.get(
-  "getDevRepoEvents",
-  "/api/dev/repos/:owner/:repo/events"
-)
-  .setPath(RepoRefSchema)
-  .addSuccess(WorkbenchFeedSchema);
-
 export const WorkbenchApi = HttpApiGroup.make("workbench")
   .add(getRepoEvents)
-  .add(getDevRepoEvents)
   .addError(Unauthorized, { status: 401 })
+  .addError(InstallationRequired, { status: 403 })
   .addError(PullRequestNotFound, { status: 404 })
   .addError(GitHubRateLimited, { status: 429 })
   .addError(GitHubUnavailable, { status: 502 })

@@ -6,6 +6,7 @@
   "exports": {
     "./api": "./src/api.ts",
     "./pull-request-comments": "./src/pull-request-comments.ts",
+    "./pull-request-conversation": "./src/pull-request-conversation.ts",
     "./pull-request-views": "./src/pull-request-views.ts",
     "./pull-requests": "./src/pull-requests.ts",
     "./review-queue": "./src/review-queue.ts",

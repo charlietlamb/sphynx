@@ -12,11 +12,7 @@ import {
 } from "@sphynx/schema/pull-requests";
 import { Effect } from "effect";
 import type { GitHubConfig } from "./config";
-import {
-  friendlyErrorMessage,
-  type GitHubAuthedRestError,
-  pullRequestNotFound,
-} from "./errors";
+import { type GitHubAuthedRestError, pullRequestNotFound } from "./errors";
 
 export const pullPath = (ref: PullRequestRef, suffix = "") =>
   `/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}${suffix}`;
@@ -73,7 +69,7 @@ const rejectFailedResponse = (
         responseBody &&
         typeof responseBody === "object" &&
         "message" in responseBody
-          ? friendlyErrorMessage(String(responseBody.message))
+          ? String(responseBody.message)
           : `GitHub rejected the request with ${response.status}`;
       return yield* Effect.fail(new GitHubUnavailable({ message }));
     }
@@ -93,15 +89,17 @@ export const makeRest =
     GitHubAuthedRestError
   > =>
     Effect.gen(function* () {
-      const base = HttpClientRequest.make(method)(
+      const headed = HttpClientRequest.make(method)(
         `${config.apiUrl}${path}`
       ).pipe(
-        HttpClientRequest.bearerToken(token),
         HttpClientRequest.setHeaders({
           accept: "application/vnd.github+json",
           "x-github-api-version": config.apiVersion,
         })
       );
+      const base = token
+        ? headed.pipe(HttpClientRequest.bearerToken(token))
+        : headed;
       const outgoing = body
         ? base.pipe(HttpClientRequest.bodyUnsafeJson(body))
         : base;

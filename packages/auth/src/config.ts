@@ -55,6 +55,7 @@ export const AuthConfigLive = Layer.effect(
       ),
       Config.withDefault<readonly string[]>(["http://localhost:3006"])
     ),
-    github: oauthProvider("GITHUB").pipe(Config.map(Option.getOrUndefined)),
+    // Sign-in uses the GitHub App's user-to-server flow, not the legacy OAuth App.
+    github: oauthProvider("GITHUB_APP").pipe(Config.map(Option.getOrUndefined)),
   })
 );

@@ -1,13 +1,12 @@
 import { HttpApiBuilder } from "@effect/platform";
-import { Auth } from "@sphynx/auth";
-import { Database } from "@sphynx/db/client";
 import { SphynxApi } from "@sphynx/schema/api";
-import { Unauthorized } from "@sphynx/schema/pull-request-views";
-import { Config, Effect, Redacted } from "effect";
-import { githubTokenFor } from "../auth/github-token";
-import { GitHubConfig } from "../github/config";
+import { INSTALLATION_HEADER } from "@sphynx/schema/review-queue";
+import { Effect } from "effect";
+import { GitHubAuth } from "../auth/github-auth";
 import { PipelineCache } from "../github/pipeline-cache";
+import { PipelineVersionCache } from "../github/pipeline-version-cache";
 import { GitHubReviewQueue } from "../github/review-queue";
+import { SearchCache } from "../github/search-cache";
 
 const OK = { ok: true };
 
@@ -18,71 +17,90 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
     Effect.gen(function* () {
       const queue = yield* GitHubReviewQueue;
       const cache = yield* PipelineCache;
-      const auth = yield* Auth;
-      const db = yield* Database;
-      const nodeEnv = yield* Config.string("NODE_ENV").pipe(
-        Config.withDefault("development")
-      );
-      const appConfig = yield* GitHubConfig;
-      const githubToken = githubTokenFor(
-        auth,
-        db,
-        "Sign in to use the review queue"
-      );
+      const search = yield* SearchCache;
+      const version = yield* PipelineVersionCache;
+      const { listInstallations, readCredential, readToken, writeToken } =
+        yield* GitHubAuth;
+
+      /**
+       * Writes act as the signed-in user so GitHub attributes them correctly,
+       * then invalidate the installation-scoped pipeline cache.
+       */
+      const mutate = <A, E>(
+        cookie: string | undefined,
+        run: (token: string) => Effect.Effect<A, E>
+      ) =>
+        writeToken(cookie).pipe(
+          Effect.flatMap(run),
+          Effect.tap(() =>
+            readCredential(cookie).pipe(Effect.flatMap(cache.drop))
+          )
+        );
+
+      /** The client names an installation; a bad value falls back server-side. */
+      const requested = (headers: Record<string, string | undefined>) => {
+        const raw = headers[INSTALLATION_HEADER];
+        const parsed = raw ? Number(raw) : Number.NaN;
+        return Number.isInteger(parsed) ? parsed : null;
+      };
 
       return handlers
-        .handle("getPipeline", ({ headers }) =>
-          githubToken(headers.cookie).pipe(Effect.flatMap(cache.get))
+        .handle("listInstallations", ({ headers }) =>
+          listInstallations(headers.cookie).pipe(
+            Effect.map((installations) => ({
+              installations: installations.map((entry) => ({
+                id: entry.id,
+                accountLogin: entry.account?.login ?? "unknown",
+                accountType: entry.account?.type ?? "Organization",
+                avatarUrl: entry.account?.avatar_url ?? null,
+                repositorySelection: entry.repository_selection,
+              })),
+            }))
+          )
         )
-        .handle("getDevPipeline", () =>
-          Effect.gen(function* () {
-            const token = appConfig.token;
-            if (nodeEnv === "production" || token === undefined) {
-              return yield* Effect.fail(
-                new Unauthorized({ message: "Not available" })
-              );
-            }
-            return yield* cache.get(Redacted.value(token));
-          })
+        .handle("getPipeline", ({ headers }) =>
+          readCredential(headers.cookie, requested(headers)).pipe(
+            Effect.flatMap(cache.get)
+          )
+        )
+        .handle("getPipelineVersion", ({ headers }) =>
+          readCredential(headers.cookie, requested(headers)).pipe(
+            Effect.flatMap(version.get)
+          )
+        )
+        .handle("getPullBody", ({ path, headers }) =>
+          readToken(headers.cookie, requested(headers)).pipe(
+            Effect.flatMap((token) => queue.pullBody(path, token))
+          )
+        )
+        .handle("searchPulls", ({ urlParams, headers }) =>
+          readCredential(headers.cookie, requested(headers)).pipe(
+            Effect.flatMap((credential) =>
+              search.get(urlParams.q, urlParams.limit, credential)
+            )
+          )
         )
         .handle("mergePull", ({ path, headers }) =>
-          githubToken(headers.cookie).pipe(
-            Effect.flatMap((token) =>
-              queue
-                .mergePull(path, token)
-                .pipe(Effect.zipRight(cache.drop(token)))
-            ),
+          mutate(headers.cookie, (token) => queue.mergePull(path, token)).pipe(
             Effect.map(() => OK)
           )
         )
         .handle("createPromotion", ({ path, headers, payload }) =>
-          githubToken(headers.cookie).pipe(
-            Effect.flatMap((token) =>
-              queue
-                .createPull(
-                  path.owner,
-                  path.repo,
-                  payload.from,
-                  payload.to,
-                  `Release ${payload.from} to ${payload.to}`,
-                  token
-                )
-                .pipe(
-                  Effect.tap(() => cache.drop(token)),
-                  Effect.map((number) => ({ number }))
-                )
+          mutate(headers.cookie, (token) =>
+            queue.createPull(
+              path.owner,
+              path.repo,
+              payload.from,
+              payload.to,
+              `Release ${payload.from} to ${payload.to}`,
+              token
             )
-          )
+          ).pipe(Effect.map((number) => ({ number })))
         )
         .handle("blockPull", ({ path, headers, payload }) =>
-          githubToken(headers.cookie).pipe(
-            Effect.flatMap((token) =>
-              queue
-                .blockPull(path, payload.body, token)
-                .pipe(Effect.zipRight(cache.drop(token)))
-            ),
-            Effect.map(() => OK)
-          )
+          mutate(headers.cookie, (token) =>
+            queue.blockPull(path, payload.body, token)
+          ).pipe(Effect.map(() => OK))
         );
     })
 );

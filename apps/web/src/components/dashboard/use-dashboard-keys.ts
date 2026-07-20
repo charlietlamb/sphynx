@@ -10,6 +10,7 @@ export interface DashboardKeyHandlers {
   onNextRepo: () => void;
   onOpen: () => void;
   onPrevRepo: () => void;
+  onSearch: () => void;
   onUp: () => void;
   onWorkbench: () => void;
 }
@@ -30,6 +31,7 @@ const BINDINGS: Record<
   b: "onBlock",
   "]": "onNextRepo",
   "[": "onPrevRepo",
+  "/": "onSearch",
   w: "onWorkbench",
 };
 

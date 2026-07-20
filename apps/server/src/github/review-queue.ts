@@ -8,6 +8,7 @@ import {
   CreatedPullSchema,
   type DiscoveredRepo,
   type QueuePull,
+  type SearchResults,
 } from "@sphynx/schema/review-queue";
 import { Array as Arr, Context, Effect, Layer, Schema } from "effect";
 import { GitHubConfig } from "./config";
@@ -17,43 +18,96 @@ import { makeRest, pullPath } from "./http";
 import {
   BatchedPullsSchema,
   PULL_FIELDS_FRAGMENT,
+  RawPullSchema,
   toQueuePull,
 } from "./queue-mappers";
 
-const DISCOVER_REPOS_QUERY = `
-query {
-  viewer {
-    repositories(
-      first: 50
-      orderBy: { field: PUSHED_AT, direction: DESC }
-      affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]
-      ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]
-    ) {
-      nodes {
-        name isArchived owner { login }
-        pullRequests(states: [OPEN]) { totalCount }
-      }
-    }
-  }
-}`;
+const OpenPullCountsSchema = Schema.Record({
+  key: Schema.String,
+  value: Schema.NullOr(
+    Schema.Struct({
+      pullRequests: Schema.Struct({ totalCount: Schema.Number }),
+    })
+  ),
+});
 
-const DiscoverReposSchema = Schema.Struct({
-  viewer: Schema.Struct({
-    repositories: Schema.Struct({
-      nodes: Schema.Array(
-        Schema.Struct({
-          name: Schema.String,
-          isArchived: Schema.Boolean,
-          owner: Schema.Struct({ login: Schema.String }),
-          pullRequests: Schema.Struct({ totalCount: Schema.Number }),
-        })
-      ),
-    }),
-  }),
+/**
+ * Installation tokens authenticate as the app on an org, so there is no
+ * `viewer` to hang repositories off. REST lists what the installation can see.
+ */
+const InstallationReposSchema = Schema.Struct({
+  repositories: Schema.Array(
+    Schema.Struct({
+      name: Schema.String,
+      archived: Schema.Boolean,
+      owner: Schema.Struct({ login: Schema.String }),
+      pushed_at: Schema.NullishOr(Schema.String),
+    })
+  ),
 });
 
 const MAX_DISCOVERED_REPOS = 12;
+/** Repos probed for open-PR counts before trimming to the discovery cap. */
+const MAX_COUNTED_REPOS = 40;
 const PULLS_CHUNK_SIZE = 3;
+
+const PULL_BODY_QUERY = `query($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) { bodyHTML }
+  }
+}`;
+
+const PullBodySchema = Schema.Struct({
+  repository: Schema.NullOr(
+    Schema.Struct({
+      pullRequest: Schema.NullOr(
+        Schema.Struct({ bodyHTML: Schema.NullishOr(Schema.String) })
+      ),
+    })
+  ),
+});
+
+const SEARCH_PULLS_QUERY = `query($q: String!, $first: Int!) {
+  search(query: $q, type: ISSUE, first: $first) {
+    issueCount
+    nodes {
+      __typename
+      ... on PullRequest {
+        repository { name owner { login } }
+        state
+        mergedAt
+        ...PullFields
+      }
+    }
+  }
+}
+${PULL_FIELDS_FRAGMENT}`;
+
+const SearchPullNodeSchema = Schema.extend(
+  Schema.Struct({
+    __typename: Schema.Literal("PullRequest"),
+    repository: Schema.Struct({
+      name: Schema.String,
+      owner: Schema.Struct({ login: Schema.String }),
+    }),
+  }),
+  RawPullSchema
+);
+
+const SearchPullsSchema = Schema.Struct({
+  search: Schema.Struct({
+    issueCount: Schema.Number,
+    nodes: Schema.Array(Schema.Union(SearchPullNodeSchema, Schema.Struct({}))),
+  }),
+});
+
+function isPullNode(node: unknown): node is typeof SearchPullNodeSchema.Type {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    (node as { __typename?: string }).__typename === "PullRequest"
+  );
+}
 
 export function repoKey(entry: { owner: string; repo: string }) {
   return `${entry.owner}/${entry.repo}`.toLowerCase();
@@ -119,22 +173,65 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
     );
   };
 
+  /**
+   * REST only exposes `open_issues_count`, which counts issues as well as
+   * pulls. One batched GraphQL call gets the real open-PR count so repos with
+   * issues but no pulls don't reach the queue.
+   */
+  const openPullCounts = (
+    repos: readonly { owner: string; repo: string }[],
+    token: string
+  ): Effect.Effect<DiscoveredRepo[], GitHubAuthedError> => {
+    if (repos.length === 0) {
+      return Effect.succeed([]);
+    }
+    const candidates = repos.slice(0, MAX_COUNTED_REPOS);
+    const selections = candidates
+      .map(
+        (entry, index) =>
+          `r${index}: repository(owner: ${JSON.stringify(entry.owner)}, name: ${JSON.stringify(entry.repo)}) {
+    pullRequests(states: [OPEN]) { totalCount }
+  }`
+      )
+      .join("\n");
+    return github
+      .query(token, OpenPullCountsSchema, `query {\n${selections}\n}`, {})
+      .pipe(
+        Effect.map((data) =>
+          candidates
+            .map((entry, index) => ({
+              ...entry,
+              openPulls: data[`r${index}`]?.pullRequests.totalCount ?? 0,
+            }))
+            .filter((entry) => entry.openPulls > 0)
+            .slice(0, MAX_DISCOVERED_REPOS)
+        )
+      );
+  };
+
   const discoverRepos = (
     token: string
   ): Effect.Effect<DiscoveredRepo[], GitHubAuthedError> =>
-    github.query(token, DiscoverReposSchema, DISCOVER_REPOS_QUERY, {}).pipe(
-      Effect.map((data) =>
-        data.viewer.repositories.nodes
-          .filter(
-            (node) => !node.isArchived && node.pullRequests.totalCount > 0
+    rest(token, "GET", "/installation/repositories?per_page=100").pipe(
+      Effect.flatMap((response) =>
+        HttpClientResponse.schemaBodyJson(InstallationReposSchema)(
+          response
+        ).pipe(
+          Effect.mapError(
+            () =>
+              new GitHubUnavailable({
+                message: "Invalid installation repositories response",
+              })
           )
-          .slice(0, MAX_DISCOVERED_REPOS)
-          .map((node) => ({
-            owner: node.owner.login,
-            repo: node.name,
-            openPulls: node.pullRequests.totalCount,
-          }))
+        )
       ),
+      Effect.map((page) =>
+        page.repositories
+          .filter((repo) => !repo.archived)
+          .sort((a, b) => (b.pushed_at ?? "").localeCompare(a.pushed_at ?? ""))
+          .map((repo) => ({ owner: repo.owner.login, repo: repo.name }))
+      ),
+      Effect.flatMap((repos) => openPullCounts(repos, token)),
       Effect.withSpan("GitHubReviewQueue.discoverRepos")
     );
 
@@ -163,6 +260,53 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
       Effect.annotateLogs({ owner, repo, head, base })
     );
 
+  const searchPulls = (
+    query: string,
+    limit: number,
+    token: string
+  ): Effect.Effect<SearchResults, GitHubAuthedError> =>
+    github
+      .query(token, SearchPullsSchema, SEARCH_PULLS_QUERY, {
+        q: query,
+        first: limit,
+      })
+      .pipe(
+        Effect.map((data) => ({
+          totalCount: data.search.issueCount,
+          pulls: data.search.nodes.flatMap((node) =>
+            isPullNode(node)
+              ? [
+                  toQueuePull(
+                    node.repository.owner.login,
+                    node.repository.name,
+                    node
+                  ),
+                ]
+              : []
+          ),
+        })),
+        Effect.withSpan("GitHubReviewQueue.searchPulls"),
+        Effect.annotateLogs({ "github.search": query })
+      );
+
+  const pullBody = (
+    ref: PullRequestRef,
+    token: string
+  ): Effect.Effect<{ body: string | null }, GitHubAuthedError> =>
+    github
+      .query(token, PullBodySchema, PULL_BODY_QUERY, {
+        owner: ref.owner,
+        repo: ref.repo,
+        number: ref.number,
+      })
+      .pipe(
+        Effect.map((data) => ({
+          body: data.repository?.pullRequest?.bodyHTML?.trim() || null,
+        })),
+        Effect.withSpan("GitHubReviewQueue.pullBody"),
+        Effect.annotateLogs(refAnnotations(ref))
+      );
+
   const mergePull = (ref: PullRequestRef, token: string) =>
     rest(token, "PUT", pullPath(ref, "/merge"), {
       merge_method: "squash",
@@ -182,7 +326,15 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
       Effect.annotateLogs(refAnnotations(ref))
     );
 
-  return { discoverRepos, openPullsForRepos, mergePull, blockPull, createPull };
+  return {
+    discoverRepos,
+    openPullsForRepos,
+    mergePull,
+    blockPull,
+    createPull,
+    searchPulls,
+    pullBody,
+  };
 });
 
 export class GitHubReviewQueue extends Context.Tag(

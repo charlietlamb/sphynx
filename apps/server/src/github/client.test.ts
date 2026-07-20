@@ -4,7 +4,7 @@ import {
   GitHubRateLimited,
   PullRequestNotFound,
 } from "@sphynx/schema/pull-requests";
-import { Duration, Effect, Layer } from "effect";
+import { Duration, Effect, Layer, Redacted } from "effect";
 import { GitHubClient, GitHubClientLive } from "./client";
 import { GitHubConfig } from "./config";
 
@@ -14,7 +14,11 @@ const config = Layer.succeed(GitHubConfig, {
   apiUrl: "https://api.github.test",
   apiVersion: "2022-11-28",
   timeout: Duration.seconds(1),
-  token: undefined,
+  app: {
+    appId: "1",
+    clientId: "Iv1.test",
+    privateKey: Redacted.make("test-key"),
+  },
 });
 
 const runWith = <A>(

@@ -19,7 +19,8 @@ const makeAuth = Effect.gen(function* () {
     socialProviders.github = {
       clientId: config.github.clientId,
       clientSecret: Redacted.value(config.github.clientSecret),
-      scope: ["read:user", "user:email", "public_repo"],
+      // A GitHub App derives repo access from its installation, not scopes.
+      // `read:user` and `user:email` are the provider defaults, so none are set.
     };
   }
   const findFirstOrganizationId = async (userId: string) => {

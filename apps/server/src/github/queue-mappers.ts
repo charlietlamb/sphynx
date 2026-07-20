@@ -15,11 +15,11 @@ import {
 
 export const PULL_FIELDS_FRAGMENT = `
 fragment PullFields on PullRequest {
-  number title isDraft updatedAt additions deletions changedFiles headRefName baseRefName
+  number title bodyHTML isDraft updatedAt additions deletions changedFiles headRefName baseRefName
   author { __typename login avatarUrl }
   statusCheckRollup {
     state
-    contexts(first: 40) {
+    contexts(first: 20) {
       nodes {
         __typename
         ... on CheckRun { name conclusion detailsUrl }
@@ -27,20 +27,20 @@ fragment PullFields on PullRequest {
       }
     }
   }
-  reviews(first: 30) {
+  reviews(last: 20) {
     nodes { state body submittedAt author { __typename login avatarUrl } }
   }
-  reviewThreads(first: 50) {
+  reviewThreads(first: 20) {
     nodes {
       id
       isResolved
       path
       comments(first: 1) {
-        nodes { body author { __typename login avatarUrl } }
+        nodes { fullDatabaseId body author { __typename login avatarUrl } }
       }
     }
   }
-  comments(last: 10) {
+  comments(last: 5) {
     nodes { body author { __typename login avatarUrl } }
   }
 }`;
@@ -81,15 +81,22 @@ const RawThreadSchema = Schema.Struct({
   path: Schema.NullOr(Schema.String),
   comments: Schema.Struct({
     nodes: Schema.Array(
-      Schema.Struct({ body: Schema.String, author: ActorSchema })
+      Schema.Struct({
+        fullDatabaseId: Schema.NullishOr(Schema.String),
+        body: Schema.String,
+        author: ActorSchema,
+      })
     ),
   }),
 });
 
-const RawPullSchema = Schema.Struct({
+export const RawPullSchema = Schema.Struct({
   number: Schema.Number,
   title: Schema.String,
+  bodyHTML: Schema.NullishOr(Schema.String),
   isDraft: Schema.Boolean,
+  state: Schema.optional(Schema.String),
+  mergedAt: Schema.NullishOr(Schema.String),
   updatedAt: Schema.String,
   additions: Schema.Number,
   deletions: Schema.Number,
@@ -169,7 +176,7 @@ function ciCounts(contexts: readonly RawContext[]): QueuePull["ciCounts"] {
   return counts;
 }
 const MAX_CI_FAILURES = 6;
-const MAX_THREAD_PREVIEWS = 50;
+const MAX_THREAD_PREVIEWS = 20;
 const MAX_PREVIEW_BODY = 400;
 
 export function failingChecks(contexts: readonly RawContext[]): FailingCheck[] {
@@ -210,6 +217,14 @@ function stripHtml(line: string) {
     .replace(/\s{2,}/g, " ");
 }
 
+function descriptionBody(body: string | null | undefined): string | null {
+  if (!body) {
+    return null;
+  }
+  const cleaned = body.trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 export function previewBody(body: string): string {
   const line =
     body
@@ -239,6 +254,7 @@ function threadPreviews(threads: readonly RawThread[]) {
     if (!body) {
       continue;
     }
+    const rootCommentId = Number(first.fullDatabaseId ?? 0);
     previews.push({
       author: first.author
         ? { login: first.author.login, avatarUrl: first.author.avatarUrl }
@@ -246,6 +262,7 @@ function threadPreviews(threads: readonly RawThread[]) {
       body,
       id: thread.id,
       path: thread.path,
+      rootCommentId: rootCommentId > 0 ? rootCommentId : null,
     });
   }
   return previews;
@@ -353,6 +370,16 @@ function toVerdicts(
   return verdicts.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function pullState(state: string | undefined): QueuePull["state"] {
+  if (state === "MERGED") {
+    return "merged";
+  }
+  if (state === "CLOSED") {
+    return "closed";
+  }
+  return "open";
+}
+
 export function toQueuePull(
   owner: string,
   repo: string,
@@ -380,10 +407,13 @@ export function toQueuePull(
     repo,
     number: pull.number,
     title: pull.title,
+    hasBody: descriptionBody(pull.bodyHTML) !== null,
     author: pull.author
       ? { login: pull.author.login, avatarUrl: pull.author.avatarUrl }
       : null,
     isDraft: pull.isDraft,
+    state: pullState(pull.state),
+    mergedAt: pull.mergedAt ?? null,
     updatedAt: pull.updatedAt,
     additions: pull.additions,
     deletions: pull.deletions,

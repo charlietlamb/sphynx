@@ -9,20 +9,29 @@ import { DatabaseLive } from "@sphynx/db/client";
 import { DatabaseConfigLive } from "@sphynx/db/config";
 import { SphynxApi } from "@sphynx/schema/api";
 import { Context, Effect, Layer } from "effect";
+import { GitHubAuthLive } from "./auth/github-auth";
 import { ServerConfig, ServerConfigLive } from "./config";
+import { GitHubAppAuthLive } from "./github/app-auth";
 import { GitHubClientLive } from "./github/client";
 import { GitHubConfigLive } from "./github/config";
+import { GitHubConversationLive } from "./github/conversation";
 import { GitHubPipelineLive } from "./github/pipeline";
 import { PipelineCacheLive } from "./github/pipeline-cache";
+import { GitHubPipelineVersionLive } from "./github/pipeline-version";
+import { PipelineVersionCacheLive } from "./github/pipeline-version-cache";
 import { GitHubRepoEventsLive } from "./github/repo-events";
 import { GitHubReviewQueueLive } from "./github/review-queue";
 import { GitHubReviewsLive } from "./github/reviews";
+import { SearchCacheLive } from "./github/search-cache";
 import { GitHubViewerLive } from "./github/viewer";
 import { PullRequestCommentsApiLive } from "./routes/comments";
+import { PullRequestConversationApiLive } from "./routes/conversation";
 import { PullRequestsApiLive } from "./routes/pulls";
 import { ReviewQueueApiLive } from "./routes/review-queue";
 import { PullRequestViewsApiLive } from "./routes/views";
 import { WorkbenchApiLive } from "./routes/workbench";
+
+const REQUEST_IDLE_TIMEOUT_SECONDS = 60;
 
 export class HttpServer extends Context.Tag("@sphynx/server/HttpServer")<
   HttpServer,
@@ -47,6 +56,7 @@ const httpServerLive = (memoMap: Layer.MemoMap) =>
                 ? auth.handler(request)
                 : api.handler(request),
             hostname: config.host,
+            idleTimeout: REQUEST_IDLE_TIMEOUT_SECONDS,
             port: config.port,
           })
         ),
@@ -67,15 +77,23 @@ const HealthApiLive = HttpApiBuilder.group(SphynxApi, "health", (handlers) =>
   handlers.handle("health", () => Effect.succeed({ ok: true }))
 );
 
-const GitHubLive = PipelineCacheLive.pipe(
-  Layer.provideMerge(GitHubPipelineLive),
+const GitHubLive = Layer.mergeAll(
+  PipelineCacheLive,
+  SearchCacheLive,
+  PipelineVersionCacheLive
+).pipe(
+  Layer.provideMerge(
+    Layer.mergeAll(GitHubPipelineLive, GitHubPipelineVersionLive)
+  ),
   Layer.provideMerge(
     Layer.mergeAll(
       GitHubClientLive,
       GitHubViewerLive,
       GitHubReviewsLive,
       GitHubReviewQueueLive,
-      GitHubRepoEventsLive
+      GitHubRepoEventsLive,
+      GitHubConversationLive,
+      GitHubAppAuthLive
     )
   ),
   Layer.provide(Layer.mergeAll(GitHubConfigLive, FetchHttpClient.layer))
@@ -86,6 +104,10 @@ const AuthLiveLayer = AuthLive.pipe(
   Layer.provideMerge(Layer.mergeAll(AuthConfigLive, DatabaseLiveLayer))
 );
 
+const GitHubAuthLiveLayer = GitHubAuthLive.pipe(
+  Layer.provide(Layer.mergeAll(GitHubLive, AuthLiveLayer))
+);
+
 const ApiLive = Layer.mergeAll(
   HttpApiBuilder.api(SphynxApi).pipe(
     Layer.provide(
@@ -94,6 +116,7 @@ const ApiLive = Layer.mergeAll(
         PullRequestsApiLive,
         PullRequestViewsApiLive,
         PullRequestCommentsApiLive,
+        PullRequestConversationApiLive,
         ReviewQueueApiLive,
         WorkbenchApiLive
       )
@@ -101,7 +124,14 @@ const ApiLive = Layer.mergeAll(
   ),
   PlatformHttpServer.layerContext
 ).pipe(
-  Layer.provide(Layer.mergeAll(GitHubLive, GitHubConfigLive, AuthLiveLayer))
+  Layer.provide(
+    Layer.mergeAll(
+      GitHubLive,
+      GitHubConfigLive,
+      AuthLiveLayer,
+      GitHubAuthLiveLayer
+    )
+  )
 );
 
 export const main = Effect.scoped(

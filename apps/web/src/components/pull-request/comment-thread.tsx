@@ -1,6 +1,7 @@
 import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react";
 import type { ReviewThread } from "@sphynx/schema/pull-request-comments";
 import { Badge } from "@sphynx/ui/components/ui/badge";
+import { cn } from "@sphynx/ui/lib/utils";
 import { useState } from "react";
 import { CommentComposer } from "@/components/pull-request/comment-composer";
 import { CommentItem } from "@/components/pull-request/comment-item";
@@ -8,13 +9,20 @@ import { CommentThreadFooter } from "@/components/pull-request/comment-thread-fo
 import type { ReviewCommenting } from "@/components/pull-request/use-review-comments";
 import { plural } from "@/lib/claims";
 
+export type ThreadCommenting = Pick<
+  ReviewCommenting,
+  "canComment" | "reply" | "replying" | "resolve"
+>;
+
 interface CommentThreadProps {
-  commenting: ReviewCommenting;
+  className?: string;
+  commenting: ThreadCommenting;
   originalLines: readonly string[];
   thread: ReviewThread;
 }
 
 export function CommentThread({
+  className,
   commenting,
   originalLines,
   thread,
@@ -39,7 +47,12 @@ export function CommentThread({
   };
 
   return (
-    <div className="my-2.5 mr-4 ml-1 max-w-3xl overflow-hidden rounded-md border border-border bg-background font-sans shadow-xs">
+    <div
+      className={cn(
+        "my-2.5 mr-4 ml-1 max-w-3xl overflow-hidden rounded-md border border-border bg-background font-sans shadow-xs",
+        className
+      )}
+    >
       {thread.isResolved ? (
         <button
           className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-muted-foreground text-xs hover:bg-muted/40"

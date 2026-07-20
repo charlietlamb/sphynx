@@ -8,10 +8,14 @@ import {
   GitHubTimeout,
   GitHubUnavailable,
   GitHubUserSchema,
+  InstallationRequired,
   PullRequestNotFound,
   PullRequestRefSchema,
 } from "./pull-requests";
-import { cookieHeaders, OkSchema } from "./shared";
+import { cookieHeaders, installationHeaders, OkSchema } from "./shared";
+
+/** Header naming the GitHub App installation a read should run through. */
+export const INSTALLATION_HEADER = "x-sphynx-installation";
 
 export const DiscoveredRepoSchema = Schema.Struct({
   owner: Schema.String,
@@ -34,6 +38,10 @@ const DecisionSchema = Schema.Literal(
 
 export type Decision = typeof DecisionSchema.Type;
 
+const PullStateSchema = Schema.Literal("open", "merged", "closed");
+
+export type PullState = typeof PullStateSchema.Type;
+
 const SourceKindSchema = Schema.Literal("bot", "human");
 
 export const ReviewerVerdictSchema = Schema.Struct({
@@ -52,6 +60,7 @@ export const ThreadPreviewSchema = Schema.Struct({
   body: Schema.String,
   id: Schema.String,
   path: Schema.NullOr(Schema.String),
+  rootCommentId: Schema.NullOr(Schema.Number),
 });
 
 export type ThreadPreview = typeof ThreadPreviewSchema.Type;
@@ -68,8 +77,11 @@ export const QueuePullSchema = Schema.Struct({
   repo: Schema.String,
   number: Schema.Number,
   title: Schema.String,
+  hasBody: Schema.Boolean,
   author: Schema.NullOr(GitHubUserSchema),
   isDraft: Schema.Boolean,
+  state: PullStateSchema,
+  mergedAt: Schema.NullOr(Schema.String),
   updatedAt: Schema.String,
   additions: Schema.Number,
   deletions: Schema.Number,
@@ -103,6 +115,7 @@ export const BlockPullSchema = Schema.Struct({
 export const PromotedPullSchema = Schema.Struct({
   number: Schema.Number,
   title: Schema.String,
+  body: Schema.NullOr(Schema.String),
   author: Schema.NullOr(GitHubUserSchema),
   mergedAt: Schema.NullOr(Schema.String),
 });
@@ -157,14 +170,82 @@ const createPromotion = HttpApiEndpoint.post(
   .setPayload(PromoteSchema)
   .addSuccess(CreatedPullSchema);
 
-const getPipeline = HttpApiEndpoint.get("getPipeline", "/api/github/pipeline")
+export const InstallationSchema = Schema.Struct({
+  id: Schema.Number,
+  accountLogin: Schema.String,
+  accountType: Schema.String,
+  avatarUrl: Schema.NullOr(Schema.String),
+  repositorySelection: Schema.String,
+});
+
+export type Installation = typeof InstallationSchema.Type;
+
+export const InstallationsSchema = Schema.Struct({
+  installations: Schema.Array(InstallationSchema),
+});
+
+export type Installations = typeof InstallationsSchema.Type;
+
+const listInstallations = HttpApiEndpoint.get(
+  "listInstallations",
+  "/api/github/installations"
+)
   .setHeaders(cookieHeaders)
+  .addSuccess(InstallationsSchema);
+
+const getPipeline = HttpApiEndpoint.get("getPipeline", "/api/github/pipeline")
+  .setHeaders(installationHeaders)
   .addSuccess(PipelineSchema);
 
-const getDevPipeline = HttpApiEndpoint.get(
-  "getDevPipeline",
-  "/api/dev/pipeline"
-).addSuccess(PipelineSchema);
+export const PullBodySchema = Schema.Struct({
+  body: Schema.NullOr(Schema.String),
+});
+
+export type PullBody = typeof PullBodySchema.Type;
+
+const getPullBody = HttpApiEndpoint.get(
+  "getPullBody",
+  "/api/github/repos/:owner/:repo/pulls/:number/body"
+)
+  .setPath(PullRequestRefSchema)
+  .setHeaders(installationHeaders)
+  .addSuccess(PullBodySchema);
+
+export const SearchResultsSchema = Schema.Struct({
+  pulls: Schema.Array(QueuePullSchema),
+  totalCount: Schema.Number,
+});
+
+export type SearchResults = typeof SearchResultsSchema.Type;
+
+const searchPulls = HttpApiEndpoint.get(
+  "searchPulls",
+  "/api/github/search/pulls"
+)
+  .setUrlParams(
+    Schema.Struct({
+      q: Schema.String.pipe(Schema.minLength(1)),
+      limit: Schema.optionalWith(
+        Schema.NumberFromString.pipe(Schema.int(), Schema.between(1, 50)),
+        { default: () => 30 }
+      ),
+    })
+  )
+  .setHeaders(installationHeaders)
+  .addSuccess(SearchResultsSchema);
+
+export const PipelineVersionSchema = Schema.Struct({
+  version: Schema.String,
+});
+
+export type PipelineVersion = typeof PipelineVersionSchema.Type;
+
+const getPipelineVersion = HttpApiEndpoint.get(
+  "getPipelineVersion",
+  "/api/github/pipeline/version"
+)
+  .setHeaders(installationHeaders)
+  .addSuccess(PipelineVersionSchema);
 
 const mergePull = HttpApiEndpoint.post(
   "mergePull",
@@ -184,12 +265,16 @@ const blockPull = HttpApiEndpoint.post(
   .addSuccess(OkSchema);
 
 export const ReviewQueueApi = HttpApiGroup.make("reviewQueue")
+  .add(listInstallations)
   .add(getPipeline)
-  .add(getDevPipeline)
+  .add(getPipelineVersion)
+  .add(getPullBody)
+  .add(searchPulls)
   .add(mergePull)
   .add(blockPull)
   .add(createPromotion)
   .addError(Unauthorized, { status: 401 })
+  .addError(InstallationRequired, { status: 403 })
   .addError(PullRequestNotFound, { status: 404 })
   .addError(GitHubRateLimited, { status: 429 })
   .addError(GitHubUnavailable, { status: 502 })

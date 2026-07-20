@@ -4,26 +4,31 @@ import { Schema } from "effect";
 import { useMemo } from "react";
 import type { MergedWorkbenchEvent } from "@/components/workbench/workbench-copy";
 import { useWorkbenchStore } from "@/components/workbench/workbench-store";
+import { fetchGithub } from "@/lib/github-api";
 
 async function fetchWorkbenchEvents(
   owner: string,
   repo: string,
-  authed: boolean
+  installationId: number | null
 ) {
-  const base = authed && !import.meta.env.DEV ? "/api/github" : "/api/dev";
-  const response = await fetch(`${base}/repos/${owner}/${repo}/events`);
-  if (!response.ok) {
-    throw new Error(`events unavailable (${response.status})`);
-  }
+  const response = await fetchGithub(
+    `/repos/${owner}/${repo}/events`,
+    "events",
+    installationId
+  );
   return await Schema.decodeUnknownPromise(WorkbenchFeedSchema)(
     await response.json()
   );
 }
 
-function workbenchEventsQuery(owner: string, repo: string, authed: boolean) {
+function workbenchEventsQuery(
+  owner: string,
+  repo: string,
+  installationId: number | null
+) {
   return queryOptions({
-    queryKey: ["repo-events", owner, repo, authed],
-    queryFn: () => fetchWorkbenchEvents(owner, repo, authed),
+    queryKey: ["repo-events", owner, repo, installationId],
+    queryFn: () => fetchWorkbenchEvents(owner, repo, installationId),
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
@@ -32,12 +37,12 @@ function workbenchEventsQuery(owner: string, repo: string, authed: boolean) {
 export function useWorkbenchEvents(
   owner: string,
   repo: string,
-  authed: boolean,
+  installationId: number | null,
   enabled: boolean,
   pullTitles: ReadonlyMap<number, string>
 ) {
   const server = useQuery({
-    ...workbenchEventsQuery(owner, repo, authed),
+    ...workbenchEventsQuery(owner, repo, installationId),
     enabled,
   });
   const local = useWorkbenchStore(owner, repo);

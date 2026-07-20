@@ -166,7 +166,7 @@ export const DEFAULT_KEYMAP: Record<string, ReviewCommandId> = {
   "C-o": "call-site",
   v: "visual",
   y: "yank",
-  c: "comment",
+  i: "comment",
   "C-b": "toggle-sidebar",
   "S-Enter": "mark-viewed",
   "?": "help",
@@ -217,5 +217,6 @@ export function keymapHelp(keymap: Record<string, ReviewCommandId>) {
 export const REVIEW_KEY_HELP = [
   ...keymapHelp(DEFAULT_KEYMAP),
   { chord: "1-9", description: "Count — repeats the next motion" },
+  { chord: "d / c", description: "Switch tab — diff / conversation" },
   { chord: "Esc", description: "Cancel — draft, selection, definitions" },
 ];

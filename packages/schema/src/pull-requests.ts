@@ -39,6 +39,8 @@ export const GitHubUserSchema = Schema.Struct({
   avatarUrl: Schema.String,
 });
 
+export type GitHubUser = typeof GitHubUserSchema.Type;
+
 const GitRefSchema = Schema.Struct({
   ref: Schema.String,
   sha: Schema.String,
@@ -123,6 +125,16 @@ export class GitHubRateLimited extends Schema.TaggedError<GitHubRateLimited>()(
     retryAfterSeconds: Schema.NullOr(Schema.Number),
     resetAt: Schema.NullOr(Schema.String),
   }
+) {}
+
+/**
+ * The user is signed in but Sphynx has no GitHub App installation to act
+ * through. Distinct from `Unauthorized` so the client can offer the install
+ * flow rather than a sign-in prompt.
+ */
+export class InstallationRequired extends Schema.TaggedError<InstallationRequired>()(
+  "InstallationRequired",
+  { message: Schema.String }
 ) {}
 
 export class GitHubUnavailable extends Schema.TaggedError<GitHubUnavailable>()(

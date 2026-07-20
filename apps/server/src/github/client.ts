@@ -14,7 +14,7 @@ import {
   type PullRequestRef,
   type PullRequestSummary,
 } from "@sphynx/schema/pull-requests";
-import { Context, Effect, Layer, Redacted, type Schema } from "effect";
+import { Context, Effect, Layer, type Schema } from "effect";
 import { GitHubConfig } from "./config";
 import { RetryableGitHubError, retryPolicy } from "./errors";
 import { refAnnotations } from "./graphql";
@@ -160,18 +160,13 @@ const makeClient = Effect.gen(function* () {
     ifNoneMatch?: string
   ): Effect.Effect<GitHubResult<A>, GitHubError> => {
     const attempt = Effect.gen(function* () {
-      let outgoing = HttpClientRequest.get(`${config.apiUrl}${path}`).pipe(
+      const outgoing = HttpClientRequest.get(`${config.apiUrl}${path}`).pipe(
         HttpClientRequest.setHeaders({
           accept: "application/vnd.github+json",
           "x-github-api-version": config.apiVersion,
           ...(ifNoneMatch ? { "if-none-match": ifNoneMatch } : {}),
         })
       );
-      if (config.token) {
-        outgoing = outgoing.pipe(
-          HttpClientRequest.bearerToken(Redacted.value(config.token))
-        );
-      }
 
       const response = yield* http
         .execute(outgoing)
@@ -259,7 +254,9 @@ const makeClient = Effect.gen(function* () {
           changes: file.changes,
           patch: file.patch ?? null,
           renderability: file.patch ? "patch" : "binary-or-large",
-          githubUrl: file.blob_url,
+          githubUrl:
+            file.blob_url ??
+            `https://github.com/${ref.owner}/${ref.repo}/pull/${ref.number}/files`,
         }));
         return {
           _tag: "Modified",

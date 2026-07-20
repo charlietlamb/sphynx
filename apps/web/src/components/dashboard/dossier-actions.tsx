@@ -1,3 +1,8 @@
+import {
+  GitMergeIcon,
+  GitPullRequestIcon,
+  ProhibitIcon,
+} from "@phosphor-icons/react";
 import type { QueuePull } from "@sphynx/schema/review-queue";
 import { ShortcutButton } from "@sphynx/ui/components/shortcut-button";
 import { useDialog } from "@/components/dashboard/dashboard-dialogs";
@@ -12,29 +17,35 @@ interface DossierActionsProps {
 export function DossierActions({ canAct, onOpen, pull }: DossierActionsProps) {
   const dialogs = useDialog();
   const { merge, block } = usePullActions(pull);
-  const disabledTitle = canAct ? undefined : "sign in to act on pulls";
+  const isOpen = pull.state === "open";
+  const canDecide = canAct && isOpen;
+  const blockedReason = isOpen ? undefined : `already ${pull.state}`;
+  const disabledTitle =
+    blockedReason ?? (canAct ? undefined : "sign in to act on pulls");
 
   return (
-    <div className="mt-auto flex flex-col gap-2 border-border border-t bg-background px-5 py-3">
+    <div className="mt-auto flex flex-col gap-2 border-border border-t bg-background px-4 py-3">
       <div className="flex items-center justify-end gap-2">
         <ShortcutButton
-          disabled={!canAct || block.isPending}
+          disabled={!canDecide || block.isPending}
           onClick={() => dialogs.open("blockPull", { pull })}
           shortcut="b"
           size="sm"
           title={disabledTitle}
           variant="outline"
         >
+          <ProhibitIcon className="size-3.5" weight="fill" />
           Block
         </ShortcutButton>
         <ShortcutButton
-          disabled={!canAct || merge.isPending}
+          disabled={!canDecide || merge.isPending}
           onClick={() => dialogs.open("mergePull", { pull })}
           shortcut="m"
           size="sm"
           title={disabledTitle}
           variant="outline"
         >
+          <GitMergeIcon className="size-3.5" weight="fill" />
           Merge
         </ShortcutButton>
         <ShortcutButton
@@ -43,6 +54,7 @@ export function DossierActions({ canAct, onOpen, pull }: DossierActionsProps) {
           shortcut="p"
           size="sm"
         >
+          <GitPullRequestIcon className="size-3.5" weight="fill" />
           Open pull
         </ShortcutButton>
       </div>

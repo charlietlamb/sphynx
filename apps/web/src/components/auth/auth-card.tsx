@@ -1,6 +1,7 @@
 import { Button } from "@sphynx/ui/components/ui/button";
 import { signInWithGithub } from "@/components/auth/sign-in";
 import { GithubIcon } from "@/components/icons/github-icon";
+import { CrosshairCard } from "@/components/layout/crosshair-card";
 
 interface AuthCardProps {
   redirect?: string;
@@ -8,15 +9,7 @@ interface AuthCardProps {
 
 export function AuthCard({ redirect }: AuthCardProps) {
   return (
-    <div className="relative w-full max-w-sm bg-background p-8 before:absolute before:top-[-9999px] before:bottom-0 before:left-0 before:w-px before:bg-border before:content-[''] after:absolute after:top-0 after:right-0 after:bottom-[-9999px] after:w-px after:bg-border after:content-['']">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute top-0 right-0 left-[-9999px] h-px bg-border"
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute right-[-9999px] bottom-0 left-0 h-px bg-border"
-      />
+    <CrosshairCard>
       <h1 className="font-heading text-2xl tracking-tight">
         Sign in to Sphynx
       </h1>
@@ -33,6 +26,11 @@ export function AuthCard({ redirect }: AuthCardProps) {
         <GithubIcon />
         Sign in with GitHub
       </Button>
-    </div>
+
+      <p className="mt-4 text-[11px] text-muted-foreground/50 leading-relaxed">
+        You'll choose which organizations Sphynx can access when you install the
+        GitHub App.
+      </p>
+    </CrosshairCard>
   );
 }

@@ -1,17 +1,16 @@
-import {
-  Config,
-  Context,
-  Duration,
-  Layer,
-  Option,
-  type Redacted,
-} from "effect";
+import { Config, Context, Duration, Layer, type Redacted } from "effect";
+
+interface GitHubAppCredentials {
+  readonly appId: string;
+  readonly clientId: string;
+  readonly privateKey: Redacted.Redacted<string>;
+}
 
 export interface GitHubConfigShape {
   readonly apiUrl: string;
   readonly apiVersion: string;
+  readonly app: GitHubAppCredentials;
   readonly timeout: Duration.Duration;
-  readonly token: Redacted.Redacted<string> | undefined;
 }
 
 export class GitHubConfig extends Context.Tag("@sphynx/server/GitHubConfig")<
@@ -31,9 +30,10 @@ export const GitHubConfigLive = Layer.effect(
     timeout: Config.duration("GITHUB_REQUEST_TIMEOUT").pipe(
       Config.withDefault(Duration.seconds(10))
     ),
-    token: Config.redacted("GITHUB_API_TOKEN").pipe(
-      Config.option,
-      Config.map(Option.getOrUndefined)
-    ),
+    app: Config.all({
+      appId: Config.string("GITHUB_APP_ID"),
+      clientId: Config.string("GITHUB_APP_CLIENT_ID"),
+      privateKey: Config.redacted("GITHUB_APP_PRIVATE_KEY"),
+    }),
   })
 );

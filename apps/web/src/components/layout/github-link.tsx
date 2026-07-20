@@ -6,13 +6,13 @@ export function GithubLink({ href }: { href: string }) {
   return (
     <a
       aria-label="Open on GitHub"
-      className={cn(buttonVariants({ variant: "outline", size: "icon-sm" }))}
+      className={cn(buttonVariants({ variant: "outline", size: "icon" }))}
       href={href}
       rel="noreferrer"
       target="_blank"
       title="Open on GitHub"
     >
-      <GithubIcon />
+      <GithubIcon className="size-[1.125rem]" />
     </a>
   );
 }

@@ -1,5 +1,5 @@
 import type { QueuePull } from "@sphynx/schema/review-queue";
-import { ageDays } from "@/lib/age";
+import { ageDays, fullDate } from "@/lib/age";
 
 export type ClaimTone = "ready" | "blocked" | "waiting" | "neutral";
 
@@ -49,6 +49,16 @@ function sentenceCase(text: string) {
 }
 
 export function claimFor(pull: QueuePull, now: number): Claim {
+  if (pull.state === "merged") {
+    return {
+      status: "Merged",
+      detail: pull.mergedAt ? `Merged ${fullDate(pull.mergedAt)}` : null,
+      tone: "neutral",
+    };
+  }
+  if (pull.state === "closed") {
+    return { status: "Closed", detail: "Not merged", tone: "neutral" };
+  }
   if (pull.isDraft) {
     return {
       status: "Draft",

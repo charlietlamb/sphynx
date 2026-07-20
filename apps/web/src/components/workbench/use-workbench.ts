@@ -5,14 +5,14 @@ import { markWorkbenchSeen } from "@/components/workbench/workbench-store";
 export function useWorkbench(
   owner: string | null,
   repo: string | null,
-  authed: boolean,
+  installationId: number | null,
   pullTitles: ReadonlyMap<number, string>
 ) {
   const [open, setOpen] = useState(false);
   const data = useWorkbenchEvents(
     owner ?? "",
     repo ?? "",
-    authed,
+    installationId,
     Boolean(owner && repo),
     pullTitles
   );

@@ -1,6 +1,7 @@
 export interface ReviewSettings {
   codeTheme: string;
   mirrorCodeTheme: boolean;
+  selectedInstallation: number | null;
   selectedRepo: string | null;
   sidebarCollapsed: boolean;
 }
@@ -8,6 +9,7 @@ export interface ReviewSettings {
 export const DEFAULT_SETTINGS: ReviewSettings = {
   codeTheme: "pierre",
   mirrorCodeTheme: false,
+  selectedInstallation: null,
   selectedRepo: null,
   sidebarCollapsed: false,
 };

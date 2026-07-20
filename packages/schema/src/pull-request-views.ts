@@ -1,8 +1,10 @@
 import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform";
 import { Schema } from "effect";
 import {
+  GitHubRateLimited,
   GitHubTimeout,
   GitHubUnavailable,
+  InstallationRequired,
   PullRequestNotFound,
   PullRequestRefSchema,
 } from "./pull-requests";
@@ -63,6 +65,8 @@ export const PullRequestViewsApi = HttpApiGroup.make("pullRequestViews")
   .add(setFileViewed)
   .add(setAllFilesViewed)
   .addError(Unauthorized, { status: 401 })
+  .addError(InstallationRequired, { status: 403 })
   .addError(PullRequestNotFound, { status: 404 })
+  .addError(GitHubRateLimited, { status: 429 })
   .addError(GitHubUnavailable, { status: 502 })
   .addError(GitHubTimeout, { status: 504 });

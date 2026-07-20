@@ -7,10 +7,7 @@ const REVIEWER_WIDTHS = ["5.5rem", "7rem", "4.5rem"];
 export function DossierSkeleton() {
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-col gap-2 border-border border-b px-5 py-4">
-        <span className="flex h-[16.5px] items-center">
-          <Skeleton className="h-3 w-44" />
-        </span>
+      <div className="flex flex-col gap-2 px-4 pt-4 pb-2">
         <div className="flex flex-col">
           <span className="flex h-[27.5px] items-center">
             <Skeleton className="h-5 w-11/12" />
@@ -32,8 +29,12 @@ export function DossierSkeleton() {
           </span>
         </div>
       </div>
-      <div className="flex flex-col gap-1 border-border border-b px-5 pb-4">
-        <div className="-mx-5 mb-2 flex items-center gap-1.5 border-border border-b px-5 py-2.5">
+      <div className="flex items-center gap-1 border-border border-b px-2 pb-1">
+        <Skeleton className="h-8 w-[4.5rem] rounded-md" />
+        <Skeleton className="h-8 w-20 rounded-md" />
+      </div>
+      <div className="flex flex-col gap-1 border-border border-b px-4 pb-4">
+        <div className="-mx-4 mb-2 flex items-center gap-1.5 border-border border-b px-4 py-2.5">
           <SealCheckIcon
             className="size-3 text-muted-foreground/60"
             weight="fill"
@@ -47,7 +48,7 @@ export function DossierSkeleton() {
           <Skeleton className="h-3 w-24" />
         </span>
       </div>
-      <div className="mt-auto flex items-center justify-end gap-2 border-border border-t px-5 py-3">
+      <div className="mt-auto flex items-center justify-end gap-2 border-border border-t px-4 py-3">
         <Skeleton className="h-7 w-16 rounded-md" />
         <Skeleton className="h-7 w-16 rounded-md" />
         <Skeleton className="h-7 w-20 rounded-md" />

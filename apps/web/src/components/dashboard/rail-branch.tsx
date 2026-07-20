@@ -10,6 +10,11 @@ interface RailBranchProps {
   onSelect: () => void;
 }
 
+function leafName(branch: string) {
+  const cut = branch.lastIndexOf("/");
+  return cut === -1 ? branch : branch.slice(cut + 1);
+}
+
 export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
   return (
     <button
@@ -33,12 +38,12 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
         <>
           <span
             aria-hidden
-            className="absolute top-[-2px] left-[13px] h-[calc(50%+2px)] w-[11px] rounded-bl-[8px] border-border border-b border-l"
+            className="absolute top-0 left-[14px] h-1/2 w-[10px] rounded-bl-[9px] border-border border-b border-l"
           />
           <span
             aria-hidden
             className={cn(
-              "absolute left-[24px] size-[5px] rounded-full transition-colors",
+              "absolute left-[22px] size-[5px] rounded-full transition-colors",
               active ? "bg-primary" : "bg-muted-foreground/70"
             )}
           />
@@ -46,15 +51,15 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
       )}
       <SignalTip
         className={cn(
-          "block min-w-0 flex-1 truncate text-left font-mono [direction:rtl]",
-          item.isStage ? "font-medium text-[13px]" : "pl-3 text-xs",
+          "block min-w-0 flex-1 truncate text-left font-mono",
+          item.isStage ? "font-medium text-[13px]" : "pl-2 text-xs",
           active && "text-primary",
           !active &&
             (item.isStage ? "text-foreground" : "text-muted-foreground")
         )}
         label={item.branch}
       >
-        {item.branch}
+        {item.isStage ? item.branch : leafName(item.branch)}
       </SignalTip>
       <QueueCounts
         contested={item.contested}
@@ -62,7 +67,7 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
         total={item.total}
       />
       {hint === null ? null : (
-        <kbd className="shrink-0 rounded-sm border border-border bg-muted/40 px-1 py-px font-mono text-[9px] text-muted-foreground/60 uppercase opacity-0 transition-opacity group-hover:opacity-100">
+        <kbd className="shrink-0 rounded-[5px] border border-border bg-muted/40 px-1 py-px font-mono text-[9px] text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100">
           {hint}
         </kbd>
       )}

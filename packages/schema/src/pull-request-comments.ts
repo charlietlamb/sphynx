@@ -5,6 +5,7 @@ import {
   GitHubRateLimited,
   GitHubTimeout,
   GitHubUnavailable,
+  InstallationRequired,
   PullRequestNotFound,
   PullRequestRefSchema,
 } from "./pull-requests";
@@ -162,6 +163,7 @@ export const PullRequestCommentsApi = HttpApiGroup.make("pullRequestComments")
   .add(submitReview)
   .add(discardReview)
   .addError(Unauthorized, { status: 401 })
+  .addError(InstallationRequired, { status: 403 })
   .addError(PullRequestNotFound, { status: 404 })
   .addError(GitHubRateLimited, { status: 429 })
   .addError(GitHubUnavailable, { status: 502 })

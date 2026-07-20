@@ -3,6 +3,7 @@ import { QueueRow } from "@/components/dashboard/queue-row";
 import { pullKey, type StackNode } from "@/lib/attention";
 
 interface StackRowsProps {
+  depth?: number;
   focusedKey: string | null;
   nodes: readonly StackNode[];
   now: number;
@@ -11,6 +12,7 @@ interface StackRowsProps {
 }
 
 export function StackRows({
+  depth = 0,
   focusedKey,
   now,
   nodes,
@@ -18,12 +20,13 @@ export function StackRows({
   onOpen,
 }: StackRowsProps) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col">
       {nodes.map((node) => {
         const key = pullKey(node.pull);
         return (
-          <div className="flex flex-col gap-0.5" key={key}>
+          <div className="flex flex-col" key={key}>
             <QueueRow
+              depth={depth}
               focused={key === focusedKey}
               now={now}
               onFocus={() => onFocus(key)}
@@ -31,15 +34,14 @@ export function StackRows({
               pull={node.pull}
             />
             {node.children.length > 0 ? (
-              <div className="ml-4 border-border border-l pl-2">
-                <StackRows
-                  focusedKey={focusedKey}
-                  nodes={node.children}
-                  now={now}
-                  onFocus={onFocus}
-                  onOpen={onOpen}
-                />
-              </div>
+              <StackRows
+                depth={depth + 1}
+                focusedKey={focusedKey}
+                nodes={node.children}
+                now={now}
+                onFocus={onFocus}
+                onOpen={onOpen}
+              />
             ) : null}
           </div>
         );

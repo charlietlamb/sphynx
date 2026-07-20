@@ -18,22 +18,21 @@ function ciLabel(pull: QueuePull) {
   return parts.length > 0 ? parts.join(" · ") : plural(0, "check");
 }
 
-function CiChip({ pull }: { pull: QueuePull }) {
+function GlowDot({ pull }: { pull: QueuePull }) {
   const { failed, pending } = pull.ciCounts;
   if (failed > 0) {
     return (
-      <span className="flex items-baseline gap-[3px] font-medium text-[11px] text-deletion tabular-nums">
-        <span className="text-[10px]">✕</span>
-        {failed}
-      </span>
+      <span className="size-[5px] rounded-full bg-deletion transition-shadow group-hover:animate-pulse group-hover:shadow-[0_0_7px_1px_var(--deletion)]" />
     );
   }
   if (pending > 0) {
     return (
-      <span className="size-1.5 animate-pulse rounded-full bg-amber-500" />
+      <span className="size-[5px] animate-pulse rounded-full bg-amber-500 group-hover:shadow-[0_0_7px_1px_var(--color-amber-500)]" />
     );
   }
-  return <span className="font-medium text-[11px] text-addition/60">✓</span>;
+  return (
+    <span className="size-[5px] rounded-full bg-addition transition-shadow group-hover:animate-pulse group-hover:shadow-[0_0_7px_1px_var(--addition)]" />
+  );
 }
 
 export function CiBar({ pull }: { pull: QueuePull }) {
@@ -42,8 +41,11 @@ export function CiBar({ pull }: { pull: QueuePull }) {
     return null;
   }
   return (
-    <SignalTip className="inline-flex" label={ciLabel(pull)}>
-      <CiChip pull={pull} />
+    <SignalTip
+      className="inline-flex size-4 items-center justify-center"
+      label={ciLabel(pull)}
+    >
+      <GlowDot pull={pull} />
     </SignalTip>
   );
 }

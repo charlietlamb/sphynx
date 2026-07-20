@@ -1,5 +1,4 @@
 import type { SelectedLineRange } from "@pierre/diffs";
-import { useTheme } from "next-themes";
 import { useMemo } from "react";
 import {
   DIFF_UNSAFE_CSS,
@@ -8,8 +7,7 @@ import {
 } from "@/components/pull-request/diff-symbols";
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
 import type { SymbolIndex } from "@/components/pull-request/symbol-index";
-import { useSettings } from "@/components/settings/settings-provider";
-import { CODE_THEMES } from "@/lib/settings";
+import { useCodeTheme } from "@/components/pull-request/use-code-theme";
 
 interface TokenClickProps {
   lineNumber: number;
@@ -88,18 +86,14 @@ export function useDiffSymbolOptions({
   onSelectLine,
   symbolIndex,
 }: DiffSymbolOptionsInput) {
-  const { resolvedTheme } = useTheme();
-  const { settings } = useSettings();
-  const codeThemes = CODE_THEMES[settings.codeTheme]?.themes;
+  const themeOptions = useCodeTheme();
   return useMemo(() => {
     let handledClickEvent: unknown = null;
     return {
       diffStyle: "unified" as const,
       expansionLineCount: 20,
       stickyHeaders: true,
-      ...(codeThemes ? { theme: codeThemes } : {}),
-      themeType:
-        resolvedTheme === "dark" ? ("dark" as const) : ("light" as const),
+      ...themeOptions,
       useTokenTransformer: true,
       unsafeCSS: DIFF_UNSAFE_CSS,
       ...commentingOptions(commenting),
@@ -155,12 +149,5 @@ export function useDiffSymbolOptions({
         keepSymbolsStamped(node, symbolIndex);
       },
     };
-  }, [
-    resolvedTheme,
-    codeThemes,
-    symbolIndex,
-    onNavigate,
-    onSelectLine,
-    commenting,
-  ]);
+  }, [themeOptions, symbolIndex, onNavigate, onSelectLine, commenting]);
 }

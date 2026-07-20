@@ -3,8 +3,13 @@ import {
   parseAsArrayOf,
   parseAsInteger,
   parseAsString,
+  parseAsStringLiteral,
   useQueryStates,
 } from "nuqs";
+
+export const PULL_REQUEST_TABS = ["diff", "conversation"] as const;
+
+export type PullRequestTab = (typeof PULL_REQUEST_TABS)[number];
 
 export interface DefinitionRef {
   anchorLine: number | null;
@@ -84,6 +89,7 @@ const pullRequestSearchParams = {
   file: parseAsString,
   line: parseAsInteger,
   panes: parseAsArrayOf(definitionRefParser, "|"),
+  tab: parseAsStringLiteral(PULL_REQUEST_TABS).withDefault("diff"),
 };
 
 export function usePullRequestSearch() {

@@ -1,60 +1,23 @@
-import {
-  PipelineSchema,
-  type QueuePull,
-  type RepoFlow,
-} from "@sphynx/schema/review-queue";
-import { useQuery } from "@tanstack/react-query";
+import type { QueuePull } from "@sphynx/schema/review-queue";
 import { useNavigate } from "@tanstack/react-router";
-import { Schema } from "effect";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useDialog } from "@/components/dashboard/dashboard-dialogs";
-import type { RepoOption } from "@/components/dashboard/repo-switcher";
 import { useDashboardKeys } from "@/components/dashboard/use-dashboard-keys";
+import { useInstallations } from "@/components/dashboard/use-installations";
+import { toRepoOption, usePipeline } from "@/components/dashboard/use-pipeline";
+import { usePipelineFreshness } from "@/components/dashboard/use-pipeline-freshness";
+import { usePullSearch } from "@/components/dashboard/use-pull-search";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useWorkbench } from "@/components/workbench/use-workbench";
 import {
   buildBranchQueue,
   filterQueue,
-  isContested,
-  isMergeable,
   pullKey,
+  type QueueFilter,
   railBranches,
   repoKeyOf,
 } from "@/lib/attention";
 import { useSession } from "@/lib/auth-client";
-
-async function fetchPipeline(authed: boolean) {
-  const response = await fetch(
-    authed && !import.meta.env.DEV
-      ? "/api/github/pipeline"
-      : "/api/dev/pipeline"
-  );
-  if (!response.ok) {
-    throw new Error(`pipeline unavailable (${response.status})`);
-  }
-  return Schema.decodeUnknownPromise(PipelineSchema)(await response.json());
-}
-
-function toRepoOption(flow: RepoFlow): RepoOption {
-  let mergeable = 0;
-  let contested = 0;
-  for (const pull of flow.openPulls) {
-    if (isMergeable(pull)) {
-      mergeable += 1;
-    }
-    if (isContested(pull)) {
-      contested += 1;
-    }
-  }
-  return {
-    key: repoKeyOf(flow),
-    owner: flow.owner,
-    repo: flow.repo,
-    openCount: flow.openPulls.length,
-    mergeable,
-    contested,
-  };
-}
 
 function cycle(index: number, delta: number, length: number) {
   return (index + delta + length) % length;
@@ -64,17 +27,30 @@ export function useDashboardState() {
   const navigate = useNavigate();
   const { data: session, isPending: sessionPending } = useSession();
   const authed = Boolean(session?.user);
-  const pipeline = useQuery({
-    queryKey: ["pipeline", authed],
-    queryFn: () => fetchPipeline(authed),
-    enabled: !sessionPending,
-    staleTime: 60_000,
-  });
   const { settings, update: updateSettings } = useSettings();
   const repoKey = settings.selectedRepo;
+
+  const orgs = useInstallations(settings.selectedInstallation, authed);
+  const installationId = orgs.active?.id ?? null;
+  const ready = authed && !sessionPending && installationId !== null;
+  const settled = authed && !(sessionPending || orgs.isPending);
+  /** Signed in, installations resolved, but the App is on no organization. */
+  const needsInstall = settled && !orgs.isError && orgs.active === null;
+  /**
+   * The lookup itself failed — usually a stale GitHub token from before the
+   * App migration. Signing in again re-issues it.
+   */
+  const needsReauth = settled && orgs.isError;
+
+  const pipeline = usePipeline(installationId, ready);
+  usePipelineFreshness(installationId, ready);
   const dialogs = useDialog();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [allRepos, setAllRepos] = useState(false);
+  const searchInput = useRef<HTMLInputElement>(null);
 
   const flows = useMemo(() => {
     const active = (pipeline.data?.repos ?? []).filter(
@@ -99,14 +75,28 @@ export function useDashboardState() {
   );
 
   const queue = useMemo(
-    () => (fullQueue ? filterQueue(fullQueue, branchFilter) : null),
-    [fullQueue, branchFilter]
+    () =>
+      fullQueue ? filterQueue(fullQueue, branchFilter, queueFilter) : null,
+    [fullQueue, branchFilter, queueFilter]
   );
 
   const rail = useMemo(
     () => (flow && fullQueue ? railBranches(flow, fullQueue) : []),
     [flow, fullQueue]
   );
+
+  const scopedQuery = useMemo(() => {
+    const trimmed = searchQuery.trim();
+    if (trimmed.length === 0) {
+      return "";
+    }
+    const scope = allRepos || !flow ? "" : `repo:${flow.owner}/${flow.repo} `;
+    return `${scope}is:pr ${trimmed}`;
+  }, [searchQuery, allRepos, flow]);
+
+  const search = usePullSearch(scopedQuery, installationId);
+
+  const searchOrder = useMemo(() => search.pulls.map(pullKey), [search.pulls]);
 
   const pullTitles = useMemo(() => {
     const titles = new Map(
@@ -123,29 +113,36 @@ export function useDashboardState() {
   const workbench = useWorkbench(
     flow?.owner ?? null,
     flow?.repo ?? null,
-    authed,
+    installationId,
     pullTitles
   );
 
+  const order = search.active ? searchOrder : (queue?.order ?? []);
+
   const focused = (() => {
-    if (!queue) {
-      return null;
-    }
-    if (focusedKey && queue.order.includes(focusedKey)) {
+    if (focusedKey && order.includes(focusedKey)) {
       return focusedKey;
     }
-    return queue.order[0] ?? null;
+    return order[0] ?? null;
   })();
 
   const focusedPull =
-    flow?.openPulls.find((pull) => pullKey(pull) === focused) ?? null;
+    (search.active ? search.pulls : (flow?.openPulls ?? [])).find(
+      (pull) => pullKey(pull) === focused
+    ) ?? null;
 
   const moveFocus = (delta: number) => {
-    if (!queue || queue.order.length === 0) {
+    if (order.length === 0) {
       return;
     }
-    const index = focused ? queue.order.indexOf(focused) : 0;
-    setFocusedKey(queue.order[cycle(index, delta, queue.order.length)] ?? null);
+    const index = focused ? order.indexOf(focused) : 0;
+    setFocusedKey(order[cycle(index, delta, order.length)] ?? null);
+  };
+
+  const selectInstallation = (id: number) => {
+    updateSettings({ selectedInstallation: id });
+    setFocusedKey(null);
+    setBranchFilter(null);
   };
 
   const selectRepo = (key: string) => {
@@ -156,6 +153,21 @@ export function useDashboardState() {
 
   const selectBranch = (branch: string | null) => {
     setBranchFilter(branch ? `${branch}` : null);
+    setFocusedKey(null);
+  };
+
+  const selectQueueFilter = (next: QueueFilter) => {
+    setQueueFilter(`${next}` as QueueFilter);
+    setFocusedKey(null);
+  };
+
+  const changeSearch = (next: string) => {
+    setSearchQuery(`${next}`);
+    setFocusedKey(null);
+  };
+
+  const toggleAllRepos = () => {
+    setAllRepos((previous) => !previous);
     setFocusedKey(null);
   };
 
@@ -191,12 +203,12 @@ export function useDashboardState() {
   useDashboardKeys({
     active: dialogs.stack.length === 0 && !workbench.open,
     onMerge: () => {
-      if (authed && focusedPull) {
+      if (authed && focusedPull?.state === "open") {
         dialogs.open("mergePull", { pull: focusedPull });
       }
     },
     onBlock: () => {
-      if (authed && focusedPull) {
+      if (authed && focusedPull?.state === "open") {
         dialogs.open("blockPull", { pull: focusedPull });
       }
     },
@@ -215,6 +227,7 @@ export function useDashboardState() {
     },
     onNextRepo: () => moveRepo(1),
     onPrevRepo: () => moveRepo(-1),
+    onSearch: () => searchInput.current?.focus(),
     onWorkbench: () => workbench.toggle(),
   });
 
@@ -223,8 +236,14 @@ export function useDashboardState() {
     : null;
 
   return {
+    allRepos,
     authed,
+    changeSearch,
+    search,
+    searchInput,
+    searchQuery,
     selectedRepo,
+    toggleAllRepos,
     workbench,
     branchFilter,
     flow,
@@ -233,9 +252,17 @@ export function useDashboardState() {
     openPull,
     openPullNumber,
     queue,
+    queueFilter,
     rail,
     repos,
+    installationId,
+    installations: orgs.installations,
+    activeInstallation: orgs.active,
+    needsInstall,
+    needsReauth,
+    selectInstallation,
     selectBranch,
+    selectQueueFilter,
     selectRepo,
     setFocusedKey,
   };

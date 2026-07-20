@@ -1,6 +1,7 @@
 import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "@effect/platform";
 import { Schema } from "effect";
 import { PullRequestCommentsApi } from "./pull-request-comments";
+import { PullRequestConversationApi } from "./pull-request-conversation";
 import { PullRequestViewsApi } from "./pull-request-views";
 import { PullRequestsApi } from "./pull-requests";
 import { ReviewQueueApi } from "./review-queue";
@@ -21,5 +22,6 @@ export class SphynxApi extends HttpApi.make("sphynx")
   .add(PullRequestsApi)
   .add(PullRequestViewsApi)
   .add(PullRequestCommentsApi)
+  .add(PullRequestConversationApi)
   .add(ReviewQueueApi)
   .add(WorkbenchApi) {}

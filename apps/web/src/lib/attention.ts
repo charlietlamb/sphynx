@@ -147,14 +147,52 @@ function collectOrder(groups: readonly BranchGroup[]): string[] {
   return order;
 }
 
+export const QUEUE_FILTERS = [
+  { label: "All", value: "all" },
+  { label: "Needs review", value: "needs-eyes" },
+  { label: "Ready", value: "ready" },
+  { label: "Blocked", value: "contested" },
+] as const;
+
+export type QueueFilter = (typeof QUEUE_FILTERS)[number]["value"];
+
+function flattenMatches(
+  nodes: readonly StackNode[],
+  match: (pull: QueuePull) => boolean
+): StackNode[] {
+  const kept: StackNode[] = [];
+  for (const node of nodes) {
+    const children = flattenMatches(node.children, match);
+    if (match(node.pull)) {
+      kept.push({ pull: node.pull, children });
+    } else {
+      kept.push(...children);
+    }
+  }
+  return kept;
+}
+
 export function filterQueue(
   queue: BranchQueue,
-  branch: string | null
+  branch: string | null,
+  filter: QueueFilter = "all"
 ): BranchQueue {
-  if (!branch) {
-    return queue;
+  const scoped = branch
+    ? queue.groups.filter((group) => group.branch === branch)
+    : queue.groups;
+  if (filter === "all") {
+    return branch ? { groups: scoped, order: collectOrder(scoped) } : queue;
   }
-  const groups = queue.groups.filter((group) => group.branch === branch);
+  const groups: BranchGroup[] = [];
+  for (const group of scoped) {
+    const nodes = flattenMatches(
+      group.nodes,
+      (pull) => pull.decision === filter
+    );
+    if (nodes.length > 0) {
+      groups.push({ ...group, nodes, ...countNodes(nodes) });
+    }
+  }
   return { groups, order: collectOrder(groups) };
 }
 

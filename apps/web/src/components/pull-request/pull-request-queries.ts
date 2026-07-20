@@ -6,6 +6,11 @@ import {
   ReviewThreadsSchema,
   type SubmitReview,
 } from "@sphynx/schema/pull-request-comments";
+import {
+  type ConversationComment,
+  ConversationCommentSchema,
+  ConversationSchema,
+} from "@sphynx/schema/pull-request-conversation";
 import { ViewedFilesSchema } from "@sphynx/schema/pull-request-views";
 import {
   MAX_FILE_PAGES,
@@ -25,6 +30,7 @@ import {
 import { Schema } from "effect";
 import { useCallback } from "react";
 import { toast } from "sonner";
+import { useSession } from "@/lib/auth-client";
 
 const FILES_PER_PAGE = 100;
 
@@ -63,7 +69,11 @@ function showMutationError(title: string, error: unknown) {
   });
 }
 
-const ACCESS_BLOCK = /restricts OAuth apps/;
+/**
+ * A GitHub App reports missing reach as a resource/permission failure rather
+ * than the OAuth-App restriction message, so match what the App actually emits.
+ */
+const ACCESS_BLOCK = /not accessible by integration|Resource not accessible/i;
 
 function accessBlockKey(ref: PullRequestRef) {
   return ["pull-request", ref.owner, ref.repo, ref.number, "access-block"];
@@ -235,6 +245,84 @@ function commentThreadsQuery(ref: PullRequestRef) {
 export function useCommentThreads(ref: PullRequestRef) {
   const query = useQuery(commentThreadsQuery(ref));
   return query.data?.threads ?? EMPTY_THREADS;
+}
+
+function conversationUrl(ref: PullRequestRef) {
+  return `${pullUrl(ref)}/conversation`;
+}
+
+function conversationQuery(ref: PullRequestRef) {
+  return queryOptions({
+    queryKey: ["pull-request", ref.owner, ref.repo, ref.number, "conversation"],
+    queryFn: () => fetchDecoded(conversationUrl(ref), ConversationSchema),
+  });
+}
+
+export function useConversation(ref: PullRequestRef) {
+  return useQuery(conversationQuery(ref));
+}
+
+const OPTIMISTIC_CONVERSATION_ID = "optimistic";
+
+function dropOptimisticConversationComments(
+  comments: readonly ConversationComment[]
+) {
+  return comments.filter(
+    (comment) => comment.id !== OPTIMISTIC_CONVERSATION_ID
+  );
+}
+
+export function useAddConversationComment(ref: PullRequestRef) {
+  const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const { queryKey } = conversationQuery(ref);
+  const mutation = useMutation({
+    mutationFn: async (body: string): Promise<ConversationComment> => {
+      const response = await fetch(
+        `${commentsUrl(ref)}/conversation-comments`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ body }),
+        }
+      );
+      await ensureOk(response);
+      return await Schema.decodeUnknownPromise(ConversationCommentSchema)(
+        await response.json()
+      );
+    },
+    onMutate: async (body) => {
+      await queryClient.cancelQueries({ queryKey });
+      const optimistic: ConversationComment = {
+        id: OPTIMISTIC_CONVERSATION_ID,
+        author: session?.user
+          ? { login: session.user.name, avatarUrl: session.user.image ?? "" }
+          : null,
+        body,
+        bodyHTML: null,
+        createdAt: new Date().toISOString(),
+        githubUrl: "",
+      };
+      queryClient.setQueryData(queryKey, (current) =>
+        current
+          ? { ...current, comments: [...current.comments, optimistic] }
+          : current
+      );
+    },
+    onError: (error) => {
+      queryClient.setQueryData(queryKey, (current) =>
+        current
+          ? {
+              ...current,
+              comments: dropOptimisticConversationComments(current.comments),
+            }
+          : current
+      );
+      reportMutationError(queryClient, ref, "Couldn't post comment", error);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+  });
+  return { addComment: mutation.mutate, adding: mutation.isPending };
 }
 
 const OPTIMISTIC_COMMENT_ID = -1;

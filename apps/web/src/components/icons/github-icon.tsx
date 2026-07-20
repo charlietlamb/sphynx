@@ -1,8 +1,10 @@
-export function GithubIcon() {
+import { cn } from "@sphynx/ui/lib/utils";
+
+export function GithubIcon({ className }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"
-      className="size-[1.125rem]"
+      className={cn("size-[1.125rem]", className)}
       fill="currentColor"
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"

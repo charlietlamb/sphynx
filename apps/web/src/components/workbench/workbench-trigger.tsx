@@ -1,3 +1,4 @@
+import { PulseIcon } from "@phosphor-icons/react";
 import { Kbd } from "@sphynx/ui/components/ui/kbd";
 
 interface WorkbenchTriggerProps {
@@ -9,11 +10,16 @@ export function WorkbenchTrigger({ onOpen, unseen }: WorkbenchTriggerProps) {
   return (
     <button
       aria-label="Open the repo workbench"
-      className="flex h-9 w-full shrink-0 items-center gap-2 border-border border-t px-3 text-left transition-colors hover:bg-alpha-4"
+      className="group flex h-9 w-full shrink-0 items-center gap-2 border-border border-t px-3 text-left transition-colors hover:bg-alpha-4"
       onClick={onOpen}
       type="button"
     >
-      <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+      <PulseIcon
+        aria-hidden
+        className="size-3.5 shrink-0 text-muted-foreground/60 transition-colors group-hover:text-foreground"
+        weight="fill"
+      />
+      <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground transition-colors group-hover:text-foreground">
         Workbench
       </span>
       {unseen > 0 ? (
@@ -21,7 +27,9 @@ export function WorkbenchTrigger({ onOpen, unseen }: WorkbenchTriggerProps) {
           {unseen}
         </span>
       ) : null}
-      <Kbd className="shrink-0">W</Kbd>
+      <Kbd className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+        W
+      </Kbd>
     </button>
   );
 }

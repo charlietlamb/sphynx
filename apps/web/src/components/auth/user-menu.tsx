@@ -33,15 +33,18 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Account menu"
-        className={cn(buttonVariants({ variant: "outline", size: "icon-sm" }))}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "icon" }),
+          "overflow-hidden p-0"
+        )}
       >
-        <Avatar className="size-5 rounded-sm after:rounded-sm">
+        <Avatar className="size-full rounded-md after:rounded-md">
           <AvatarImage
             alt={user.name}
-            className="rounded-sm"
+            className="rounded-md"
             src={user.image ?? undefined}
           />
-          <AvatarFallback className="rounded-sm">
+          <AvatarFallback className="rounded-md">
             {user.name[0] ?? "?"}
           </AvatarFallback>
         </Avatar>

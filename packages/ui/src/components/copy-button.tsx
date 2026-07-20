@@ -1,6 +1,6 @@
 import { CheckIcon, CopyIcon } from "@phosphor-icons/react";
 import { Button } from "@sphynx/ui/components/ui/button";
-import { useEffect, useRef, useState } from "react";
+import { useCopy } from "@sphynx/ui/hooks/use-copy";
 
 interface CopyButtonProps {
   className?: string;
@@ -13,36 +13,12 @@ export function CopyButton({
   className,
   label = "Copy",
 }: CopyButtonProps) {
-  const [copied, setCopied] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (timeoutRef.current !== null) {
-        clearTimeout(timeoutRef.current);
-      }
-    },
-    []
-  );
-
-  async function onCopy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      if (timeoutRef.current !== null) {
-        clearTimeout(timeoutRef.current);
-      }
-      timeoutRef.current = window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }
-
+  const { copied, copy } = useCopy(2000);
   return (
     <Button
       aria-label={label}
       className={className}
-      onClick={onCopy}
+      onClick={() => copy(value)}
       size="icon-sm"
       type="button"
       variant="ghost"

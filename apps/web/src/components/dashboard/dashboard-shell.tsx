@@ -4,7 +4,7 @@ import {
   ResizablePanelGroup,
 } from "@sphynx/ui/components/ui/resizable";
 import type { ReactNode } from "react";
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { AppHeader } from "@/components/layout/app-header";
 import { NoticePanel } from "@/components/layout/notice-panel";
 
 interface DashboardShellProps {
@@ -33,7 +33,7 @@ export function DashboardShell({
         />
       </div>
       <div className="hidden min-h-0 flex-1 flex-col md:flex">
-        <DashboardHeader githubUrl={githubUrl} switcher={switcher} />
+        <AppHeader githubUrl={githubUrl} switcher={switcher} />
         <ResizablePanelGroup
           autoSaveId="sphynx-dashboard"
           className="min-h-0 flex-1"
