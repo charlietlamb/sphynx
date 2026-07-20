@@ -1,5 +1,7 @@
 export interface ReviewSettings {
   codeTheme: string;
+  /** Confirm merges, blocks and promotions with a toast. */
+  confirmActions: boolean;
   mirrorCodeTheme: boolean;
   selectedInstallation: number | null;
   selectedRepo: string | null;
@@ -7,6 +9,7 @@ export interface ReviewSettings {
 }
 
 export const DEFAULT_SETTINGS: ReviewSettings = {
+  confirmActions: true,
   codeTheme: "pierre",
   mirrorCodeTheme: false,
   selectedInstallation: null,

@@ -1,5 +1,6 @@
 import {
   GearIcon,
+  GitMergeIcon,
   KeyboardIcon,
   KeyIcon,
   PaletteIcon,
@@ -27,6 +28,7 @@ import {
 import { useMemo, useState } from "react";
 import { useRegisterCommands } from "@/components/command-palette/command-palette-context";
 import { SettingsAccess } from "@/components/settings/settings-access";
+import { SettingsActions } from "@/components/settings/settings-actions";
 import { SettingsAppearance } from "@/components/settings/settings-appearance";
 import { SettingsKeyboard } from "@/components/settings/settings-keyboard";
 
@@ -37,6 +39,13 @@ const SECTIONS = [
     description: "How Sphynx and your diffs look.",
     icon: PaletteIcon,
     content: SettingsAppearance,
+  },
+  {
+    id: "actions",
+    label: "Actions",
+    description: "What happens when you merge or block.",
+    icon: GitMergeIcon,
+    content: SettingsActions,
   },
   {
     id: "keyboard",

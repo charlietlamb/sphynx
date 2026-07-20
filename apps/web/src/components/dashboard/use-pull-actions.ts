@@ -5,8 +5,10 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useSettings } from "@/components/settings/settings-provider";
 import { logWorkbenchEvent } from "@/components/workbench/workbench-store";
-import { postJson } from "@/lib/api";
+import { isAccessBlocked, postJson } from "@/lib/api";
+import { installationSettingsUrl } from "@/lib/github-app";
 import { keys } from "@/lib/query/keys";
 
 function pullPath(pull: QueuePull) {
@@ -45,8 +47,38 @@ interface RepoShape {
   readonly openPulls: readonly QueuePull[];
 }
 
+/**
+ * A write GitHub refused for lack of permission needs a different response
+ * from a transient failure: it will fail identically on every retry until the
+ * installation is granted the missing access, so the toast links there.
+ */
+function reportWriteError(pull: QueuePull, action: string, error: unknown) {
+  if (isAccessBlocked(error)) {
+    toast.error(`Sphynx can't ${action} pull requests yet`, {
+      description: `The GitHub App needs write access to ${pull.owner}/${pull.repo}.`,
+      action: {
+        label: "Review access",
+        onClick: () => {
+          window.open(installationSettingsUrl(pull.owner), "_blank");
+        },
+      },
+      duration: 10_000,
+    });
+    return;
+  }
+  toast.error(`Couldn't ${action} #${pull.number}`, {
+    description: "Nothing was changed on GitHub.",
+  });
+}
+
 export function usePullActions(pull: QueuePull) {
   const queryClient = useQueryClient();
+  const { settings } = useSettings();
+  const confirm = (message: string, description: string) => {
+    if (settings.confirmActions) {
+      toast.success(message, { description });
+    }
+  };
   /**
    * Reaches the pull's own subtree and every installation-scoped view of it.
    * The installation id is not known here, so the whole installation branch is
@@ -77,13 +109,11 @@ export function usePullActions(pull: QueuePull) {
       removePullEverywhere(queryClient, pull);
       return { previous };
     },
-    onError: (_error, _input, context) => {
+    onError: (error, _input, context) => {
       for (const [key, data] of context?.previous ?? []) {
         queryClient.setQueryData(key, data);
       }
-      toast.error(`Couldn't merge #${pull.number}`, {
-        description: "Nothing was changed on GitHub.",
-      });
+      reportWriteError(pull, "merge", error);
     },
     onSuccess: () => {
       logWorkbenchEvent({
@@ -92,6 +122,7 @@ export function usePullActions(pull: QueuePull) {
         kind: "pr-merged",
         pull: { number: pull.number, title: pull.title },
       });
+      confirm(`Merged #${pull.number}`, pull.title);
     },
     onSettled: invalidate,
   });
@@ -107,12 +138,10 @@ export function usePullActions(pull: QueuePull) {
         pull: { number: pull.number, title: pull.title },
         detail: body,
       });
+      confirm(`Requested changes on #${pull.number}`, pull.title);
       invalidate();
     },
-    onError: () =>
-      toast.error(`Couldn't block #${pull.number}`, {
-        description: "Nothing was changed on GitHub.",
-      }),
+    onError: (error) => reportWriteError(pull, "block", error),
   });
 
   return { merge, block };

@@ -10,24 +10,19 @@ import { type Ref, useCallback, useMemo, useRef } from "react";
 import { CommentComposer } from "@/components/pull-request/comment-composer";
 import { CommentThread } from "@/components/pull-request/comment-thread";
 import { CARD_CLASSES } from "@/components/pull-request/diff-card-classes";
-import {
-  enrichWithContents,
-  expandableFilePath,
-} from "@/components/pull-request/full-contents";
+import { enrichWithContents } from "@/components/pull-request/full-contents";
 import { patchLineText } from "@/components/pull-request/patch-lines";
 import type {
   PatchMap,
   SymbolIndex,
 } from "@/components/pull-request/patch-map";
-import {
-  toGitPatch,
-  useFileContents,
-} from "@/components/pull-request/pull-request-queries";
+import { toGitPatch } from "@/components/pull-request/pull-request-queries";
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
 import { usePullRequestSearch } from "@/components/pull-request/pull-request-search";
 import { renderFileTypePrefix } from "@/components/pull-request/render-file-type-prefix";
 import { useActiveDiffContainer } from "@/components/pull-request/use-active-diff-container";
 import { useDiffSymbolOptions } from "@/components/pull-request/use-diff-symbol-options";
+import { useExpandedFiles } from "@/components/pull-request/use-expanded-files";
 import type { ReviewCommenting } from "@/components/pull-request/use-review-comments";
 import { useViewedHeader } from "@/components/pull-request/use-viewed-header";
 
@@ -147,14 +142,7 @@ export function DiffCardList({
     return grouped;
   }, [threads]);
 
-  const expandablePath = expandableFilePath(
-    files.find((candidate) => candidate.path === fallbackPath)
-  );
-  const activeContents = useFileContents(
-    pullRequestRef,
-    headSha,
-    expandablePath
-  );
+  const contents = useExpandedFiles(pullRequestRef, headSha, files);
 
   const { draft } = commenting;
   const items = useMemo(
@@ -162,7 +150,7 @@ export function DiffCardList({
       fileDiffs.map(({ path, fileDiff }) => {
         const viewed = viewedFiles?.has(path) ?? false;
         const annotations = cardAnnotations(path, threads, draft);
-        const enriched = path === expandablePath ? activeContents : null;
+        const enriched = contents.get(path) ?? null;
         return {
           id: path,
           type: "diff" as const,
@@ -178,7 +166,7 @@ export function DiffCardList({
           annotations,
         };
       }),
-    [fileDiffs, viewedFiles, threads, draft, expandablePath, activeContents]
+    [fileDiffs, viewedFiles, threads, draft, contents]
   );
 
   const options = useMemo(

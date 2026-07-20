@@ -7,6 +7,7 @@ export function CopyPathButton({ path }: { path: string }) {
     <button
       aria-label="Copy file path"
       className="flex size-5 cursor-pointer items-center justify-center rounded-[4px] text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+      data-copy-path=""
       onClick={(event) => {
         event.stopPropagation();
         copy(path);
