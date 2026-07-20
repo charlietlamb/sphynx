@@ -50,6 +50,13 @@ type EtagCheck =
   | { readonly _tag: "NotModified" };
 /** Repos probed for open-PR counts before trimming to the discovery cap. */
 const MAX_COUNTED_REPOS = 40;
+/**
+ * Open pulls fetched per repo. GitHub caps a connection page at 100, and a
+ * repo above that is past what the queue can usefully show. Previously 30,
+ * which silently dropped the oldest pulls on any busy repo.
+ */
+const OPEN_PULLS_PER_REPO = 100;
+
 const PULLS_CHUNK_SIZE = 3;
 
 /** Batched GraphQL chunks run wide; each is one request. */
@@ -132,7 +139,7 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
       .map(
         (entry, index) =>
           `r${index}: repository(owner: ${JSON.stringify(entry.owner)}, name: ${JSON.stringify(entry.repo)}) {
-    pullRequests(states: [OPEN], first: 30, orderBy: { field: UPDATED_AT, direction: DESC }) {
+    pullRequests(states: [OPEN], first: ${OPEN_PULLS_PER_REPO}, orderBy: { field: UPDATED_AT, direction: DESC }) {
       nodes { ...PullFields }
     }
   }`
