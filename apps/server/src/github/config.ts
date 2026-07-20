@@ -1,4 +1,4 @@
-import { Config, Context, Duration, Layer, type Redacted } from "effect";
+import { Config, Context, Duration, Layer, Redacted } from "effect";
 
 interface GitHubAppCredentials {
   readonly appId: string;
@@ -18,6 +18,15 @@ export class GitHubConfig extends Context.Tag("@sphynx/server/GitHubConfig")<
   GitHubConfigShape
 >() {}
 
+/**
+ * Normalizes a PEM that arrived through an environment variable.
+ *
+ * Dashboards and .env files commonly store the key with the newlines escaped
+ * as the two characters backslash-n. `createSign` needs real newlines, and
+ * fails with an opaque error otherwise, so accept either form.
+ */
+export const pemFrom = (value: string) => value.replace(/\\n/g, "\n").trim();
+
 export const GitHubConfigLive = Layer.effect(
   GitHubConfig,
   Config.all({
@@ -33,7 +42,10 @@ export const GitHubConfigLive = Layer.effect(
     app: Config.all({
       appId: Config.string("GITHUB_APP_ID"),
       clientId: Config.string("GITHUB_APP_CLIENT_ID"),
-      privateKey: Config.redacted("GITHUB_APP_PRIVATE_KEY"),
+      privateKey: Config.string("GITHUB_APP_PRIVATE_KEY").pipe(
+        Config.map(pemFrom),
+        Config.map(Redacted.make)
+      ),
     }),
   })
 );
