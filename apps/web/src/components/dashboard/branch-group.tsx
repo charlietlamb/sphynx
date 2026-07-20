@@ -24,13 +24,13 @@ export function BranchGroup({
     <div className="flex flex-col">
       <p
         className={cn(
-          "sticky top-[37px] z-[9] -mx-4 flex items-baseline gap-2 border-border border-b bg-background px-[26px] pt-3 pb-2",
+          "sticky top-9 z-[9] -mx-4 flex h-9 items-center gap-2 border-border border-b bg-card px-[26px]",
           !first && "border-t"
         )}
       >
         <span
           className={cn(
-            "font-mono text-xs",
+            "font-heading font-medium text-[13px] tracking-tight",
             group.isStage ? "text-foreground" : "text-muted-foreground"
           )}
         >

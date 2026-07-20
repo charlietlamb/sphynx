@@ -58,11 +58,16 @@ const makeGitHubAuth = Effect.gen(function* () {
    * write broke once a working day had passed, even though the session and the
    * refresh token were both still valid. `getAccessToken` performs the refresh
    * and persists the new pair.
+   *
+   * The cookie must be forwarded: better-auth rejects the call outright when
+   * it sees request context without a resolvable session, before it considers
+   * the userId in the body.
    */
-  const userTokenFor = (userId: string) =>
+  const userTokenFor = (cookie: string | undefined, userId: string) =>
     Effect.tryPromise(() =>
       auth.api.getAccessToken({
         body: { providerId: "github", userId },
+        headers: new Headers(cookie ? { cookie } : {}),
       })
     ).pipe(
       Effect.tapErrorCause((cause) =>
@@ -131,7 +136,7 @@ const makeGitHubAuth = Effect.gen(function* () {
   /** Installations the signed-in user can act through, freshest first. */
   const listInstallations = (cookie: string | undefined) =>
     sessionFor(cookie).pipe(
-      Effect.flatMap((session) => userTokenFor(session.userId)),
+      Effect.flatMap((session) => userTokenFor(cookie, session.userId)),
       Effect.flatMap(app.listUserInstallations),
       Effect.tap(rememberInstallations),
       Effect.withSpan("GitHubAuth.listInstallations")
@@ -214,7 +219,7 @@ const makeGitHubAuth = Effect.gen(function* () {
       Effect.map((session) => ({
         kind: "user" as const,
         id: userCredentialId(session.userId),
-        token: userTokenFor(session.userId),
+        token: userTokenFor(cookie, session.userId),
       })),
       Effect.withSpan("GitHubAuth.writeCredential")
     );
