@@ -14,6 +14,10 @@
     },
     "packages/ui": {
       "ignore": ["src/components/ui/**", "src/hooks/**"]
+    },
+    "apps/server": {
+      "entry": ["src/server.ts", "src/github/*.e2e.ts"],
+      "project": "src/**"
     }
   },
   "ignoreDependencies": [
