@@ -5,25 +5,33 @@ import { GitHubPipeline } from "./pipeline";
 import { PipelineCache, PipelineCacheLive } from "./pipeline-cache";
 
 interface Counters {
+  /** Refreshes that actually rebuilt, as opposed to reporting NotModified. */
   readonly builds: Ref.Ref<number>;
   readonly checks: Ref.Ref<number>;
 }
 
 /**
- * `changedSince` reports whether anything moved; `build` is the expensive
- * per-repo fan-out that should only run when it did.
+ * `refresh` does the cheap conditional check and the expensive rebuild as one
+ * call, so a rebuild is observable as a Modified result.
  */
 function stubPipeline(counters: Counters, options: { changed: boolean }) {
   return Layer.succeed(GitHubPipeline, {
-    changedSince: (_token: string, etag: string | null) =>
+    refresh: (_token: string, etag: string | null) =>
       Ref.updateAndGet(counters.checks, (n) => n + 1).pipe(
-        Effect.map((attempt) =>
-          options.changed || etag === null
-            ? { _tag: "Modified" as const, etag: `etag-${attempt}` }
-            : { _tag: "NotModified" as const }
+        Effect.flatMap(
+          (attempt): Effect.Effect<unknown> =>
+            options.changed || etag === null
+              ? Ref.update(counters.builds, (n) => n + 1).pipe(
+                  Effect.as({
+                    _tag: "Modified" as const,
+                    etag: `etag-${attempt}`,
+                    repos: [],
+                  })
+                )
+              : Effect.succeed({ _tag: "NotModified" as const })
         )
       ),
-    build: () => Ref.update(counters.builds, (n) => n + 1).pipe(Effect.as([])),
+    currentQueue: () => Effect.succeed([]),
   } as unknown as typeof GitHubPipeline.Service);
 }
 

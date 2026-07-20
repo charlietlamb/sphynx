@@ -1,10 +1,14 @@
-import type { QueuePull } from "@sphynx/schema/review-queue";
+import type { QueuePull, RepoFlow } from "@sphynx/schema/review-queue";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useDialog } from "@/components/dashboard/dashboard-dialogs";
 import { useDashboardKeys } from "@/components/dashboard/use-dashboard-keys";
 import { useInstallations } from "@/components/dashboard/use-installations";
-import { toRepoOption, usePipeline } from "@/components/dashboard/use-pipeline";
+import {
+  toRepoOption,
+  usePipeline,
+  useQueue,
+} from "@/components/dashboard/use-pipeline";
 import { usePullSearch } from "@/components/dashboard/use-pull-search";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useWorkbench } from "@/components/workbench/use-workbench";
@@ -41,6 +45,7 @@ export function useDashboardState() {
    */
   const needsReauth = settled && orgs.isError;
 
+  const queue0 = useQueue(installationId, ready);
   const pipeline = usePipeline(installationId, ready);
   const dialogs = useDialog();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
@@ -50,12 +55,23 @@ export function useDashboardState() {
   const [allRepos, setAllRepos] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
 
+  /**
+   * The queue arrives well before the promotion rail, so it renders first with
+   * empty stages and gaps. Once the full pipeline lands it replaces this, and
+   * the rail fills in without the queue ever having been blocked on it.
+   */
   const flows = useMemo(() => {
-    const active = (pipeline.data?.repos ?? []).filter(
-      (flow) => flow.openPulls.length > 0
-    );
+    const full = pipeline.data?.repos;
+    const source: readonly RepoFlow[] =
+      full ??
+      (queue0.data?.repos ?? []).map((flow) => ({
+        ...flow,
+        stages: [],
+        gaps: [],
+      }));
+    const active = source.filter((flow) => flow.openPulls.length > 0);
     return [...active].sort((a, b) => b.openPulls.length - a.openPulls.length);
-  }, [pipeline.data]);
+  }, [pipeline.data, queue0.data]);
 
   const repos = useMemo(() => flows.map(toRepoOption), [flows]);
 

@@ -6,7 +6,6 @@ import {
 } from "@sphynx/schema/pull-requests";
 import {
   CreatedPullSchema,
-  type DiscoveredRepo,
   type QueuePull,
   type SearchResults,
 } from "@sphynx/schema/review-queue";
@@ -21,15 +20,6 @@ import {
   RawPullSchema,
   toQueuePull,
 } from "./queue-mappers";
-
-const OpenPullCountsSchema = Schema.Record({
-  key: Schema.String,
-  value: Schema.NullOr(
-    Schema.Struct({
-      pullRequests: Schema.Struct({ totalCount: Schema.Number }),
-    })
-  ),
-});
 
 /**
  * Installation tokens authenticate as the app on an org, so there is no
@@ -46,15 +36,24 @@ const InstallationReposSchema = Schema.Struct({
   ),
 });
 
-const MAX_DISCOVERED_REPOS = 12;
-
-/** Whether a conditional read found new data or confirmed the cache. */
+/**
+ * A conditional read of a repo's open pulls: either unchanged, or new data
+ * along with how many are open. The count comes from the same response, so no
+ * separate counting query is needed.
+ */
 type EtagCheck =
-  | { readonly _tag: "Modified"; readonly etag: string | null }
+  | {
+      readonly _tag: "Modified";
+      readonly etag: string | null;
+      readonly openPulls: number;
+    }
   | { readonly _tag: "NotModified" };
 /** Repos probed for open-PR counts before trimming to the discovery cap. */
 const MAX_COUNTED_REPOS = 40;
 const PULLS_CHUNK_SIZE = 3;
+
+/** Batched GraphQL chunks run wide; each is one request. */
+const PULLS_CONCURRENCY = 8;
 
 const PULL_BODY_QUERY = `query($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
@@ -170,48 +169,12 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
       ...chunk,
     ]);
     return Effect.forEach(chunks, (chunk) => openPullsChunk(chunk, token), {
-      concurrency: 4,
+      concurrency: PULLS_CONCURRENCY,
     }).pipe(
       Effect.map((maps) => new Map(maps.flatMap((entries) => [...entries]))),
       Effect.withSpan("GitHubReviewQueue.openPullsForRepos"),
       Effect.annotateLogs({ repoCount: repos.length })
     );
-  };
-
-  /**
-   * REST only exposes `open_issues_count`, which counts issues as well as
-   * pulls. One batched GraphQL call gets the real open-PR count so repos with
-   * issues but no pulls don't reach the queue.
-   */
-  const openPullCounts = (
-    repos: readonly { owner: string; repo: string }[],
-    token: string
-  ): Effect.Effect<DiscoveredRepo[], GitHubAuthedError> => {
-    if (repos.length === 0) {
-      return Effect.succeed([]);
-    }
-    const candidates = repos.slice(0, MAX_COUNTED_REPOS);
-    const selections = candidates
-      .map(
-        (entry, index) =>
-          `r${index}: repository(owner: ${JSON.stringify(entry.owner)}, name: ${JSON.stringify(entry.repo)}) {
-    pullRequests(states: [OPEN]) { totalCount }
-  }`
-      )
-      .join("\n");
-    return github
-      .query(token, OpenPullCountsSchema, `query {\n${selections}\n}`, {})
-      .pipe(
-        Effect.map((data) =>
-          candidates
-            .map((entry, index) => ({
-              ...entry,
-              openPulls: data[`r${index}`]?.pullRequests.totalCount ?? 0,
-            }))
-            .filter((entry) => entry.openPulls > 0)
-            .slice(0, MAX_DISCOVERED_REPOS)
-        )
-      );
   };
 
   /**
@@ -235,21 +198,32 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
       undefined,
       etag
     ).pipe(
-      Effect.map((response) =>
-        response.status === 304
-          ? ({ _tag: "NotModified" } as const)
-          : ({
-              _tag: "Modified",
-              etag: response.headers.etag ?? null,
-            } as const)
+      Effect.flatMap(
+        (response): Effect.Effect<EtagCheck, GitHubAuthedError> =>
+          response.status === 304
+            ? Effect.succeed({ _tag: "NotModified" })
+            : HttpClientResponse.schemaBodyJson(Schema.Array(Schema.Unknown))(
+                response
+              ).pipe(
+                Effect.mapError(
+                  () =>
+                    new GitHubUnavailable({ message: "Invalid pulls response" })
+                ),
+                Effect.map((pulls) => ({
+                  _tag: "Modified" as const,
+                  etag: response.headers.etag ?? null,
+                  openPulls: pulls.length,
+                }))
+              )
       ),
       Effect.withSpan("GitHubReviewQueue.openPullsEtag"),
       Effect.annotateLogs({ "github.repo": repoKey(entry) })
     );
 
+  /** Repos the installation can see, most recently pushed first. */
   const discoverRepos = (
     token: string
-  ): Effect.Effect<DiscoveredRepo[], GitHubAuthedError> =>
+  ): Effect.Effect<{ owner: string; repo: string }[], GitHubAuthedError> =>
     rest(token, "GET", "/installation/repositories?per_page=100").pipe(
       Effect.flatMap((response) =>
         HttpClientResponse.schemaBodyJson(InstallationReposSchema)(
@@ -268,8 +242,8 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
           .filter((repo) => !repo.archived)
           .sort((a, b) => (b.pushed_at ?? "").localeCompare(a.pushed_at ?? ""))
           .map((repo) => ({ owner: repo.owner.login, repo: repo.name }))
+          .slice(0, MAX_COUNTED_REPOS)
       ),
-      Effect.flatMap((repos) => openPullCounts(repos, token)),
       Effect.withSpan("GitHubReviewQueue.discoverRepos")
     );
 

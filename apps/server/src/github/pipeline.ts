@@ -6,6 +6,7 @@ import {
 import {
   type PromotedPull,
   PromotedPullSchema,
+  type QueueFlow,
   type QueuePull,
   type RepoFlow,
   type StageGap,
@@ -55,13 +56,35 @@ const CompareSchema = Schema.Struct({
   ),
 });
 
-/** Whether an installation's pulls moved since a known composite ETag. */
-type PipelineCheck =
-  | { readonly _tag: "Modified"; readonly etag: string }
+/** The result of a refresh: either new repo flows, or nothing moved. */
+type PipelineRefresh =
+  | {
+      readonly _tag: "Modified";
+      readonly etag: string;
+      readonly repos: readonly RepoFlow[];
+    }
   | { readonly _tag: "NotModified" };
 
 const PR_NUMBER_PATTERN = /#(\d+)\b/;
 const MAX_GAP_PULLS = 20;
+
+/** Repos rendered in the queue, most recently pushed first. */
+const MAX_ACTIVE_REPOS = 12;
+
+/**
+ * Conditional reads are cheap and GitHub permits 100 concurrent requests, so
+ * the revalidation sweep runs wide. Measured: 40 repos took 2845ms at 6 and
+ * 818ms at 20.
+ */
+const ETAG_CONCURRENCY = 20;
+
+/**
+ * The per-repo compare fan-out. Repos run wide and each repo's stage gaps run
+ * in parallel within it; the product stays well under GitHub's 100-request
+ * concurrency ceiling.
+ */
+const REPO_CONCURRENCY = 12;
+const GAP_CONCURRENCY = 4;
 
 export function commitPullNumbers(messages: readonly string[]) {
   const numbers: number[] = [];
@@ -315,7 +338,7 @@ query($owner: String!, $name: String!) {
                 })
               )
             ),
-          { concurrency: 2 }
+          { concurrency: GAP_CONCURRENCY }
         ).pipe(
           Effect.map((gaps) => ({
             owner: entry.owner,
@@ -352,7 +375,7 @@ query($owner: String!, $name: String!) {
                 )
               : Effect.succeed(null);
           },
-          { concurrency: 4 }
+          { concurrency: REPO_CONCURRENCY }
         )
       ),
       Effect.map((flows) =>
@@ -363,18 +386,22 @@ query($owner: String!, $name: String!) {
     );
 
   /**
-   * Cheap "did anything move?" check for a whole installation.
+   * Refreshes an installation, doing the cheap check and the expensive build
+   * as one operation.
+   *
+   * Repo discovery is the single most expensive step (~2.8s), and splitting
+   * "did anything change?" from "rebuild" made every cold load pay for it
+   * twice. Discovering once and deciding inline removes that duplication.
    *
    * Each repo's open-pull list is revalidated conditionally. Authorized 304s
-   * cost no rate limit, so an idle installation is confirmed unchanged for
-   * free — and the expensive per-repo compare fan-out in `build` is skipped.
-   *
-   * The composite ETag is the per-repo tags joined; any repo moving changes it.
+   * cost no rate limit, so an unchanged installation skips the per-repo
+   * compare fan-out entirely. The composite ETag is the per-repo tags joined,
+   * so any repo moving changes it.
    */
-  const changedSince = (
+  const refresh = (
     token: string,
     etag: string | null
-  ): Effect.Effect<PipelineCheck, GitHubAuthedError> =>
+  ): Effect.Effect<PipelineRefresh, GitHubAuthedError> =>
     Effect.gen(function* () {
       const discovered = yield* queue.discoverRepos(token);
       const checks = yield* Effect.forEach(
@@ -383,7 +410,7 @@ query($owner: String!, $name: String!) {
           queue
             .openPullsEtag(entry, token, etagFor(etag, repoKey(entry)))
             .pipe(Effect.map((check) => ({ entry, check }))),
-        { concurrency: 6 }
+        { concurrency: ETAG_CONCURRENCY }
       );
       const next = composeEtag(
         checks.map(({ entry, check }) => ({
@@ -394,14 +421,53 @@ query($owner: String!, $name: String!) {
               : (check.etag ?? ""),
         }))
       );
-      return next === etag
-        ? ({ _tag: "NotModified" } as const)
-        : ({ _tag: "Modified", etag: next } as const);
-    }).pipe(Effect.withSpan("GitHubPipeline.changedSince"));
+      if (etag !== null && next === etag) {
+        return { _tag: "NotModified" } as const;
+      }
+      /**
+       * Only repos with open pulls reach the expensive per-repo fan-out. The
+       * count comes from the conditional read above rather than a separate
+       * counting query. A repo that revalidated as unchanged is kept: its
+       * pulls are still whatever they were.
+       */
+      const active = checks
+        .filter(
+          ({ check }) => check._tag === "NotModified" || check.openPulls > 0
+        )
+        .map(({ entry }) => entry)
+        .slice(0, MAX_ACTIVE_REPOS);
+      const repos = yield* buildFrom(active, token);
+      return { _tag: "Modified", etag: next, repos } as const;
+    }).pipe(Effect.withSpan("GitHubPipeline.refresh"));
 
-  const build = (token: string): Effect.Effect<RepoFlow[], GitHubAuthedError> =>
+  /**
+   * The queue alone: open pulls per repo, without the stage/gap rail.
+   *
+   * Skips the per-repo compare fan-out, which is roughly half of a cold
+   * build, so the queue can paint while the rail is still resolving.
+   */
+  const queueFrom = (
+    discovered: readonly { owner: string; repo: string }[],
+    token: string
+  ): Effect.Effect<QueueFlow[], GitHubAuthedError> =>
+    queue.openPullsForRepos(discovered, token).pipe(
+      Effect.map((pullsByRepo) =>
+        discovered
+          .map((entry) => ({
+            owner: entry.owner,
+            repo: entry.repo,
+            openPulls: pullsByRepo.get(repoKey(entry)) ?? [],
+          }))
+          .filter((flow) => flow.openPulls.length > 0)
+      ),
+      Effect.withSpan("GitHubPipeline.queueFrom")
+    );
+
+  const buildFrom = (
+    discovered: readonly { owner: string; repo: string }[],
+    token: string
+  ): Effect.Effect<RepoFlow[], GitHubAuthedError> =>
     Effect.gen(function* () {
-      const discovered = yield* queue.discoverRepos(token);
       const pullsByRepo = yield* queue.openPullsForRepos(discovered, token);
       const entries = discovered.map((entry) => ({
         owner: entry.owner,
@@ -409,9 +475,32 @@ query($owner: String!, $name: String!) {
         pulls: pullsByRepo.get(repoKey(entry)) ?? [],
       }));
       return yield* flowsFor(entries, token);
-    }).pipe(Effect.withSpan("GitHubPipeline.build"));
+    }).pipe(Effect.withSpan("GitHubPipeline.buildFrom"));
 
-  return { build, changedSince };
+  /**
+   * Open pulls for the installation, without the promotion rail. Discovery is
+   * unconditional here: the queue is the first paint, so it should not wait on
+   * a revalidation sweep that mostly exists to avoid rebuilds.
+   */
+  const currentQueue = (
+    token: string
+  ): Effect.Effect<QueueFlow[], GitHubAuthedError> =>
+    queue.discoverRepos(token).pipe(
+      /**
+       * Every discovered repo is queried, then trimmed by open-pull count.
+       * Trimming first would cut by recency of push, which is not the same
+       * ordering and silently drops active repos.
+       */
+      Effect.flatMap((discovered) => queueFrom(discovered, token)),
+      Effect.map((flows) =>
+        [...flows]
+          .sort((a, b) => b.openPulls.length - a.openPulls.length)
+          .slice(0, MAX_ACTIVE_REPOS)
+      ),
+      Effect.withSpan("GitHubPipeline.currentQueue")
+    );
+
+  return { refresh, currentQueue };
 });
 
 export class GitHubPipeline extends Context.Tag(

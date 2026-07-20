@@ -61,6 +61,11 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
             Effect.flatMap(cache.get)
           )
         )
+        .handle("getQueue", ({ headers }) =>
+          readCredential(headers.cookie, requested(headers)).pipe(
+            Effect.flatMap(cache.queue)
+          )
+        )
         .handle("getPullBody", ({ path, headers }) =>
           readToken(headers.cookie, requested(headers)).pipe(
             Effect.flatMap((token) => queue.pullBody(path, token))

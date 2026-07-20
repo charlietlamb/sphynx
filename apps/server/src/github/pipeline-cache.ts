@@ -1,4 +1,4 @@
-import type { Pipeline } from "@sphynx/schema/review-queue";
+import type { Pipeline, Queue } from "@sphynx/schema/review-queue";
 import { Context, Duration, Effect, Layer } from "effect";
 import type { GitHubCredential } from "./credential";
 import type { GitHubAuthedError } from "./errors";
@@ -17,6 +17,10 @@ export interface PipelineCacheShape {
   readonly get: (
     credential: GitHubCredential
   ) => Effect.Effect<Pipeline, GitHubAuthedError>;
+  /** The queue without the rail, for the dashboard's first paint. */
+  readonly queue: (
+    credential: GitHubCredential
+  ) => Effect.Effect<Queue, GitHubAuthedError>;
 }
 
 const makePipelineCache = Effect.gen(function* () {
@@ -38,18 +42,44 @@ const makePipelineCache = Effect.gen(function* () {
     lookup: (credential, etag) =>
       Effect.gen(function* () {
         const token = yield* credential.token;
-        const change = yield* pipeline.changedSince(token, etag);
-        if (change._tag === "NotModified") {
+        const result = yield* pipeline.refresh(token, etag);
+        if (result._tag === "NotModified") {
           return { _tag: "NotModified" as const };
         }
-        const repos = yield* pipeline.build(token);
         return {
           _tag: "Modified" as const,
-          value: { repos } satisfies Pipeline,
-          etag: change.etag,
+          value: { repos: result.repos } satisfies Pipeline,
+          etag: result.etag,
         };
       }),
   });
+
+  const queueCache = yield* makeRevalidatingCache<
+    GitHubCredential,
+    Queue,
+    GitHubAuthedError,
+    never
+  >({
+    freshFor: FRESH_FOR,
+    keyId: (credential) => `queue:${credential.id}`,
+    lookup: (credential) =>
+      credential.token.pipe(
+        Effect.flatMap(pipeline.currentQueue),
+        Effect.map((repos) => ({
+          _tag: "Modified" as const,
+          value: { repos } satisfies Queue,
+          etag: null,
+        }))
+      ),
+  });
+
+  const queue = (credential: GitHubCredential) =>
+    queueCache
+      .get(credential)
+      .pipe(
+        Effect.withSpan("PipelineCache.queue"),
+        Effect.annotateLogs({ "github.credential": credential.id })
+      );
 
   const get = (credential: GitHubCredential) =>
     cache
@@ -60,9 +90,12 @@ const makePipelineCache = Effect.gen(function* () {
       );
 
   const drop = (credential: GitHubCredential) =>
-    cache.invalidate(credential).pipe(Effect.withSpan("PipelineCache.drop"));
+    Effect.all([
+      cache.invalidate(credential),
+      queueCache.invalidate(credential),
+    ]).pipe(Effect.asVoid, Effect.withSpan("PipelineCache.drop"));
 
-  return { drop, get } satisfies PipelineCacheShape;
+  return { drop, get, queue } satisfies PipelineCacheShape;
 });
 
 export class PipelineCache extends Context.Tag("@sphynx/github/PipelineCache")<

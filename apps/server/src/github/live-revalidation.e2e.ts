@@ -37,7 +37,10 @@ const program = Effect.gen(function* () {
   const cache = yield* PipelineCache;
   const credential = app.installationCredential(installationId);
 
-  const cold = yield* elapsed("cold build", cache.get(credential));
+  const first = yield* elapsed("queue (first paint)", cache.queue(credential));
+  process.stdout.write(`  repos: ${first.repos.length}\n`);
+
+  const cold = yield* elapsed("full pipeline (rail)", cache.get(credential));
   process.stdout.write(`  repos: ${cold.repos.length}\n`);
 
   yield* elapsed("warm read (cached)", cache.get(credential));

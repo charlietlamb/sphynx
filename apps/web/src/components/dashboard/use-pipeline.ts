@@ -1,4 +1,8 @@
-import { PipelineSchema, type RepoFlow } from "@sphynx/schema/review-queue";
+import {
+  PipelineSchema,
+  QueueSchema,
+  type RepoFlow,
+} from "@sphynx/schema/review-queue";
 import { useQuery } from "@tanstack/react-query";
 import { Schema } from "effect";
 import type { RepoOption } from "@/components/dashboard/repo-switcher";
@@ -32,6 +36,11 @@ export function toRepoOption(flow: RepoFlow): RepoOption {
   };
 }
 
+async function fetchQueue(installationId: number | null) {
+  const response = await fetchGithub("/queue", "queue", installationId);
+  return Schema.decodeUnknownPromise(QueueSchema)(await response.json());
+}
+
 const REFRESH_MS = 45_000;
 
 /**
@@ -47,5 +56,19 @@ export function usePipeline(installationId: number | null, enabled: boolean) {
     staleTime: REFRESH_MS,
     refetchInterval: REFRESH_MS,
     refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * The queue without the promotion rail. It skips the per-repo compare fan-out,
+ * so it resolves in roughly a third of the time and lets the queue paint while
+ * the rail is still loading.
+ */
+export function useQueue(installationId: number | null, enabled: boolean) {
+  return useQuery({
+    queryKey: keys.queue(installationId),
+    queryFn: () => fetchQueue(installationId),
+    enabled,
+    staleTime: REFRESH_MS,
   });
 }

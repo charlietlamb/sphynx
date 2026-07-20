@@ -22,6 +22,7 @@ export const keys = {
     [...keys.all, "installation", id] as const,
   pipeline: (id: number | null) =>
     [...keys.installation(id), "pipeline"] as const,
+  queue: (id: number | null) => [...keys.installation(id), "queue"] as const,
   search: (id: number | null, query: string) =>
     [...keys.installation(id), "search", query] as const,
 

@@ -147,6 +147,27 @@ export const PipelineSchema = Schema.Struct({
   repos: Schema.Array(RepoFlowSchema),
 });
 
+/**
+ * The queue without the promotion rail.
+ *
+ * Stages and gaps need a compare call per repo, which roughly doubles the
+ * time to a first render. The queue itself only needs the open pulls, so it
+ * is served first and the rail arrives separately.
+ */
+export const QueueFlowSchema = Schema.Struct({
+  owner: Schema.String,
+  repo: Schema.String,
+  openPulls: Schema.Array(QueuePullSchema),
+});
+
+export type QueueFlow = typeof QueueFlowSchema.Type;
+
+export const QueueSchema = Schema.Struct({
+  repos: Schema.Array(QueueFlowSchema),
+});
+
+export type Queue = typeof QueueSchema.Type;
+
 export type Pipeline = typeof PipelineSchema.Type;
 
 export const RepoRefSchema = Schema.Struct({
@@ -196,6 +217,10 @@ const listInstallations = HttpApiEndpoint.get(
 const getPipeline = HttpApiEndpoint.get("getPipeline", "/api/github/pipeline")
   .setHeaders(installationHeaders)
   .addSuccess(PipelineSchema);
+
+const getQueue = HttpApiEndpoint.get("getQueue", "/api/github/queue")
+  .setHeaders(installationHeaders)
+  .addSuccess(QueueSchema);
 
 export const PullBodySchema = Schema.Struct({
   body: Schema.NullOr(Schema.String),
@@ -254,6 +279,7 @@ const blockPull = HttpApiEndpoint.post(
 export const ReviewQueueApi = HttpApiGroup.make("reviewQueue")
   .add(listInstallations)
   .add(getPipeline)
+  .add(getQueue)
   .add(getPullBody)
   .add(searchPulls)
   .add(mergePull)
