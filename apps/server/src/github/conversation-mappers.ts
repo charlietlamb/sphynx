@@ -7,7 +7,7 @@ import type {
 } from "@sphynx/schema/pull-request-conversation";
 import { GitHubUserSchema } from "@sphynx/schema/pull-requests";
 import { Option, Schema } from "effect";
-import type { RawIssueComment, RawPullReview } from "./rest-schemas";
+import type { RawIssueComment } from "./rest-schemas";
 
 export const CONVERSATION_QUERY = `
 query($owner: String!, $name: String!, $number: Int!) {
@@ -383,37 +383,5 @@ export function toRestComment(row: RawIssueComment): ConversationComment {
     bodyHTML: null,
     createdAt: row.created_at,
     githubUrl: row.html_url,
-  };
-}
-
-function toRestReview(row: RawPullReview): ConversationReview | null {
-  const verdict = VERDICTS[row.state];
-  if (!verdict || row.submitted_at === null || row.submitted_at === undefined) {
-    return null;
-  }
-  const body = row.body ?? "";
-  return {
-    id: String(row.id),
-    author: row.user
-      ? { login: row.user.login, avatarUrl: row.user.avatar_url }
-      : null,
-    verdict,
-    body,
-    bodyHTML: null,
-    submittedAt: row.submitted_at,
-    githubUrl: row.html_url,
-    commentCount: 0,
-  };
-}
-
-export function toRestConversation(
-  comments: readonly RawIssueComment[],
-  reviews: readonly RawPullReview[]
-): Conversation {
-  return {
-    descriptionHTML: null,
-    comments: comments.map(toRestComment),
-    reviews: reviews.map(toRestReview).filter((review) => review !== null),
-    events: [],
   };
 }

@@ -10,21 +10,28 @@ export const PullRequestConversationApiLive = HttpApiBuilder.group(
   (handlers) =>
     Effect.gen(function* () {
       const conversation = yield* GitHubConversation;
-      const { readToken, writeToken } = yield* GitHubAuth;
+      const { readCredential, writeCredential } = yield* GitHubAuth;
 
       return handlers
         .handle("getConversation", ({ path, headers }) =>
-          readToken(headers.cookie).pipe(
-            Effect.flatMap((token) => conversation.get(path, token)),
-            Effect.catchTag("Unauthorized", () =>
-              conversation.getAnonymous(path)
+          readCredential(headers.cookie).pipe(
+            Effect.flatMap((credential) =>
+              credential.token.pipe(
+                Effect.flatMap((token) =>
+                  conversation.get(path, credential.id, token)
+                )
+              )
             )
           )
         )
         .handle("addConversationComment", ({ path, headers, payload }) =>
-          writeToken(headers.cookie).pipe(
-            Effect.flatMap((token) =>
-              conversation.addComment(path, payload, token)
+          writeCredential(headers.cookie).pipe(
+            Effect.flatMap((credential) =>
+              credential.token.pipe(
+                Effect.flatMap((token) =>
+                  conversation.addComment(path, payload, credential.id, token)
+                )
+              )
             )
           )
         );

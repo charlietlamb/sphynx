@@ -82,21 +82,6 @@ export const RawIssueCommentSchema = Schema.Struct({
 
 export type RawIssueComment = typeof RawIssueCommentSchema.Type;
 
-export const RawIssueCommentsSchema = Schema.Array(RawIssueCommentSchema);
-
-const RawPullReviewSchema = Schema.Struct({
-  id: Schema.Number,
-  state: Schema.String,
-  body: Schema.NullishOr(Schema.String),
-  user: Schema.NullOr(RawUserSchema),
-  submitted_at: Schema.NullishOr(Schema.String),
-  html_url: Schema.String,
-});
-
-export type RawPullReview = typeof RawPullReviewSchema.Type;
-
-export const RawPullReviewsSchema = Schema.Array(RawPullReviewSchema);
-
 export const RawFileContentsSchema = Schema.Union(
   Schema.Struct({ content: Schema.optional(Schema.String) }),
   Schema.Array(Schema.Unknown)

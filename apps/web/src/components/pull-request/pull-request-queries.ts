@@ -114,7 +114,7 @@ async function fetchDecoded<A, I>(
 }
 
 function pullUrl({ owner, repo, number }: PullRequestRef) {
-  return `/api/public/github/repos/${owner}/${repo}/pulls/${number}`;
+  return `/api/github/repos/${owner}/${repo}/pulls/${number}`;
 }
 
 function viewedFilesUrl({ owner, repo, number }: PullRequestRef) {

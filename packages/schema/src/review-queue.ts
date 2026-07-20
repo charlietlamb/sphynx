@@ -1,6 +1,5 @@
 import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform";
 import { Schema } from "effect";
-import { Unauthorized } from "./pull-request-views";
 import {
   GitHubOwnerSchema,
   GitHubRateLimited,
@@ -11,6 +10,7 @@ import {
   InstallationRequired,
   PullRequestNotFound,
   PullRequestRefSchema,
+  Unauthorized,
 } from "./pull-requests";
 import { cookieHeaders, installationHeaders, OkSchema } from "./shared";
 

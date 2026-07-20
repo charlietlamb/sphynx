@@ -3,11 +3,11 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from "@effect/platform";
-import { Unauthorized } from "@sphynx/schema/pull-request-views";
 import {
   GitHubTimeout,
   GitHubUnavailable,
   type PullRequestRef,
+  Unauthorized,
 } from "@sphynx/schema/pull-requests";
 import { Effect, Schema } from "effect";
 import type { GitHubConfig } from "./config";

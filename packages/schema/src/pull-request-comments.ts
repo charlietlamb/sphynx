@@ -1,6 +1,5 @@
 import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform";
 import { Schema } from "effect";
-import { Unauthorized } from "./pull-request-views";
 import {
   GitHubRateLimited,
   GitHubTimeout,
@@ -8,6 +7,7 @@ import {
   InstallationRequired,
   PullRequestNotFound,
   PullRequestRefSchema,
+  Unauthorized,
 } from "./pull-requests";
 import { cookieHeaders, OkSchema } from "./shared";
 
@@ -96,7 +96,7 @@ export type SubmitReview = typeof SubmitReviewSchema.Type;
 
 const listCommentThreads = HttpApiEndpoint.get(
   "listCommentThreads",
-  "/api/public/github/repos/:owner/:repo/pulls/:number/comment-threads"
+  "/api/github/repos/:owner/:repo/pulls/:number/comment-threads"
 )
   .setPath(PullRequestRefSchema)
   .setHeaders(cookieHeaders)

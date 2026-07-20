@@ -4,7 +4,6 @@ import { Database } from "@sphynx/db/client";
 import { SphynxApi } from "@sphynx/schema/api";
 import { Effect } from "effect";
 import { githubTokenFor } from "../auth/github-token";
-import { GitHubClient } from "../github/client";
 import { GitHubReviews } from "../github/reviews";
 
 const OK = { ok: true };
@@ -14,7 +13,6 @@ export const PullRequestCommentsApiLive = HttpApiBuilder.group(
   "pullRequestComments",
   (handlers) =>
     Effect.gen(function* () {
-      const github = yield* GitHubClient;
       const reviews = yield* GitHubReviews;
       const auth = yield* Auth;
       const db = yield* Database;
@@ -24,9 +22,6 @@ export const PullRequestCommentsApiLive = HttpApiBuilder.group(
         .handle("listCommentThreads", ({ path, headers }) =>
           githubToken(headers.cookie).pipe(
             Effect.flatMap((token) => reviews.listReviewThreads(path, token)),
-            Effect.catchTag("Unauthorized", () =>
-              github.listReviewThreads(path)
-            ),
             Effect.map((threads) => ({ threads }))
           )
         )

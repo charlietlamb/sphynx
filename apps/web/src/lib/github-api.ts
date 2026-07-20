@@ -1,9 +1,10 @@
 import { INSTALLATION_HEADER } from "@sphynx/schema/review-queue";
 
 /**
- * Every authenticated read and write goes through the app's own routes. There
- * is no anonymous data path — signed-out visitors get the landing page, and
- * public pull-request pages use `/api/public/github` directly.
+ * Every read and write goes through the app's own routes. There is no anonymous
+ * data path: signed-out visitors get the landing page, and every GitHub call is
+ * made with an installation credential so it draws on the app's rate limit
+ * rather than the anonymous 60/hour per-IP cap.
  */
 const API_BASE = "/api/github";
 

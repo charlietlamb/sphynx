@@ -155,7 +155,13 @@ const makeClient = Effect.gen(function* () {
   const config = yield* GitHubConfig;
   const http = yield* HttpClient.HttpClient;
 
+  /**
+   * Every read carries a credential. GitHub only exempts conditional requests
+   * from the rate limit when they are authorized, and anonymous reads are
+   * capped at 60/hour per IP, so an unauthenticated path is never correct here.
+   */
   const request = <A, I>(
+    token: string,
     path: string,
     schema: Schema.Schema<A, I, never>,
     ifNoneMatch?: string
@@ -164,6 +170,7 @@ const makeClient = Effect.gen(function* () {
       const outgoing = HttpClientRequest.get(`${config.apiUrl}${path}`).pipe(
         HttpClientRequest.setHeaders({
           accept: "application/vnd.github+json",
+          authorization: `Bearer ${token}`,
           "x-github-api-version": config.apiVersion,
           ...(ifNoneMatch ? { "if-none-match": ifNoneMatch } : {}),
         })
@@ -220,8 +227,12 @@ const makeClient = Effect.gen(function* () {
     );
   };
 
-  const getPullRequest = (ref: PullRequestRef, ifNoneMatch?: string) =>
-    request(pullPath(ref), RawPullRequestSchema, ifNoneMatch).pipe(
+  const getPullRequest = (
+    token: string,
+    ref: PullRequestRef,
+    ifNoneMatch?: string
+  ) =>
+    request(token, pullPath(ref), RawPullRequestSchema, ifNoneMatch).pipe(
       Effect.map((result) =>
         result._tag === "Modified"
           ? { ...result, value: normalizePullRequest(result.value) }
@@ -232,11 +243,13 @@ const makeClient = Effect.gen(function* () {
     );
 
   const listPullRequestFiles = (
+    token: string,
     ref: PullRequestRef,
     page: number,
     ifNoneMatch?: string
   ) =>
     request(
+      token,
       pullPath(ref, `/files?per_page=100&page=${page}`),
       RawPullRequestFilesSchema,
       ifNoneMatch
@@ -276,13 +289,14 @@ const makeClient = Effect.gen(function* () {
       Effect.annotateLogs({ ...refAnnotations(ref), "github.page": page })
     );
 
-  const collectPatches = (ref: PullRequestRef) =>
+  const collectPatches = (token: string, ref: PullRequestRef) =>
     Effect.gen(function* () {
       const patches = new Map<string, string>();
       let page: number | null = 1;
       while (page !== null && page <= MAX_FILE_PAGES) {
         const result: GitHubResult<typeof RawPullRequestFilesSchema.Type> =
           yield* request(
+            token,
             pullPath(ref, `/files?per_page=100&page=${page}`),
             RawPullRequestFilesSchema
           );
@@ -299,8 +313,8 @@ const makeClient = Effect.gen(function* () {
       return patches;
     });
 
-  const listAllPatches = (ref: PullRequestRef) =>
-    collectPatches(ref).pipe(
+  const listAllPatches = (token: string, ref: PullRequestRef) =>
+    collectPatches(token, ref).pipe(
       Effect.map((patches) => ({
         patches: Object.fromEntries(patches),
         symbols: buildSymbolIndex(patches),
@@ -309,13 +323,14 @@ const makeClient = Effect.gen(function* () {
       Effect.annotateLogs(refAnnotations(ref))
     );
 
-  const listReviewThreads = (ref: PullRequestRef) =>
+  const listReviewThreads = (token: string, ref: PullRequestRef) =>
     Effect.gen(function* () {
       const comments: RawReviewComment[] = [];
       let page: number | null = 1;
       while (page !== null && page <= MAX_COMMENT_PAGES) {
         const result: GitHubResult<typeof RawReviewCommentsSchema.Type> =
           yield* request(
+            token,
             pullPath(ref, `/comments?per_page=100&page=${page}`),
             RawReviewCommentsSchema
           );
@@ -331,8 +346,14 @@ const makeClient = Effect.gen(function* () {
       Effect.annotateLogs(refAnnotations(ref))
     );
 
-  const getFileContents = (ref: PullRequestRef, path: string, sha: string) =>
+  const getFileContents = (
+    token: string,
+    ref: PullRequestRef,
+    path: string,
+    sha: string
+  ) =>
     request(
+      token,
       `/repos/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/contents/${encodeFilePath(path)}?ref=${encodeURIComponent(sha)}`,
       RawFileContentsSchema
     ).pipe(

@@ -9,6 +9,7 @@ import { GitHubClient, GitHubClientLive } from "./client";
 import { GitHubConfig } from "./config";
 
 const ref = { owner: "useautumn", repo: "autumn", number: 2229 } as const;
+const TOKEN = "ghs_test";
 
 const config = Layer.succeed(GitHubConfig, {
   apiUrl: "https://api.github.test",
@@ -94,7 +95,7 @@ describe("GitHubClient", () => {
             { headers: { etag: '"pull"' } }
           )
         ),
-      (client) => client.getPullRequest(ref)
+      (client) => client.getPullRequest(TOKEN, ref)
     );
 
     expect(result).toMatchObject({
@@ -132,7 +133,7 @@ describe("GitHubClient", () => {
             }
           )
         ),
-      (client) => client.listPullRequestFiles(ref, 1)
+      (client) => client.listPullRequestFiles(TOKEN, ref, 1)
     );
 
     expect(result).toMatchObject({
@@ -150,6 +151,18 @@ describe("GitHubClient", () => {
     expect(result._tag === "Modified" && "patch" in result.value.files[0]).toBe(
       false
     );
+  });
+
+  test("authorizes every request", async () => {
+    let seen: string | undefined;
+    await runWith(
+      (request) => {
+        seen = request.headers.authorization;
+        return Effect.succeed(json(request, { content: "" }));
+      },
+      (client) => client.getFileContents(TOKEN, ref, "src/a.ts", "sha")
+    );
+    expect(seen).toBe(`Bearer ${TOKEN}`);
   });
 
   test("collects patches across pages and indexes their symbols", async () => {
@@ -205,7 +218,7 @@ describe("GitHubClient", () => {
           )
         );
       },
-      (client) => client.listAllPatches(ref)
+      (client) => client.listAllPatches(TOKEN, ref)
     );
 
     expect(Object.keys(result.patches).sort()).toEqual([
@@ -228,7 +241,7 @@ describe("GitHubClient", () => {
             new Response(null, { status: 404 })
           )
         ),
-      (client) => client.getPullRequest(ref).pipe(Effect.flip)
+      (client) => client.getPullRequest(TOKEN, ref).pipe(Effect.flip)
     );
     expect(notFound).toBeInstanceOf(PullRequestNotFound);
 
@@ -247,7 +260,7 @@ describe("GitHubClient", () => {
             })
           )
         ),
-      (client) => client.getPullRequest(ref).pipe(Effect.flip)
+      (client) => client.getPullRequest(TOKEN, ref).pipe(Effect.flip)
     );
     expect(limited).toBeInstanceOf(GitHubRateLimited);
     if (limited._tag === "GitHubRateLimited") {

@@ -169,6 +169,12 @@ export class InstallationRequired extends Schema.TaggedError<InstallationRequire
   { message: Schema.String }
 ) {}
 
+/** No usable session. Declared here because every API group can raise it. */
+export class Unauthorized extends Schema.TaggedError<Unauthorized>()(
+  "Unauthorized",
+  { message: Schema.String }
+) {}
+
 export class GitHubUnavailable extends Schema.TaggedError<GitHubUnavailable>()(
   "GitHubUnavailable",
   { message: Schema.String }
@@ -179,13 +185,19 @@ export class GitHubTimeout extends Schema.TaggedError<GitHubTimeout>()(
   { message: Schema.String }
 ) {}
 
+/**
+ * Reads require a session: they run through a GitHub App installation so they
+ * draw on its rate limit rather than the anonymous 60/hour per-IP cap.
+ */
 const requestHeaders = Schema.Struct({
+  cookie: Schema.optional(Schema.String),
+  "x-sphynx-installation": Schema.optional(Schema.String),
   "if-none-match": Schema.optional(Schema.String),
 });
 
 const getPullRequest = HttpApiEndpoint.get(
   "getPullRequest",
-  "/api/public/github/repos/:owner/:repo/pulls/:number"
+  "/api/github/repos/:owner/:repo/pulls/:number"
 )
   .setPath(PullRequestRefSchema)
   .setHeaders(requestHeaders)
@@ -193,7 +205,7 @@ const getPullRequest = HttpApiEndpoint.get(
 
 const listPullRequestFiles = HttpApiEndpoint.get(
   "listPullRequestFiles",
-  "/api/public/github/repos/:owner/:repo/pulls/:number/files"
+  "/api/github/repos/:owner/:repo/pulls/:number/files"
 )
   .setPath(PullRequestRefSchema)
   .setUrlParams(
@@ -206,15 +218,16 @@ const listPullRequestFiles = HttpApiEndpoint.get(
 
 const getPullRequestFileContents = HttpApiEndpoint.get(
   "getPullRequestFileContents",
-  "/api/public/github/repos/:owner/:repo/pulls/:number/file-contents"
+  "/api/github/repos/:owner/:repo/pulls/:number/file-contents"
 )
   .setPath(PullRequestRefSchema)
   .setUrlParams(Schema.Struct({ path: Schema.String, sha: Schema.String }))
+  .setHeaders(requestHeaders)
   .addSuccess(PullRequestFileContentsSchema);
 
 const getPullRequestPatches = HttpApiEndpoint.get(
   "getPullRequestPatches",
-  "/api/public/github/repos/:owner/:repo/pulls/:number/patches"
+  "/api/github/repos/:owner/:repo/pulls/:number/patches"
 )
   .setPath(PullRequestRefSchema)
   .setHeaders(requestHeaders)
@@ -225,6 +238,8 @@ export const PullRequestsApi = HttpApiGroup.make("pullRequests")
   .add(listPullRequestFiles)
   .add(getPullRequestFileContents)
   .add(getPullRequestPatches)
+  .addError(Unauthorized, { status: 401 })
+  .addError(InstallationRequired, { status: 403 })
   .addError(PullRequestNotFound, { status: 404 })
   .addError(GitHubRateLimited, { status: 429 })
   .addError(GitHubUnavailable, { status: 502 })

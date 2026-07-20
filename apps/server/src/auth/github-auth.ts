@@ -1,8 +1,10 @@
 import { Auth } from "@sphynx/auth";
 import { Database } from "@sphynx/db/client";
 import { account, githubInstallation } from "@sphynx/db/schema";
-import { Unauthorized } from "@sphynx/schema/pull-request-views";
-import { InstallationRequired } from "@sphynx/schema/pull-requests";
+import {
+  InstallationRequired,
+  Unauthorized,
+} from "@sphynx/schema/pull-requests";
 import { and, eq } from "drizzle-orm";
 import { Clock, Context, Effect, Layer } from "effect";
 import { GitHubAppAuth, type Installation } from "../github/app-auth";

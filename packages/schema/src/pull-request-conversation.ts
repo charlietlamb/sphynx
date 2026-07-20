@@ -1,6 +1,5 @@
 import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform";
 import { Schema } from "effect";
-import { Unauthorized } from "./pull-request-views";
 import {
   GitHubRateLimited,
   GitHubTimeout,
@@ -9,6 +8,7 @@ import {
   InstallationRequired,
   PullRequestNotFound,
   PullRequestRefSchema,
+  Unauthorized,
 } from "./pull-requests";
 import { cookieHeaders } from "./shared";
 
@@ -89,7 +89,7 @@ export type AddConversationComment = typeof AddConversationCommentSchema.Type;
 
 const getConversation = HttpApiEndpoint.get(
   "getConversation",
-  "/api/public/github/repos/:owner/:repo/pulls/:number/conversation"
+  "/api/github/repos/:owner/:repo/pulls/:number/conversation"
 )
   .setPath(PullRequestRefSchema)
   .setHeaders(cookieHeaders)

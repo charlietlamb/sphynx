@@ -4,11 +4,13 @@ import {
   PullRequestFilesPageSchema,
   PullRequestSummarySchema,
 } from "@sphynx/schema/pull-requests";
+import { INSTALLATION_HEADER } from "@sphynx/schema/review-queue";
 import { Effect, type Schema } from "effect";
+import { GitHubAuth } from "../auth/github-auth";
 import { GitHubClient, type GitHubResult } from "../github/client";
 
 const cacheHeaders = (etag: string | null) => ({
-  "cache-control": "public, max-age=0, s-maxage=30, must-revalidate",
+  "cache-control": "private, max-age=0, must-revalidate",
   ...(etag ? { etag } : {}),
 });
 
@@ -33,34 +35,58 @@ export const PullRequestsApiLive = HttpApiBuilder.group(
   (handlers) =>
     Effect.gen(function* () {
       const github = yield* GitHubClient;
+      const { readToken } = yield* GitHubAuth;
+
+      /** The client names an installation; a bad value falls back server-side. */
+      const requested = (headers: Record<string, string | undefined>) => {
+        const raw = headers[INSTALLATION_HEADER];
+        const parsed = raw ? Number(raw) : Number.NaN;
+        return Number.isInteger(parsed) ? parsed : null;
+      };
+
+      const tokenFor = (headers: Record<string, string | undefined>) =>
+        readToken(headers.cookie, requested(headers));
+
       return handlers
         .handleRaw("getPullRequest", ({ path, headers }) =>
-          github
-            .getPullRequest(path, headers["if-none-match"])
-            .pipe(
-              Effect.flatMap((result) =>
-                response(PullRequestSummarySchema, result)
-              )
+          tokenFor(headers).pipe(
+            Effect.flatMap((token) =>
+              github.getPullRequest(token, path, headers["if-none-match"])
+            ),
+            Effect.flatMap((result) =>
+              response(PullRequestSummarySchema, result)
             )
+          )
         )
         .handleRaw(
           "listPullRequestFiles",
           ({ path, urlParams: { page }, headers }) =>
-            github
-              .listPullRequestFiles(path, page, headers["if-none-match"])
-              .pipe(
-                Effect.flatMap((result) =>
-                  response(PullRequestFilesPageSchema, result)
+            tokenFor(headers).pipe(
+              Effect.flatMap((token) =>
+                github.listPullRequestFiles(
+                  token,
+                  path,
+                  page,
+                  headers["if-none-match"]
                 )
+              ),
+              Effect.flatMap((result) =>
+                response(PullRequestFilesPageSchema, result)
               )
+            )
         )
-        .handle("getPullRequestPatches", ({ path }) =>
-          github.listAllPatches(path)
+        .handle("getPullRequestPatches", ({ path, headers }) =>
+          tokenFor(headers).pipe(
+            Effect.flatMap((token) => github.listAllPatches(token, path))
+          )
         )
-        .handle("getPullRequestFileContents", ({ path, urlParams }) =>
-          github
-            .getFileContents(path, urlParams.path, urlParams.sha)
-            .pipe(Effect.map((content) => ({ content })))
+        .handle("getPullRequestFileContents", ({ path, urlParams, headers }) =>
+          tokenFor(headers).pipe(
+            Effect.flatMap((token) =>
+              github.getFileContents(token, path, urlParams.path, urlParams.sha)
+            ),
+            Effect.map((content) => ({ content }))
+          )
         );
     })
 );

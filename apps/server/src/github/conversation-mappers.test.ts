@@ -3,7 +3,6 @@ import {
   toConversation,
   toConversationEvent,
   toRestComment,
-  toRestConversation,
 } from "./conversation-mappers";
 
 const author = { login: "octocat", avatarUrl: "https://avatars.test/octocat" };
@@ -215,60 +214,6 @@ describe("rest fallback", () => {
     created_at: "2026-07-01T10:00:00Z",
     html_url: "https://github.com/o/r/pull/1#issuecomment-555",
   };
-
-  test("maps rows with null bodyHTML and empty events", () => {
-    const conversation = toRestConversation(
-      [restComment],
-      [
-        {
-          id: 777,
-          state: "CHANGES_REQUESTED",
-          body: "Needs work",
-          user: restComment.user,
-          submitted_at: "2026-07-02T10:00:00Z",
-          html_url: "https://github.com/o/r/pull/1#pullrequestreview-777",
-        },
-      ]
-    );
-    expect(conversation.descriptionHTML).toBeNull();
-    expect(conversation.events).toEqual([]);
-    expect(conversation.comments[0]).toEqual({
-      id: "555",
-      author,
-      body: "From REST",
-      bodyHTML: null,
-      createdAt: "2026-07-01T10:00:00Z",
-      githubUrl: "https://github.com/o/r/pull/1#issuecomment-555",
-    });
-    expect(conversation.reviews[0]?.verdict).toBe("changes-requested");
-  });
-
-  test("drops pending rest reviews but keeps empty commented ones", () => {
-    const conversation = toRestConversation(
-      [],
-      [
-        {
-          id: 1,
-          state: "PENDING",
-          body: "draft",
-          user: restComment.user,
-          submitted_at: null,
-          html_url: "https://github.com/x",
-        },
-        {
-          id: 2,
-          state: "COMMENTED",
-          body: null,
-          user: restComment.user,
-          submitted_at: "2026-07-02T10:00:00Z",
-          html_url: "https://github.com/y",
-        },
-      ]
-    );
-    expect(conversation.reviews).toHaveLength(1);
-    expect(conversation.reviews[0]?.id).toBe("2");
-    expect(conversation.reviews[0]?.body).toBe("");
-  });
 
   test("toRestComment coalesces null body", () => {
     expect(toRestComment({ ...restComment, body: null }).body).toBe("");

@@ -7,7 +7,9 @@ import {
   InstallationRequired,
   PullRequestNotFound,
   PullRequestRefSchema,
+  Unauthorized,
 } from "./pull-requests";
+
 import { cookieHeaders } from "./shared";
 
 export const ViewedFileSchema = Schema.Struct({
@@ -22,11 +24,6 @@ export const ViewedFilesSchema = Schema.Struct({
 });
 
 export type ViewedFiles = typeof ViewedFilesSchema.Type;
-
-export class Unauthorized extends Schema.TaggedError<Unauthorized>()(
-  "Unauthorized",
-  { message: Schema.String }
-) {}
 
 const listViewedFiles = HttpApiEndpoint.get(
   "listViewedFiles",

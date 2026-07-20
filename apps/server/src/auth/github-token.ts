@@ -1,7 +1,7 @@
 import type { Auth } from "@sphynx/auth";
 import type { Database } from "@sphynx/db/client";
 import { account } from "@sphynx/db/schema";
-import { Unauthorized } from "@sphynx/schema/pull-request-views";
+import { Unauthorized } from "@sphynx/schema/pull-requests";
 import { and, eq } from "drizzle-orm";
 import { type Context, Effect } from "effect";
 

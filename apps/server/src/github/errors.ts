@@ -1,4 +1,4 @@
-import type { Unauthorized } from "@sphynx/schema/pull-request-views";
+import type { Unauthorized } from "@sphynx/schema/pull-requests";
 import {
   type GitHubRateLimited,
   type GitHubTimeout,
