@@ -23,11 +23,13 @@ import {
   unresolvedThreadsText,
 } from "@/components/dashboard/thread-copy-all";
 import { ThreadReplyComposer } from "@/components/dashboard/thread-reply-composer";
-import { useReplyThread } from "@/components/dashboard/use-reply-thread";
-import { useResolveThread } from "@/components/dashboard/use-resolve-thread";
 import { HAIRLINE_DIVIDE } from "@/components/layout/dividers";
 import { SectionHeader } from "@/components/layout/section-header";
 import { FileTypeIcon } from "@/components/pull-request/file-type-icon";
+import {
+  useReplyToComment,
+  useResolveThread,
+} from "@/components/pull-request/pull-request-queries";
 import { plural, stripBotSuffix } from "@/lib/claims";
 import { baseName } from "@/lib/paths";
 
@@ -75,8 +77,8 @@ function ThreadPreviewRow({
   preview: ThreadPreview;
   pull: QueuePull;
 }) {
-  const resolve = useResolveThread(pull);
-  const reply = useReplyThread(pull);
+  const { resolve, resolving } = useResolveThread(pull);
+  const { reply, replying: sendingReply } = useReplyToComment(pull);
   const login = preview.author ? stripBotSuffix(preview.author.login) : null;
   const [expanded, setExpanded] = useState(false);
   const [replying, setReplying] = useState(false);
@@ -85,7 +87,7 @@ function ThreadPreviewRow({
 
   const submitReply = (body: string) => {
     if (preview.rootCommentId !== null) {
-      reply.mutate({ body, commentId: preview.rootCommentId });
+      reply({ body, commentId: preview.rootCommentId });
       setReplying(false);
     }
   };
@@ -147,10 +149,10 @@ function ThreadPreviewRow({
           ) : null}
           {canAct ? (
             <ThreadActionButton
-              disabled={resolve.isPending}
+              disabled={resolving}
               icon={<CheckCircleIcon className="size-4" />}
               label="Resolve"
-              onClick={() => resolve.mutate(preview.id)}
+              onClick={() => resolve({ resolved: true, threadId: preview.id })}
             />
           ) : null}
         </span>
@@ -201,7 +203,7 @@ function ThreadPreviewRow({
       {replying ? (
         <div className="relative z-10">
           <ThreadReplyComposer
-            busy={reply.isPending}
+            busy={sendingReply}
             onCancel={() => setReplying(false)}
             onSubmit={submitReply}
           />

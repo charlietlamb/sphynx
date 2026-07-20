@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { logWorkbenchEvent } from "@/components/workbench/workbench-store";
 import { postJson } from "@/lib/api";
+import { keys } from "@/lib/query/keys";
 
 function pullPath(pull: QueuePull) {
   return `/api/github/repos/${pull.owner}/${pull.repo}/pulls/${pull.number}`;
@@ -10,8 +11,18 @@ function pullPath(pull: QueuePull) {
 
 export function usePullActions(pull: QueuePull) {
   const queryClient = useQueryClient();
+  /**
+   * Reaches the pull's own subtree and every installation-scoped view of it.
+   * The installation id is not known here, so the whole installation branch is
+   * invalidated rather than threading it through every call site.
+   */
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: keys.pull(pull) }),
+      queryClient.invalidateQueries({
+        queryKey: [...keys.all, "installation"],
+      }),
+    ]);
 
   const merge = useMutation({
     mutationKey: ["merge", pull.owner, pull.repo, pull.number],

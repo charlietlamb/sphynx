@@ -30,9 +30,10 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { Schema } from "effect";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useSession } from "@/lib/auth-client";
+import { keys } from "@/lib/query/keys";
 
 interface ApiErrorBody {
   _tag?: string;
@@ -123,14 +124,14 @@ function viewedFilesUrl({ owner, repo, number }: PullRequestRef) {
 
 function pullRequestQuery(ref: PullRequestRef) {
   return queryOptions({
-    queryKey: ["pull-request", ref.owner, ref.repo, ref.number],
+    queryKey: keys.pullSummary(ref),
     queryFn: () => fetchDecoded(pullUrl(ref), PullRequestSummarySchema),
   });
 }
 
 function pullRequestFilesQuery(ref: PullRequestRef) {
   return queryOptions({
-    queryKey: ["pull-request", ref.owner, ref.repo, ref.number, "files"],
+    queryKey: keys.pullFiles(ref),
     queryFn: async () => {
       const files: PullRequestFile[] = [];
       let page: number | null = 1;
@@ -154,7 +155,7 @@ function pullRequestFilesQuery(ref: PullRequestRef) {
  */
 function pullRequestPatchesQuery(ref: PullRequestRef) {
   return queryOptions({
-    queryKey: ["pull-request", ref.owner, ref.repo, ref.number, "patches"],
+    queryKey: keys.pullPatches(ref),
     queryFn: () =>
       fetchDecoded(`${pullUrl(ref)}/patches`, PullRequestPatchesSchema),
     staleTime: Number.POSITIVE_INFINITY,
@@ -174,15 +175,7 @@ export function fileContentsQuery(
   path: string | undefined
 ) {
   return queryOptions({
-    queryKey: [
-      "pull-request",
-      ref.owner,
-      ref.repo,
-      ref.number,
-      "file-contents",
-      sha,
-      path,
-    ],
+    queryKey: keys.pullFileContents(ref, sha, path),
     queryFn: () =>
       fetchDecoded(
         `${pullUrl(ref)}/file-contents?path=${encodeURIComponent(path ?? "")}&sha=${sha}`,
@@ -205,41 +198,45 @@ export function useFileContents(
 
 const HEAD_POLL_INTERVAL = 45_000;
 
+/**
+ * Watches for new commits on the open pull request.
+ *
+ * One polled query, not two. A second query against the same URL under a
+ * different key cannot be deduplicated by TanStack, so the page held two
+ * independently refreshing copies of the summary.
+ *
+ * `viewing` is the sha the reviewer is currently looking at. It is state
+ * rather than a ref because it is read during render, and it is seeded from
+ * the first head sha via the render-time comparison React supports for
+ * derived state.
+ */
 export function usePullRequestFreshness(ref: PullRequestRef) {
   const queryClient = useQueryClient();
-  const current = useQuery(pullRequestQuery(ref));
-  const poll = useQuery({
-    queryKey: ["pull-request", ref.owner, ref.repo, ref.number, "head-poll"],
-    queryFn: pullRequestQuery(ref).queryFn,
-    enabled: current.data !== undefined,
-    initialData: () => queryClient.getQueryData(pullRequestQuery(ref).queryKey),
+  const summary = useQuery({
+    ...pullRequestQuery(ref),
     refetchInterval: HEAD_POLL_INTERVAL,
-    retry: false,
   });
-  const hasNewChanges = Boolean(
-    current.data && poll.data && poll.data.head.sha !== current.data.head.sha
-  );
-  const refresh = useCallback(
-    () =>
-      queryClient.invalidateQueries({
-        queryKey: ["pull-request", ref.owner, ref.repo, ref.number],
-      }),
-    [queryClient, ref.owner, ref.repo, ref.number]
-  );
-  return { hasNewChanges, refresh, refreshing: current.isFetching };
+
+  const head = summary.data?.head.sha ?? null;
+  const [viewing, setViewing] = useState<string | null>(head);
+  if (viewing === null && head !== null) {
+    setViewing(head);
+  }
+  const hasNewChanges = head !== null && viewing !== null && viewing !== head;
+
+  const refresh = useCallback(() => {
+    setViewing(head);
+    return queryClient.invalidateQueries({ queryKey: keys.pull(ref) });
+  }, [queryClient, ref, head]);
+
+  return { hasNewChanges, refresh, refreshing: summary.isFetching };
 }
 
 const EMPTY_THREADS: readonly ReviewThread[] = [];
 
 function commentThreadsQuery(ref: PullRequestRef) {
   return queryOptions({
-    queryKey: [
-      "pull-request",
-      ref.owner,
-      ref.repo,
-      ref.number,
-      "comment-threads",
-    ],
+    queryKey: keys.pullThreads(ref),
     queryFn: () =>
       fetchDecoded(`${pullUrl(ref)}/comment-threads`, ReviewThreadsSchema),
   });
@@ -256,7 +253,7 @@ function conversationUrl(ref: PullRequestRef) {
 
 function conversationQuery(ref: PullRequestRef) {
   return queryOptions({
-    queryKey: ["pull-request", ref.owner, ref.repo, ref.number, "conversation"],
+    queryKey: keys.pullConversation(ref),
     queryFn: () => fetchDecoded(conversationUrl(ref), ConversationSchema),
   });
 }
@@ -468,18 +465,12 @@ export function useResolveThread(ref: PullRequestRef) {
       reportMutationError(queryClient, ref, "Couldn't update thread", error),
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
-  return { resolve: mutation.mutate };
+  return { resolve: mutation.mutate, resolving: mutation.isPending };
 }
 
 function pendingReviewQuery(ref: PullRequestRef) {
   return queryOptions({
-    queryKey: [
-      "pull-request",
-      ref.owner,
-      ref.repo,
-      ref.number,
-      "pending-review",
-    ],
+    queryKey: keys.pullPendingReview(ref),
     queryFn: async (): Promise<PendingReview> => {
       const response = await fetch(`${commentsUrl(ref)}/pending-review`);
       if (response.status === 401) {
@@ -534,7 +525,7 @@ export function useReviewSubmission(ref: PullRequestRef) {
 
 function viewedFilesQuery(ref: PullRequestRef) {
   return queryOptions({
-    queryKey: ["pull-request", ref.owner, ref.repo, ref.number, "viewed-files"],
+    queryKey: keys.pullViewedFiles(ref),
     queryFn: async (): Promise<ReadonlySet<string> | null> => {
       const response = await fetch(viewedFilesUrl(ref));
       if (response.status === 401) {

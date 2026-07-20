@@ -4,6 +4,7 @@ import { Schema } from "effect";
 import type { RepoOption } from "@/components/dashboard/repo-switcher";
 import { isContested, isMergeable, repoKeyOf } from "@/lib/attention";
 import { fetchGithub } from "@/lib/github-api";
+import { keys } from "@/lib/query/keys";
 
 async function fetchPipeline(installationId: number | null) {
   const response = await fetchGithub("/pipeline", "pipeline", installationId);
@@ -40,7 +41,7 @@ const REFRESH_MS = 45_000;
  */
 export function usePipeline(installationId: number | null, enabled: boolean) {
   return useQuery({
-    queryKey: ["pipeline", installationId],
+    queryKey: keys.pipeline(installationId),
     queryFn: () => fetchPipeline(installationId),
     enabled,
     staleTime: REFRESH_MS,

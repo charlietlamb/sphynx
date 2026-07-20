@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import type { MergedWorkbenchEvent } from "@/components/workbench/workbench-copy";
 import { useWorkbenchStore } from "@/components/workbench/workbench-store";
 import { fetchGithub } from "@/lib/github-api";
+import { keys } from "@/lib/query/keys";
 
 async function fetchWorkbenchEvents(
   owner: string,
@@ -27,7 +28,7 @@ function workbenchEventsQuery(
   installationId: number | null
 ) {
   return queryOptions({
-    queryKey: ["repo-events", owner, repo, installationId],
+    queryKey: keys.repoEvents({ owner, repo }, installationId),
     queryFn: () => fetchWorkbenchEvents(owner, repo, installationId),
     refetchInterval: 60_000,
     staleTime: 30_000,

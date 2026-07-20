@@ -2,6 +2,7 @@ import { CreatedPullSchema } from "@sphynx/schema/review-queue";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { logWorkbenchEvent } from "@/components/workbench/workbench-store";
 import { postDecoded } from "@/lib/api";
+import { keys } from "@/lib/query/keys";
 
 interface PromoteInput {
   from: string;
@@ -24,7 +25,12 @@ export function usePromote(owner: string, repo: string) {
         kind: "pr-opened",
         pull: { number: created.number, title: `Release ${from} to ${to}` },
       });
-      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: keys.repo({ owner, repo }) }),
+        queryClient.invalidateQueries({
+          queryKey: [...keys.all, "installation"],
+        }),
+      ]);
     },
   });
 }

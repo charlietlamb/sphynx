@@ -1,4 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
+import { keys } from "@/lib/query/keys";
 
 interface ShikiThemeModule {
   default: {
@@ -154,7 +155,7 @@ export async function loadMirroredCss(themes?: {
 
 export function mirroredThemeQuery(themes?: { dark: string; light: string }) {
   return queryOptions({
-    queryKey: ["mirrored-theme", themes?.light, themes?.dark],
+    queryKey: keys.mirroredTheme(themes?.light, themes?.dark),
     queryFn: () => loadMirroredCss(themes),
     enabled: Boolean(themes),
     staleTime: Number.POSITIVE_INFINITY,

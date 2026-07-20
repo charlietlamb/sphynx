@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { Schema } from "effect";
 import { fetchGithub } from "@/lib/github-api";
+import { keys } from "@/lib/query/keys";
 import { useDebounced } from "@/lib/use-debounced";
 
 const DEBOUNCE_MS = 250;
@@ -25,7 +26,7 @@ async function fetchPullSearch(query: string, installationId: number | null) {
 
 function pullSearchQuery(query: string, installationId: number | null) {
   return queryOptions({
-    queryKey: ["pull-search", query, installationId],
+    queryKey: keys.search(installationId, query),
     queryFn: () => fetchPullSearch(query, installationId),
     placeholderData: keepPreviousData,
     staleTime: 30_000,

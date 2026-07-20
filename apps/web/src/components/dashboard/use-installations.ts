@@ -5,6 +5,7 @@ import {
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { Schema } from "effect";
 import { fetchGithub } from "@/lib/github-api";
+import { keys } from "@/lib/query/keys";
 
 async function fetchInstallations() {
   const response = await fetchGithub("/installations", "installations");
@@ -15,7 +16,7 @@ async function fetchInstallations() {
 
 function installationsQuery() {
   return queryOptions({
-    queryKey: ["installations"],
+    queryKey: keys.installations(),
     queryFn: fetchInstallations,
     staleTime: 5 * 60_000,
   });
