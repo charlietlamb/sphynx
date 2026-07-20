@@ -11,6 +11,12 @@ import { GitHubAppAuth, type Installation } from "../github/app-auth";
 import { type GitHubCredential, userCredentialId } from "../github/credential";
 
 const SIGN_IN = "Sign in to use Sphynx";
+/**
+ * Distinct from SIGN_IN: the session is valid, but no GitHub token is stored
+ * for the user. Writes act as the human, so they cannot fall back to the app.
+ * Sharing one message here made every 401 indistinguishable in production.
+ */
+const RECONNECT_GITHUB = "Reconnect GitHub to act on pull requests";
 const INSTALL_REQUIRED =
   "Install the Sphynx GitHub App on an organization to continue";
 
@@ -34,7 +40,9 @@ const makeGitHubAuth = Effect.gen(function* () {
         catch: () => new Unauthorized({ message: SIGN_IN }),
       });
       if (!session) {
-        return yield* Effect.fail(new Unauthorized({ message: SIGN_IN }));
+        return yield* Effect.logInfo("no session on request").pipe(
+          Effect.zipRight(Effect.fail(new Unauthorized({ message: SIGN_IN })))
+        );
       }
       return {
         userId: session.user.id,
@@ -60,7 +68,11 @@ const makeGitHubAuth = Effect.gen(function* () {
         const token = rows[0]?.accessToken;
         return token
           ? Effect.succeed(token)
-          : Effect.fail(new Unauthorized({ message: SIGN_IN }));
+          : Effect.logWarning("no stored github token for user").pipe(
+              Effect.zipRight(
+                Effect.fail(new Unauthorized({ message: RECONNECT_GITHUB }))
+              )
+            );
       }),
       Effect.annotateLogs({ "user.id": userId })
     );
