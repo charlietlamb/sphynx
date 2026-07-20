@@ -5,7 +5,11 @@ import type { GitHubCredential } from "./credential";
 import { GitHubPipeline } from "./pipeline";
 import { PipelineCache, PipelineCacheLive } from "./pipeline-cache";
 
-function stubPipeline(calls: Ref.Ref<number>, fail: boolean) {
+function stubPipeline(
+  calls: Ref.Ref<number>,
+  fail: boolean,
+  repos: unknown[] = []
+) {
   return Layer.succeed(GitHubPipeline, {
     build: () =>
       Ref.update(calls, (n) => n + 1).pipe(
@@ -18,11 +22,17 @@ function stubPipeline(calls: Ref.Ref<number>, fail: boolean) {
                   resetAt: null,
                 })
               )
-            : Effect.succeed([])
+            : Effect.succeed(repos)
         )
       ),
   } as unknown as typeof GitHubPipeline.Service);
 }
+
+const repoFlow = (owner: string, repo: string, openPulls: number) => ({
+  owner,
+  repo,
+  openPulls: Array.from({ length: openPulls }, () => ({})),
+});
 
 const credential = (id: string): GitHubCredential => ({
   kind: "installation",
@@ -47,6 +57,46 @@ describe("PipelineCache", () => {
       )
     );
     expect(calls).toBe(1);
+  });
+
+  test("serves the cached build when the reported version matches", async () => {
+    const calls = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const counter = yield* Ref.make(0);
+          const layer = PipelineCacheLive.pipe(
+            Layer.provide(
+              stubPipeline(counter, false, [repoFlow("useautumn", "autumn", 2)])
+            )
+          );
+          const cache = yield* Effect.provide(PipelineCache, layer);
+          yield* cache.get(credential("t"));
+          yield* cache.get(credential("t"), "useautumn/autumn:2");
+          return yield* Ref.get(counter);
+        })
+      )
+    );
+    expect(calls).toBe(1);
+  });
+
+  test("rebuilds when the reported version is ahead of the cached build", async () => {
+    const calls = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const counter = yield* Ref.make(0);
+          const layer = PipelineCacheLive.pipe(
+            Layer.provide(
+              stubPipeline(counter, false, [repoFlow("useautumn", "autumn", 2)])
+            )
+          );
+          const cache = yield* Effect.provide(PipelineCache, layer);
+          yield* cache.get(credential("t"));
+          yield* cache.get(credential("t"), "useautumn/autumn:3");
+          return yield* Ref.get(counter);
+        })
+      )
+    );
+    expect(calls).toBe(2);
   });
 
   test("does not rebuild on every request while rate limited", async () => {

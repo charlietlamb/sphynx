@@ -1,6 +1,7 @@
 import type { PipelineVersion } from "@sphynx/schema/review-queue";
 import { Context, Effect, Layer } from "effect";
 import type { GitHubAuthedError } from "./errors";
+import { fingerprint } from "./pipeline-fingerprint";
 import { GitHubReviewQueue } from "./review-queue";
 
 /**
@@ -17,11 +18,7 @@ const makeGitHubPipelineVersion = Effect.gen(function* () {
     token: string
   ): Effect.Effect<PipelineVersion, GitHubAuthedError> =>
     queue.discoverRepos(token).pipe(
-      Effect.map((repos) => ({
-        version: repos
-          .map((repo) => `${repo.owner}/${repo.repo}:${repo.openPulls}`)
-          .join("|"),
-      })),
+      Effect.map((repos) => ({ version: fingerprint(repos) })),
       Effect.withSpan("GitHubPipelineVersion.build")
     );
 

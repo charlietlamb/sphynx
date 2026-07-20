@@ -58,9 +58,11 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
             }))
           )
         )
-        .handle("getPipeline", ({ headers }) =>
+        .handle("getPipeline", ({ headers, urlParams }) =>
           readCredential(headers.cookie, requested(headers)).pipe(
-            Effect.flatMap(cache.get)
+            Effect.flatMap((credential) =>
+              cache.get(credential, urlParams.since)
+            )
           )
         )
         .handle("getPipelineVersion", ({ headers }) =>

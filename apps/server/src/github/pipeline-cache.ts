@@ -3,6 +3,7 @@ import { Cache, Clock, Context, Duration, Effect, Layer, Ref } from "effect";
 import type { GitHubCredential } from "./credential";
 import { type GitHubAuthedError, isRateLimited } from "./errors";
 import { GitHubPipeline } from "./pipeline";
+import { fingerprint } from "./pipeline-fingerprint";
 
 const PIPELINE_TTL = Duration.minutes(10);
 const PIPELINE_REFRESH_MS = Duration.toMillis(Duration.minutes(2));
@@ -11,7 +12,8 @@ const MARK_RETENTION_MS = Duration.toMillis(PIPELINE_TTL);
 export interface PipelineCacheShape {
   readonly drop: (credential: GitHubCredential) => Effect.Effect<void>;
   readonly get: (
-    credential: GitHubCredential
+    credential: GitHubCredential,
+    since?: string
   ) => Effect.Effect<Pipeline, GitHubAuthedError>;
 }
 
@@ -33,6 +35,12 @@ const makePipelineCache = Effect.gen(function* () {
    */
   const credentials = yield* Ref.make(new Map<string, GitHubCredential>());
 
+  /**
+   * Fingerprint of the data each cached build was made from, so a caller
+   * reporting a newer one can be told the entry is behind.
+   */
+  const builtVersions = yield* Ref.make(new Map<string, string>());
+
   const cache = yield* Cache.make({
     capacity: 64,
     timeToLive: PIPELINE_TTL,
@@ -45,6 +53,20 @@ const makePipelineCache = Effect.gen(function* () {
             : Effect.dieMessage(`no credential registered for ${key}`);
         }),
         Effect.flatMap(pipeline.build),
+        Effect.tap((repos) =>
+          Ref.update(builtVersions, (versions) =>
+            new Map(versions).set(
+              key,
+              fingerprint(
+                repos.map((repo) => ({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  openPulls: repo.openPulls.length,
+                }))
+              )
+            )
+          )
+        ),
         Effect.map((repos) => ({ repos }))
       ),
   });
@@ -115,12 +137,22 @@ const makePipelineCache = Effect.gen(function* () {
       }
     }).pipe(Effect.forkIn(scope));
 
-  const get = (credential: GitHubCredential) =>
+  const get = (credential: GitHubCredential, since?: string) =>
     Effect.gen(function* () {
       const token = credential.id;
       yield* Ref.update(credentials, (live) =>
         new Map(live).set(credential.id, credential)
       );
+      /**
+       * The caller has seen a fingerprint the cached build predates, so serving
+       * it would knowingly return stale data. Drop the entry and rebuild inline.
+       */
+      if (since !== undefined) {
+        const built = yield* Ref.get(builtVersions);
+        if (built.get(token) !== since) {
+          yield* cache.invalidate(token);
+        }
+      }
       const wasCached = yield* cache.contains(token);
       const value = yield* cache
         .get(token)

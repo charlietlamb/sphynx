@@ -42,8 +42,8 @@ export function useDashboardState() {
    */
   const needsReauth = settled && orgs.isError;
 
-  const pipeline = usePipeline(installationId, ready);
-  usePipelineFreshness(installationId, ready);
+  const version = usePipelineFreshness(installationId, ready);
+  const pipeline = usePipeline(installationId, ready, version);
   const dialogs = useDialog();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [branchFilter, setBranchFilter] = useState<string | null>(null);

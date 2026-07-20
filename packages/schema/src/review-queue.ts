@@ -195,6 +195,17 @@ const listInstallations = HttpApiEndpoint.get(
 
 const getPipeline = HttpApiEndpoint.get("getPipeline", "/api/github/pipeline")
   .setHeaders(installationHeaders)
+  .setUrlParams(
+    Schema.Struct({
+      /**
+       * Version fingerprint the client has already seen. When it differs from
+       * the cached build's, the server rebuilds rather than serving a value it
+       * knows is behind — otherwise a client-side invalidation just re-reads
+       * the same stale entry.
+       */
+      since: Schema.optional(Schema.String),
+    })
+  )
   .addSuccess(PipelineSchema);
 
 export const PullBodySchema = Schema.Struct({
