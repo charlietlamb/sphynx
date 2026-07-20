@@ -92,12 +92,32 @@ export const PullRequestFileSchema = Schema.Struct({
   additions: Schema.Number,
   deletions: Schema.Number,
   changes: Schema.Number,
-  patch: Schema.NullOr(Schema.String),
   renderability: Schema.Literal("patch", "binary-or-large"),
   githubUrl: Schema.String,
 });
 
 export type PullRequestFile = typeof PullRequestFileSchema.Type;
+
+/**
+ * Where a symbol is defined within the diff. Built server-side from the same
+ * patches the file list is derived from, so the client never has to parse
+ * every patch to power go-to-definition.
+ */
+export const SymbolDefinitionSchema = Schema.Struct({
+  kind: Schema.Literal("member", "top"),
+  lineNumber: Schema.Number,
+  path: Schema.String,
+  scope: Schema.Literal("file", "global"),
+});
+
+export type SymbolDefinition = typeof SymbolDefinitionSchema.Type;
+
+export const SymbolIndexSchema = Schema.Record({
+  key: Schema.String,
+  value: SymbolDefinitionSchema,
+});
+
+export type SymbolIndexPayload = typeof SymbolIndexSchema.Type;
 
 export const PullRequestFilesPageSchema = Schema.Struct({
   page: Schema.Number,
@@ -110,6 +130,18 @@ export type PullRequestFilesPage = typeof PullRequestFilesPageSchema.Type;
 export const PullRequestFileContentsSchema = Schema.Struct({
   content: Schema.NullOr(Schema.String),
 });
+
+/**
+ * Every patch in the pull request, keyed by path. Split out of the file list so
+ * first paint doesn't wait on the diff text, which is ~90% of the payload.
+ * Navigation needs all of them synchronously, so this stays one request.
+ */
+export const PullRequestPatchesSchema = Schema.Struct({
+  patches: Schema.Record({ key: Schema.String, value: Schema.String }),
+  symbols: SymbolIndexSchema,
+});
+
+export type PullRequestPatches = typeof PullRequestPatchesSchema.Type;
 
 export type PullRequestFileContents = typeof PullRequestFileContentsSchema.Type;
 
@@ -180,10 +212,19 @@ const getPullRequestFileContents = HttpApiEndpoint.get(
   .setUrlParams(Schema.Struct({ path: Schema.String, sha: Schema.String }))
   .addSuccess(PullRequestFileContentsSchema);
 
+const getPullRequestPatches = HttpApiEndpoint.get(
+  "getPullRequestPatches",
+  "/api/public/github/repos/:owner/:repo/pulls/:number/patches"
+)
+  .setPath(PullRequestRefSchema)
+  .setHeaders(requestHeaders)
+  .addSuccess(PullRequestPatchesSchema);
+
 export const PullRequestsApi = HttpApiGroup.make("pullRequests")
   .add(getPullRequest)
   .add(listPullRequestFiles)
   .add(getPullRequestFileContents)
+  .add(getPullRequestPatches)
   .addError(PullRequestNotFound, { status: 404 })
   .addError(GitHubRateLimited, { status: 429 })
   .addError(GitHubUnavailable, { status: 502 })

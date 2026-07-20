@@ -28,6 +28,7 @@ import {
   RawReviewCommentsSchema,
 } from "./rest-schemas";
 import { groupReviewThreads } from "./review-threads";
+import { buildSymbolIndex } from "./symbol-index";
 
 const MAX_COMMENT_PAGES = 5;
 
@@ -252,7 +253,6 @@ const makeClient = Effect.gen(function* () {
           additions: file.additions,
           deletions: file.deletions,
           changes: file.changes,
-          patch: file.patch ?? null,
           renderability: file.patch ? "patch" : "binary-or-large",
           githubUrl:
             file.blob_url ??
@@ -274,6 +274,39 @@ const makeClient = Effect.gen(function* () {
       }),
       Effect.withSpan("GitHubClient.listPullRequestFiles"),
       Effect.annotateLogs({ ...refAnnotations(ref), "github.page": page })
+    );
+
+  const collectPatches = (ref: PullRequestRef) =>
+    Effect.gen(function* () {
+      const patches = new Map<string, string>();
+      let page: number | null = 1;
+      while (page !== null && page <= MAX_FILE_PAGES) {
+        const result: GitHubResult<typeof RawPullRequestFilesSchema.Type> =
+          yield* request(
+            pullPath(ref, `/files?per_page=100&page=${page}`),
+            RawPullRequestFilesSchema
+          );
+        if (result._tag === "NotModified") {
+          break;
+        }
+        for (const file of result.value) {
+          if (file.patch) {
+            patches.set(file.filename, file.patch);
+          }
+        }
+        page = nextPageFrom(result.link ?? undefined);
+      }
+      return patches;
+    });
+
+  const listAllPatches = (ref: PullRequestRef) =>
+    collectPatches(ref).pipe(
+      Effect.map((patches) => ({
+        patches: Object.fromEntries(patches),
+        symbols: buildSymbolIndex(patches),
+      })),
+      Effect.withSpan("GitHubClient.listAllPatches"),
+      Effect.annotateLogs(refAnnotations(ref))
     );
 
   const listReviewThreads = (ref: PullRequestRef) =>
@@ -318,6 +351,7 @@ const makeClient = Effect.gen(function* () {
   return {
     getPullRequest,
     listPullRequestFiles,
+    listAllPatches,
     listReviewThreads,
     getFileContents,
   } as const;

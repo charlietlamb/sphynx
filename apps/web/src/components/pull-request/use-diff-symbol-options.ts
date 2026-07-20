@@ -5,8 +5,8 @@ import {
   keepSymbolsStamped,
   releaseSymbolStamping,
 } from "@/components/pull-request/diff-symbols";
+import type { SymbolIndex } from "@/components/pull-request/patch-map";
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
-import type { SymbolIndex } from "@/components/pull-request/symbol-index";
 import { useCodeTheme } from "@/components/pull-request/use-code-theme";
 
 interface TokenClickProps {

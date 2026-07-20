@@ -5,8 +5,11 @@ import type {
 } from "@sphynx/schema/pull-requests";
 import { useCallback, useRef } from "react";
 import { DefinitionPane } from "@/components/pull-request/definition-pane";
+import type {
+  PatchMap,
+  SymbolIndex,
+} from "@/components/pull-request/patch-map";
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
-import type { SymbolIndex } from "@/components/pull-request/symbol-index";
 import { useActiveDiffContainer } from "@/components/pull-request/use-active-diff-container";
 
 interface PaneColumnProps {
@@ -24,6 +27,7 @@ interface PaneColumnProps {
   onNavigate: (index: number, definition: DefinitionRef) => void;
   onSelectPosition: (index: number, line: number, token?: HTMLElement) => void;
   onSetViewed: (change: { path: string; viewed: boolean }) => void;
+  patches: PatchMap;
   pullRequestRef: PullRequestRef;
   symbolIndex: SymbolIndex;
   viewedFiles: ReadonlySet<string> | null;
@@ -44,6 +48,7 @@ export function PaneColumn({
   onNavigate,
   onSelectPosition,
   onSetViewed,
+  patches,
   pullRequestRef,
   symbolIndex,
   viewedFiles,
@@ -74,6 +79,7 @@ export function PaneColumn({
         onNavigate={onNavigate}
         onSelectPosition={onSelectPosition}
         onSetViewed={onSetViewed}
+        patches={patches}
         pullRequestRef={pullRequestRef}
         symbolIndex={symbolIndex}
         viewedFiles={viewedFiles}

@@ -1,21 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import type { PullRequestFile } from "@sphynx/schema/pull-requests";
 import { buildSymbolIndex } from "./symbol-index";
 
-function makeFile(overrides: Partial<PullRequestFile>): PullRequestFile {
-  return {
-    path: "src/example.ts",
-    previousPath: null,
-    sha: "abc",
-    status: "modified",
-    additions: 1,
-    deletions: 0,
-    changes: 1,
-    patch: null,
-    renderability: "patch",
-    githubUrl: "https://github.com/o/r/blob/sha/src/example.ts",
-    ...overrides,
-  };
+const DEFAULT_PATH = "src/example.ts";
+
+function indexOf(
+  ...entries: readonly { path?: string; patch: string | null }[]
+) {
+  const patches = new Map<string, string>();
+  for (const entry of entries) {
+    if (entry.patch) {
+      patches.set(entry.path ?? DEFAULT_PATH, entry.patch);
+    }
+  }
+  return buildSymbolIndex(patches);
 }
 
 describe("buildSymbolIndex", () => {
@@ -31,27 +28,27 @@ describe("buildSymbolIndex", () => {
       "+export interface InvoiceSummary {}",
       " const untouched = 1;",
     ].join("\n");
-    const index = buildSymbolIndex([makeFile({ patch })]);
+    const index = indexOf({ patch });
 
-    expect(index.get("computeTotal")).toEqual({
+    expect(index.computeTotal).toEqual({
       kind: "top",
       path: "src/example.ts",
       lineNumber: 11,
       scope: "global",
     });
-    expect(index.get("PaymentGateway")).toEqual({
+    expect(index.PaymentGateway).toEqual({
       kind: "top",
       path: "src/example.ts",
       lineNumber: 14,
       scope: "global",
     });
-    expect(index.get("formatLabel")).toEqual({
+    expect(index.formatLabel).toEqual({
       kind: "top",
       path: "src/example.ts",
       lineNumber: 15,
       scope: "global",
     });
-    expect(index.get("InvoiceSummary")).toEqual({
+    expect(index.InvoiceSummary).toEqual({
       kind: "top",
       path: "src/example.ts",
       lineNumber: 16,
@@ -67,20 +64,17 @@ describe("buildSymbolIndex", () => {
       " const keep = 1;",
       "+function trailingThing() {}",
     ].join("\n");
-    const index = buildSymbolIndex([makeFile({ patch })]);
+    const index = indexOf({ patch });
 
-    expect(index.get("removedThing")).toBeUndefined();
-    expect(index.get("addedThing")?.lineNumber).toBe(1);
-    expect(index.get("trailingThing")?.lineNumber).toBe(3);
+    expect(index.removedThing).toBeUndefined();
+    expect(index.addedThing?.lineNumber).toBe(1);
+    expect(index.trailingThing?.lineNumber).toBe(3);
   });
 
   test("drops symbols defined in more than one place", () => {
     const patch = "@@ -1 +1,2 @@\n+function duplicated() {}";
-    const files = [
-      makeFile({ patch }),
-      makeFile({ path: "src/other.ts", patch }),
-    ];
-    expect(buildSymbolIndex(files).has("duplicated")).toBe(false);
+    const index = indexOf({ patch }, { path: "src/other.ts", patch });
+    expect("duplicated" in index).toBe(false);
   });
 
   test("indexes multi-line arrows, default classes, and typed arrow consts", () => {
@@ -91,12 +85,12 @@ describe("buildSymbolIndex", () => {
       "+const applyDiscount: (x: number) => number = (x) => x;",
       "+const wrapped = (await load()).items;",
     ].join("\n");
-    const index = buildSymbolIndex([makeFile({ patch })]);
+    const index = indexOf({ patch });
 
-    expect(index.get("buildInvoice")?.lineNumber).toBe(1);
-    expect(index.get("HomeView")?.lineNumber).toBe(2);
-    expect(index.get("applyDiscount")?.lineNumber).toBe(3);
-    expect(index.has("wrapped")).toBe(false);
+    expect(index.buildInvoice?.lineNumber).toBe(1);
+    expect(index.HomeView?.lineNumber).toBe(2);
+    expect(index.applyDiscount?.lineNumber).toBe(3);
+    expect("wrapped" in index).toBe(false);
   });
 
   test("indexes class methods but not control flow or call statements", () => {
@@ -109,19 +103,19 @@ describe("buildSymbolIndex", () => {
       "+  navigate(path);",
       "+  constructor(deps: Deps) {",
     ].join("\n");
-    const index = buildSymbolIndex([makeFile({ patch })]);
+    const index = indexOf({ patch });
 
-    expect(index.get("fetchTotals")).toEqual({
+    expect(index.fetchTotals).toEqual({
       kind: "member",
       path: "src/example.ts",
       lineNumber: 1,
       scope: "global",
     });
-    expect(index.get("handleClick")?.kind).toBe("member");
-    expect(index.get("render")?.lineNumber).toBe(3);
-    expect(index.has("while")).toBe(false);
-    expect(index.has("navigate")).toBe(false);
-    expect(index.has("constructor")).toBe(false);
+    expect(index.handleClick?.kind).toBe("member");
+    expect(index.render?.lineNumber).toBe(3);
+    expect("while" in index).toBe(false);
+    expect("navigate" in index).toBe(false);
+    expect("constructor" in index).toBe(false);
   });
 
   test("keeps overload blocks linkable instead of dropping them as ambiguous", () => {
@@ -131,8 +125,8 @@ describe("buildSymbolIndex", () => {
       "+export function parseAmount(v: number): number;",
       "+export function parseAmount(v: string | number): number {",
     ].join("\n");
-    const index = buildSymbolIndex([makeFile({ patch })]);
-    expect(index.get("parseAmount")?.lineNumber).toBe(1);
+    const index = indexOf({ patch });
+    expect(index.parseAmount?.lineNumber).toBe(1);
   });
 
   test("does not index call lines with function callbacks as member definitions", () => {
@@ -141,32 +135,26 @@ describe("buildSymbolIndex", () => {
       '+describe("payments", function () {',
       "+  fetchTotals(id: string) {",
     ].join("\n");
-    const index = buildSymbolIndex([makeFile({ patch })]);
-    expect(index.has("describe")).toBe(false);
-    expect(index.get("fetchTotals")?.kind).toBe("member");
+    const index = indexOf({ patch });
+    expect("describe" in index).toBe(false);
+    expect(index.fetchTotals?.kind).toBe("member");
   });
 
   test("scopes definitions in test files to their own file", () => {
     const patch = "@@ -1 +1 @@\n+const planHelper = () => ({});";
-    const index = buildSymbolIndex([
-      makeFile({ path: "server/tests/unit/catalog.test.ts", patch }),
-      makeFile({ path: "src/specs/setup.spec.tsx", patch: null }),
-    ]);
-    expect(index.get("planHelper")?.scope).toBe("file");
+    const index = indexOf(
+      { path: "server/tests/unit/catalog.test.ts", patch },
+      { path: "src/specs/setup.spec.tsx", patch: null }
+    );
+    expect(index.planHelper?.scope).toBe("file");
   });
 
   test("ignores non-js files, missing patches, and short names", () => {
-    const files = [
-      makeFile({
-        path: "README.md",
-        patch: "@@ -1 +1 @@\n+function readmeFn() {}",
-      }),
-      makeFile({ path: "src/none.ts", patch: null }),
-      makeFile({
-        path: "src/short.ts",
-        patch: "@@ -1 +1 @@\n+function fn() {}",
-      }),
-    ];
-    expect(buildSymbolIndex(files).size).toBe(0);
+    const index = indexOf(
+      { path: "README.md", patch: "@@ -1 +1 @@\n+function readmeFn() {}" },
+      { path: "src/none.ts", patch: null },
+      { path: "src/short.ts", patch: "@@ -1 +1 @@\n+function fn() {}" }
+    );
+    expect(Object.keys(index)).toHaveLength(0);
   });
 });

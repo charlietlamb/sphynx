@@ -15,13 +15,16 @@ import {
   expandableFilePath,
 } from "@/components/pull-request/full-contents";
 import { definitionScrollLine } from "@/components/pull-request/patch-lines";
+import type {
+  PatchMap,
+  SymbolIndex,
+} from "@/components/pull-request/patch-map";
 import {
   toGitPatch,
   useFileContents,
 } from "@/components/pull-request/pull-request-queries";
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
 import { renderFileTypePrefix } from "@/components/pull-request/render-file-type-prefix";
-import type { SymbolIndex } from "@/components/pull-request/symbol-index";
 import { useDiffSymbolOptions } from "@/components/pull-request/use-diff-symbol-options";
 import { useViewedHeader } from "@/components/pull-request/use-viewed-header";
 
@@ -38,6 +41,7 @@ interface DefinitionPaneProps {
   onNavigate: (index: number, definition: DefinitionRef) => void;
   onSelectPosition: (index: number, line: number, token?: HTMLElement) => void;
   onSetViewed: (change: { path: string; viewed: boolean }) => void;
+  patches: PatchMap;
   pullRequestRef: PullRequestRef;
   symbolIndex: SymbolIndex;
   viewedFiles: ReadonlySet<string> | null;
@@ -54,6 +58,7 @@ export function DefinitionPane({
   onNavigate,
   onSelectPosition,
   onSetViewed,
+  patches,
   pullRequestRef,
   symbolIndex,
   viewedFiles,
@@ -103,10 +108,11 @@ export function DefinitionPane({
     headSha,
     expandableFilePath(file)
   );
+  const patch = patches.get(file.path) ?? null;
   const fileDiff = useMemo(() => {
-    const base = getSingularPatch(toGitPatch(file));
+    const base = getSingularPatch(toGitPatch(file, patch));
     return contents ? enrichWithContents(base, contents) : base;
-  }, [file, contents]);
+  }, [file, patch, contents]);
   const items = useMemo(
     () => [
       {
@@ -134,10 +140,10 @@ export function DefinitionPane({
   const attachHandle = useCallback(
     (handle: CodeViewHandle<undefined> | null) => {
       onAttach(index, handle);
-      const target = file.patch ? definitionScrollLine(file.patch, line) : line;
+      const target = patch ? definitionScrollLine(patch, line) : line;
       scrollToLine(handle, file.path, target, "top");
     },
-    [onAttach, index, file.patch, file.path, line]
+    [onAttach, index, patch, file.path, line]
   );
 
   return (

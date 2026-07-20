@@ -136,7 +136,7 @@ export function useReviewNavigation({
         next >= 0 && next < files.length;
         next += direction
       ) {
-        if (files[next].patch) {
+        if (files[next].renderability === "patch") {
           selectFile(files[next].path);
           return;
         }

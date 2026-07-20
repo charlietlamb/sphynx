@@ -12,6 +12,7 @@ import {
   patchNewLines,
   stepPatchLine,
 } from "@/components/pull-request/patch-lines";
+import type { PatchMap } from "@/components/pull-request/patch-map";
 import {
   type DefinitionRef,
   trailKeyAt,
@@ -65,15 +66,17 @@ function resolveMoveTarget(state: ReviewState): MoveTarget {
 
 function adjacentFileTarget(
   files: readonly PullRequestFile[],
+  patches: PatchMap,
   path: string,
   direction: 1 | -1
 ) {
   const index = files.findIndex((candidate) => candidate.path === path);
   const adjacent = files[index + direction];
-  if (!adjacent?.patch) {
+  const patch = adjacent ? patches.get(adjacent.path) : undefined;
+  if (!(adjacent && patch)) {
     return null;
   }
-  const lines = patchNewLines(adjacent.patch);
+  const lines = patchNewLines(patch);
   const line = direction === 1 ? lines[0] : lines.at(-1);
   if (line === undefined) {
     return null;
@@ -83,16 +86,17 @@ function adjacentFileTarget(
 
 function moveDestination(
   files: readonly PullRequestFile[],
+  patches: PatchMap,
   target: MoveTarget,
   direction: 1 | -1,
   confined = false
 ) {
   const { path, current, paneKey } = target;
-  const file = files.find((candidate) => candidate.path === path);
-  if (!(path && file?.patch)) {
+  const patch = path ? patches.get(path) : undefined;
+  if (!(path && patch)) {
     return null;
   }
-  const stepped = stepPatchLine(file.patch, current, direction);
+  const stepped = stepPatchLine(patch, current, direction);
   if (stepped === null) {
     return null;
   }
@@ -102,7 +106,7 @@ function moveDestination(
   if (paneKey || confined) {
     return null;
   }
-  return adjacentFileTarget(files, path, direction);
+  return adjacentFileTarget(files, patches, path, direction);
 }
 
 function selectionRange(selection: LineSelection) {
@@ -145,28 +149,28 @@ function copyLines(
     .catch(() => toast.error("Couldn't copy to the clipboard"));
 }
 
-function mainSeedTarget(state: ReviewState, files: readonly PullRequestFile[]) {
+function mainSeedTarget(state: ReviewState, patches: PatchMap) {
   const entry = state.trail[0];
   if (entry?.anchorPath && entry.anchorLine !== null) {
     return { path: entry.anchorPath, line: entry.anchorLine };
   }
-  const target = files.find((candidate) => candidate.path === state.path);
-  if (!(state.path && target?.patch)) {
+  const patch = state.path ? patches.get(state.path) : undefined;
+  if (!(state.path && patch)) {
     return null;
   }
-  const first = patchNewLines(target.patch)[0];
+  const first = patchNewLines(patch)[0];
   return first === undefined ? null : { path: state.path, line: first };
 }
 
 function hopDestination(
   target: MoveTarget,
   state: ReviewState,
-  files: readonly PullRequestFile[]
+  patches: PatchMap
 ) {
   if (target.path && target.current !== null) {
     return { path: target.path, line: target.current };
   }
-  return mainSeedTarget(state, files);
+  return mainSeedTarget(state, patches);
 }
 
 interface ReviewActionsInput {
@@ -176,6 +180,7 @@ interface ReviewActionsInput {
   files: readonly PullRequestFile[];
   focusColumn: (column: 0 | 1) => void;
   hints: ReturnType<typeof useSymbolHints>;
+  patches: PatchMap;
   selectFile: (path: string) => void;
   setDraft: (draft: CommentDraft | null) => void;
   setLine: (path: string, line: number) => void;
@@ -196,6 +201,7 @@ export function useReviewActions({
   files,
   focusColumn,
   hints,
+  patches,
   selectFile,
   setDraft,
   setLine,
@@ -239,7 +245,7 @@ export function useReviewActions({
       cursor.placeAt(scope(), at);
     };
     const targetPatch = (target: MoveTarget) =>
-      files.find((candidate) => candidate.path === target.path)?.patch ?? null;
+      (target.path ? patches.get(target.path) : undefined) ?? null;
     const selecting = () => store.read().lineSelection !== null;
     const clearSelection = () => {
       if (selecting()) {
@@ -250,7 +256,7 @@ export function useReviewActions({
       const target = resolveMoveTarget(store.read());
       applyMove(
         target,
-        moveDestination(files, target, direction, selecting()),
+        moveDestination(files, patches, target, direction, selecting()),
         "nearest",
         at
       );
@@ -263,7 +269,7 @@ export function useReviewActions({
       }
       focusColumn(column);
       const target = resolveMoveTarget(store.read());
-      const destination = hopDestination(target, state, files);
+      const destination = hopDestination(target, state, patches);
       if (destination) {
         if (!target.paneKey && state.line === null) {
           setLine(destination.path, destination.line);
@@ -337,7 +343,7 @@ export function useReviewActions({
         if (!(target.paneKey || selecting())) {
           applyMove(
             target,
-            adjacentFileTarget(files, target.path, direction),
+            adjacentFileTarget(files, patches, target.path, direction),
             "center"
           );
         }
@@ -455,9 +461,7 @@ export function useReviewActions({
           setLineSelection(null);
           return;
         }
-        const patch = files.find(
-          (candidate) => candidate.path === state.path
-        )?.patch;
+        const patch = patches.get(state.path);
         const line =
           state.line ?? (patch ? patchNewLines(patch)[0] : undefined);
         if (line === undefined) {
@@ -529,6 +533,7 @@ export function useReviewActions({
     cursor,
     files,
     focusColumn,
+    patches,
     startHints,
     cancelHints,
     onHintKey,

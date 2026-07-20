@@ -1,4 +1,4 @@
-import type { SymbolIndex } from "@/components/pull-request/symbol-index";
+import type { SymbolIndex } from "@/components/pull-request/patch-map";
 
 export const DIFF_UNSAFE_CSS = `
 :host {

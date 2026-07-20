@@ -19,6 +19,7 @@ import {
 import { ConversationFeedItem } from "@/components/pull-request/conversation-feed-item";
 import { ConversationOverview } from "@/components/pull-request/conversation-overview";
 import { ConversationSkeleton } from "@/components/pull-request/conversation-skeleton";
+import type { PatchMap } from "@/components/pull-request/patch-map";
 import {
   toErrorCardProps,
   useAddConversationComment,
@@ -31,6 +32,7 @@ import type { PullRequestSearchSetter } from "@/components/pull-request/pull-req
 
 interface ConversationPanelProps {
   files: readonly PullRequestFile[];
+  patches: PatchMap;
   pullRequestRef: PullRequestRef;
   setSearch: PullRequestSearchSetter;
   summary: PullRequestSummary;
@@ -38,6 +40,7 @@ interface ConversationPanelProps {
 
 export default function ConversationPanel({
   files,
+  patches,
   pullRequestRef,
   setSearch,
   summary,
@@ -163,11 +166,11 @@ export default function ConversationPanel({
             >
               <ConversationFeedItem
                 commenting={commenting}
-                filesByPath={filesByPath}
                 focusedThreadKey={focusedThreadKey}
                 item={item}
                 now={now}
                 onToggleFocus={toggleFocus}
+                patches={patches}
               />
             </div>
           ))}
@@ -180,6 +183,7 @@ export default function ConversationPanel({
             file={filesByPath.get(focusedThread.path) ?? null}
             onClose={() => setFocusedThreadKey(null)}
             onOpenInDiff={openInDiff}
+            patch={patches.get(focusedThread.path) ?? null}
             thread={focusedThread}
           />
         ) : (

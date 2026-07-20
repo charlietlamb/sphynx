@@ -6,6 +6,10 @@ import { lazy, type ReactNode, Suspense, useMemo, useState } from "react";
 import { ErrorCard } from "@/components/layout/error-card";
 import { NoticePanel } from "@/components/layout/notice-panel";
 import { ConversationSkeleton } from "@/components/pull-request/conversation-skeleton";
+import {
+  EMPTY_PATCHES,
+  EMPTY_SYMBOLS,
+} from "@/components/pull-request/patch-map";
 import { PullRequestCommands } from "@/components/pull-request/pull-request-commands";
 import { PullRequestHeader } from "@/components/pull-request/pull-request-header";
 import { PullRequestHeaderSkeleton } from "@/components/pull-request/pull-request-header-skeleton";
@@ -20,7 +24,6 @@ import { PullRequestRefresh } from "@/components/pull-request/pull-request-refre
 import { usePullRequestSearch } from "@/components/pull-request/pull-request-search";
 import { PullRequestTabs } from "@/components/pull-request/pull-request-tabs";
 import { ReviewAccessBanner } from "@/components/pull-request/review-access-banner";
-import { buildSymbolIndex } from "@/components/pull-request/symbol-index";
 import { useTabKeys } from "@/components/pull-request/use-tab-keys";
 import { ViewedProgress } from "@/components/pull-request/viewed-progress";
 import { WorkspaceSkeleton } from "@/components/pull-request/workspace-skeleton";
@@ -46,15 +49,25 @@ interface PullRequestPageProps {
 }
 
 export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
-  const { pullRequest, files } = usePullRequest(pullRequestRef);
+  const { pullRequest, files, patches } = usePullRequest(pullRequestRef);
   const { viewedFiles, setAllViewed } = useViewedFiles(pullRequestRef);
   const freshness = usePullRequestFreshness(pullRequestRef);
   const accessBlock = useAccessBlock(pullRequestRef);
   const [{ tab }, setSearch] = usePullRequestSearch();
   useTabKeys(setSearch);
+  const patchMap = useMemo(
+    () =>
+      patches.data
+        ? new Map(Object.entries(patches.data.patches))
+        : EMPTY_PATCHES,
+    [patches.data]
+  );
   const symbolIndex = useMemo(
-    () => buildSymbolIndex(files.data ?? []),
-    [files.data]
+    () =>
+      patches.data
+        ? new Map(Object.entries(patches.data.symbols))
+        : EMPTY_SYMBOLS,
+    [patches.data]
   );
   useDocumentTitle(pullRequest.data?.title);
   const { data: session, isPending: sessionPending } = useSession();
@@ -81,6 +94,7 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
       <Suspense fallback={conversationSkeleton}>
         <ConversationPanel
           files={files.data ?? []}
+          patches={patchMap}
           pullRequestRef={pullRequestRef}
           setSearch={setSearch}
           summary={pullRequest.data}
@@ -121,6 +135,7 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
         <DiffWorkspace
           files={files.data}
           headSha={pullRequest.data?.head.sha ?? ""}
+          patches={patchMap}
           pullRequestRef={pullRequestRef}
           symbolIndex={symbolIndex}
         />

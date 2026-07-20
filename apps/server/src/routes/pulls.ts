@@ -54,6 +54,9 @@ export const PullRequestsApiLive = HttpApiBuilder.group(
                 )
               )
         )
+        .handle("getPullRequestPatches", ({ path }) =>
+          github.listAllPatches(path)
+        )
         .handle("getPullRequestFileContents", ({ path, urlParams }) =>
           github
             .getFileContents(path, urlParams.path, urlParams.sha)

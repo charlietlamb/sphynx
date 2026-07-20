@@ -1,5 +1,4 @@
 import type { ReviewThread } from "@sphynx/schema/pull-request-comments";
-import type { PullRequestFile } from "@sphynx/schema/pull-requests";
 import type { ThreadCommenting } from "@/components/pull-request/comment-thread";
 import { ConversationCommentCard } from "@/components/pull-request/conversation-comment-card";
 import { ConversationCommitGroup } from "@/components/pull-request/conversation-commit-group";
@@ -12,23 +11,24 @@ import { ConversationReviewCard } from "@/components/pull-request/conversation-r
 import { ConversationStateRow } from "@/components/pull-request/conversation-state-row";
 import { ConversationThreadItem } from "@/components/pull-request/conversation-thread-item";
 import { patchLineText } from "@/components/pull-request/patch-lines";
+import type { PatchMap } from "@/components/pull-request/patch-map";
 
 interface ConversationFeedItemProps {
   commenting: ThreadCommenting;
-  filesByPath: ReadonlyMap<string, PullRequestFile>;
   focusedThreadKey: string | null;
   item: FeedItem;
   now: number;
   onToggleFocus: (key: string) => void;
+  patches: PatchMap;
 }
 
 export function ConversationFeedItem({
   commenting,
-  filesByPath,
   focusedThreadKey,
   item,
   now,
   onToggleFocus,
+  patches,
 }: ConversationFeedItemProps) {
   switch (item.kind) {
     case "comment":
@@ -36,7 +36,7 @@ export function ConversationFeedItem({
     case "review":
       return <ConversationReviewCard now={now} review={item.review} />;
     case "thread": {
-      const patch = filesByPath.get(item.thread.path)?.patch ?? null;
+      const patch = patches.get(item.thread.path) ?? null;
       const key = feedKey(item);
       return (
         <ConversationThreadItem

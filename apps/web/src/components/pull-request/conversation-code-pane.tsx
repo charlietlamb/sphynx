@@ -19,6 +19,7 @@ interface ConversationCodePaneProps {
   file: PullRequestFile | null;
   onClose: () => void;
   onOpenInDiff: (thread: ReviewThread) => void;
+  patch: string | null;
   thread: ReviewThread;
 }
 
@@ -26,6 +27,7 @@ export function ConversationCodePane({
   file,
   onClose,
   onOpenInDiff,
+  patch,
   thread,
 }: ConversationCodePaneProps) {
   const themeOptions = useCodeTheme();
@@ -40,12 +42,12 @@ export function ConversationCodePane({
             {
               id: file.path,
               type: "diff" as const,
-              fileDiff: getSingularPatch(toGitPatch(file)),
+              fileDiff: getSingularPatch(toGitPatch(file, patch)),
               version: 0,
             },
           ]
         : [],
-    [file]
+    [file, patch]
   );
   const selectedLines = useMemo(
     () => ({

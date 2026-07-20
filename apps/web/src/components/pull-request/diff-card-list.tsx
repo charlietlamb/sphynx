@@ -15,6 +15,10 @@ import {
   expandableFilePath,
 } from "@/components/pull-request/full-contents";
 import { patchLineText } from "@/components/pull-request/patch-lines";
+import type {
+  PatchMap,
+  SymbolIndex,
+} from "@/components/pull-request/patch-map";
 import {
   toGitPatch,
   useFileContents,
@@ -22,7 +26,6 @@ import {
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
 import { usePullRequestSearch } from "@/components/pull-request/pull-request-search";
 import { renderFileTypePrefix } from "@/components/pull-request/render-file-type-prefix";
-import type { SymbolIndex } from "@/components/pull-request/symbol-index";
 import { useActiveDiffContainer } from "@/components/pull-request/use-active-diff-container";
 import { useDiffSymbolOptions } from "@/components/pull-request/use-diff-symbol-options";
 import type { ReviewCommenting } from "@/components/pull-request/use-review-comments";
@@ -82,6 +85,7 @@ interface DiffCardListProps {
   onNavigate: (definition: DefinitionRef) => void;
   onSelectLine: (path: string, line: number, token?: HTMLElement) => void;
   onSetViewed: (change: { path: string; viewed: boolean }) => void;
+  patches: PatchMap;
   pullRequestRef: PullRequestRef;
   symbolIndex: SymbolIndex;
   threads: readonly ReviewThread[];
@@ -97,6 +101,7 @@ export function DiffCardList({
   onNavigate,
   onSelectLine,
   onSetViewed,
+  patches,
   pullRequestRef,
   symbolIndex,
   threads,
@@ -126,9 +131,11 @@ export function DiffCardList({
     () =>
       files.map((changedFile) => ({
         path: changedFile.path,
-        fileDiff: getSingularPatch(toGitPatch(changedFile)),
+        fileDiff: getSingularPatch(
+          toGitPatch(changedFile, patches.get(changedFile.path) ?? null)
+        ),
       })),
-    [files]
+    [files, patches]
   );
 
   const threadsByKey = useMemo(() => {
@@ -212,10 +219,10 @@ export function DiffCardList({
 
   const lineText = useCallback(
     (path: string, start: number, end: number) => {
-      const patch = files.find((candidate) => candidate.path === path)?.patch;
+      const patch = patches.get(path);
       return patch ? patchLineText(patch, start, end) : [];
     },
-    [files]
+    [patches]
   );
 
   const { cancelDraft, creating, submitDraft } = commenting;

@@ -9,6 +9,10 @@ import { DiffCardList } from "@/components/pull-request/diff-card-list";
 import { DiffWorkerPool } from "@/components/pull-request/diff-worker-pool";
 import { FileList } from "@/components/pull-request/file-list";
 import { PaneColumn } from "@/components/pull-request/pane-column";
+import type {
+  PatchMap,
+  SymbolIndex,
+} from "@/components/pull-request/patch-map";
 import {
   useCommentThreads,
   useViewedFiles,
@@ -21,7 +25,6 @@ import {
 import { ReviewHelp } from "@/components/pull-request/review-help";
 import { ReviewSubmit } from "@/components/pull-request/review-submit";
 import { SymbolHintOverlay } from "@/components/pull-request/symbol-hint-overlay";
-import type { SymbolIndex } from "@/components/pull-request/symbol-index";
 import { useImportGraph } from "@/components/pull-request/use-import-graph";
 import { useReviewActions } from "@/components/pull-request/use-review-actions";
 import { useReviewComments } from "@/components/pull-request/use-review-comments";
@@ -34,6 +37,7 @@ import { useTokenCursor } from "@/components/pull-request/use-token-cursor";
 interface DiffWorkspaceProps {
   files: readonly PullRequestFile[];
   headSha: string;
+  patches: PatchMap;
   pullRequestRef: PullRequestRef;
   symbolIndex: SymbolIndex;
 }
@@ -41,6 +45,7 @@ interface DiffWorkspaceProps {
 export default function DiffWorkspace({
   files,
   headSha,
+  patches,
   pullRequestRef,
   symbolIndex,
 }: DiffWorkspaceProps) {
@@ -184,6 +189,7 @@ export default function DiffWorkspace({
     cursor,
     files,
     focusColumn,
+    patches,
     hints,
     selectFile: navigation.selectFile,
     setDraft,
@@ -277,6 +283,7 @@ export default function DiffWorkspace({
                 onNavigate={navigation.openTrail}
                 onSelectLine={selectMainPosition}
                 onSetViewed={markViewed}
+                patches={patches}
                 pullRequestRef={pullRequestRef}
                 symbolIndex={symbolIndex}
                 threads={threads}
@@ -314,6 +321,7 @@ export default function DiffWorkspace({
                   onNavigate={navigation.navigateFrom}
                   onSelectPosition={selectPanePosition}
                   onSetViewed={markViewed}
+                  patches={patches}
                   pullRequestRef={pullRequestRef}
                   symbolIndex={symbolIndex}
                   viewedFiles={viewedFiles}

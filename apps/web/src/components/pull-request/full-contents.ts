@@ -2,7 +2,7 @@ import type { FileDiffMetadata, Hunk } from "@pierre/diffs";
 import type { PullRequestFile } from "@sphynx/schema/pull-requests";
 
 export function expandableFilePath(file: PullRequestFile | undefined) {
-  if (!file?.patch) {
+  if (file?.renderability !== "patch") {
     return;
   }
   if (file.status === "added" || file.status === "deleted") {

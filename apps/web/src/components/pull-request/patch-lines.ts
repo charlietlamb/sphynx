@@ -1,6 +1,6 @@
 const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 
-export function walkPatchNewLines(
+function walkPatchNewLines(
   patch: string,
   visit: (lineNumber: number, content: string) => void
 ) {

@@ -16,7 +16,9 @@ import {
   MAX_FILE_PAGES,
   type PullRequestFile,
   PullRequestFileContentsSchema,
+  type PullRequestFilesPage,
   PullRequestFilesPageSchema,
+  PullRequestPatchesSchema,
   type PullRequestRef,
   PullRequestSummarySchema,
 } from "@sphynx/schema/pull-requests";
@@ -31,8 +33,6 @@ import { Schema } from "effect";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { useSession } from "@/lib/auth-client";
-
-const FILES_PER_PAGE = 100;
 
 interface ApiErrorBody {
   _tag?: string;
@@ -128,41 +128,44 @@ function pullRequestQuery(ref: PullRequestRef) {
   });
 }
 
-function pullRequestFilesQuery(ref: PullRequestRef, fileCount: number) {
+function pullRequestFilesQuery(ref: PullRequestRef) {
   return queryOptions({
-    queryKey: [
-      "pull-request",
-      ref.owner,
-      ref.repo,
-      ref.number,
-      "files",
-      fileCount,
-    ],
+    queryKey: ["pull-request", ref.owner, ref.repo, ref.number, "files"],
     queryFn: async () => {
-      const pageCount = Math.min(
-        Math.max(Math.ceil(fileCount / FILES_PER_PAGE), 1),
-        MAX_FILE_PAGES
-      );
-      const pages = await Promise.all(
-        Array.from({ length: pageCount }, (_, index) =>
-          fetchDecoded(
-            `${pullUrl(ref)}/files?page=${index + 1}`,
-            PullRequestFilesPageSchema
-          )
-        )
-      );
-      return pages.flatMap((page) => page.files);
+      const files: PullRequestFile[] = [];
+      let page: number | null = 1;
+      while (page !== null && page <= MAX_FILE_PAGES) {
+        const result: PullRequestFilesPage = await fetchDecoded(
+          `${pullUrl(ref)}/files?page=${page}`,
+          PullRequestFilesPageSchema
+        );
+        files.push(...result.files);
+        page = result.nextPage;
+      }
+      return files;
     },
+  });
+}
+
+/**
+ * Diff text for the whole pull request. Kept out of the file list so the first
+ * paint isn't blocked on it, but fetched as one request because navigation
+ * reads patches synchronously and can't await a per-file query.
+ */
+function pullRequestPatchesQuery(ref: PullRequestRef) {
+  return queryOptions({
+    queryKey: ["pull-request", ref.owner, ref.repo, ref.number, "patches"],
+    queryFn: () =>
+      fetchDecoded(`${pullUrl(ref)}/patches`, PullRequestPatchesSchema),
+    staleTime: Number.POSITIVE_INFINITY,
   });
 }
 
 export function usePullRequest(ref: PullRequestRef) {
   const pullRequest = useQuery(pullRequestQuery(ref));
-  const files = useQuery({
-    ...pullRequestFilesQuery(ref, pullRequest.data?.stats.changedFiles ?? 0),
-    enabled: pullRequest.data !== undefined,
-  });
-  return { pullRequest, files };
+  const files = useQuery(pullRequestFilesQuery(ref));
+  const patches = useQuery(pullRequestPatchesQuery(ref));
+  return { pullRequest, files, patches };
 }
 
 export function fileContentsQuery(
@@ -655,11 +658,11 @@ export function useViewedFiles(ref: PullRequestRef) {
   };
 }
 
-export function toGitPatch(file: PullRequestFile) {
+export function toGitPatch(file: PullRequestFile, patch: string | null) {
   const oldPath = file.previousPath ?? file.path;
   const oldRef = file.status === "added" ? "/dev/null" : `a/${oldPath}`;
   const newRef = file.status === "deleted" ? "/dev/null" : `b/${file.path}`;
-  return `diff --git a/${oldPath} b/${file.path}\n--- ${oldRef}\n+++ ${newRef}\n${file.patch ?? ""}`;
+  return `diff --git a/${oldPath} b/${file.path}\n--- ${oldRef}\n+++ ${newRef}\n${patch ?? ""}`;
 }
 
 interface ErrorCardContent {

@@ -1,17 +1,35 @@
-import type { PullRequestFile } from "@sphynx/schema/pull-requests";
-import { walkPatchNewLines } from "@/components/pull-request/patch-lines";
+import type {
+  SymbolDefinition,
+  SymbolIndexPayload,
+} from "@sphynx/schema/pull-requests";
 
-type SymbolKind = "member" | "top";
-type SymbolScope = "file" | "global";
+const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 
-interface SymbolDefinition {
-  kind: SymbolKind;
-  lineNumber: number;
-  path: string;
-  scope: SymbolScope;
+function walkPatchNewLines(
+  patch: string,
+  visit: (lineNumber: number, content: string) => void
+) {
+  const rows = patch.split("\n");
+  if (rows.at(-1) === "") {
+    rows.pop();
+  }
+  let newLine: number | null = null;
+  for (const row of rows) {
+    const hunk = HUNK_HEADER.exec(row);
+    if (hunk) {
+      newLine = Number(hunk[1]);
+      continue;
+    }
+    if (newLine === null || row.startsWith("-") || row.startsWith("\\")) {
+      continue;
+    }
+    visit(newLine, row);
+    newLine += 1;
+  }
 }
 
-export type SymbolIndex = ReadonlyMap<string, SymbolDefinition>;
+type SymbolKind = SymbolDefinition["kind"];
+type SymbolScope = SymbolDefinition["scope"];
 
 const INDEXABLE_EXTENSIONS = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
 const TEST_FILE = /\.(test|spec)\.[jt]sx?$|(^|\/)(tests?|__tests__)\//;
@@ -78,19 +96,20 @@ function symbolFrom(line: string) {
 }
 
 function collectDefinitions(
-  file: PullRequestFile,
+  path: string,
+  patch: string,
   register: (symbol: string, definition: SymbolDefinition) => void
 ) {
-  if (!(file.patch && INDEXABLE_EXTENSIONS.test(file.path))) {
+  if (!INDEXABLE_EXTENSIONS.test(path)) {
     return;
   }
-  const scope: SymbolScope = TEST_FILE.test(file.path) ? "file" : "global";
-  walkPatchNewLines(file.patch, (lineNumber, content) => {
+  const scope: SymbolScope = TEST_FILE.test(path) ? "file" : "global";
+  walkPatchNewLines(patch, (lineNumber, content) => {
     const symbol = symbolFrom(content.slice(1));
     if (symbol) {
       register(symbol.name, {
         kind: symbol.kind,
-        path: file.path,
+        path,
         lineNumber,
         scope,
       });
@@ -98,13 +117,18 @@ function collectDefinitions(
   });
 }
 
+/**
+ * Maps each unambiguous symbol in the diff to where it is defined. Symbols
+ * defined in more than one file are dropped, so this needs every patch in the
+ * pull request — which is why it is built here rather than on the client.
+ */
 export function buildSymbolIndex(
-  files: readonly PullRequestFile[]
-): SymbolIndex {
+  patches: ReadonlyMap<string, string>
+): SymbolIndexPayload {
   const definitions = new Map<string, SymbolDefinition>();
   const ambiguous = new Set<string>();
-  for (const file of files) {
-    collectDefinitions(file, (symbol, definition) => {
+  for (const [path, patch] of patches) {
+    collectDefinitions(path, patch, (symbol, definition) => {
       const existing = definitions.get(symbol);
       if (!existing) {
         definitions.set(symbol, definition);
@@ -122,5 +146,5 @@ export function buildSymbolIndex(
   for (const symbol of ambiguous) {
     definitions.delete(symbol);
   }
-  return definitions;
+  return Object.assign(Object.create(null), Object.fromEntries(definitions));
 }
