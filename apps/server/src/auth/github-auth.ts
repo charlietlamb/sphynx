@@ -1,11 +1,11 @@
 import { Auth } from "@sphynx/auth";
 import { Database } from "@sphynx/db/client";
-import { account, githubInstallation } from "@sphynx/db/schema";
+import { githubInstallation } from "@sphynx/db/schema";
 import {
   InstallationRequired,
   Unauthorized,
 } from "@sphynx/schema/pull-requests";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { Clock, Context, Effect, Layer } from "effect";
 import { GitHubAppAuth, type Installation } from "../github/app-auth";
 import { type GitHubCredential, userCredentialId } from "../github/credential";
@@ -50,31 +50,36 @@ const makeGitHubAuth = Effect.gen(function* () {
       } satisfies SessionUser;
     });
 
+  /**
+   * The signed-in user's GitHub token, refreshed if it has expired.
+   *
+   * GitHub App user tokens (`ghu_`) last only eight hours, while their refresh
+   * tokens last six months. Reading the stored token directly meant every
+   * write broke once a working day had passed, even though the session and the
+   * refresh token were both still valid. `getAccessToken` performs the refresh
+   * and persists the new pair.
+   */
   const userTokenFor = (userId: string) =>
     Effect.tryPromise(() =>
-      db
-        .select({ accessToken: account.accessToken })
-        .from(account)
-        .where(
-          and(eq(account.userId, userId), eq(account.providerId, "github"))
-        )
-        .limit(1)
+      auth.api.getAccessToken({
+        body: { providerId: "github", userId },
+      })
     ).pipe(
       Effect.tapErrorCause((cause) =>
-        Effect.logError("github token lookup failed", cause)
+        Effect.logWarning("github token refresh failed", cause)
       ),
-      Effect.orDie,
-      Effect.flatMap((rows) => {
-        const token = rows[0]?.accessToken;
-        return token
-          ? Effect.succeed(token)
-          : Effect.logWarning("no stored github token for user").pipe(
+      Effect.mapError(() => new Unauthorized({ message: RECONNECT_GITHUB })),
+      Effect.flatMap((result) =>
+        result.accessToken
+          ? Effect.succeed(result.accessToken)
+          : Effect.logWarning("no github token after refresh").pipe(
               Effect.zipRight(
                 Effect.fail(new Unauthorized({ message: RECONNECT_GITHUB }))
               )
-            );
-      }),
-      Effect.annotateLogs({ "user.id": userId })
+            )
+      ),
+      Effect.annotateLogs({ "user.id": userId }),
+      Effect.withSpan("GitHubAuth.userTokenFor")
     );
 
   const rememberInstallations = (installations: readonly Installation[]) =>
