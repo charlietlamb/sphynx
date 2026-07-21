@@ -214,6 +214,25 @@ const listInstallations = HttpApiEndpoint.get(
   .setHeaders(cookieHeaders)
   .addSuccess(InstallationsSchema);
 
+export const ResolvedInstallationSchema = Schema.Struct({
+  installationId: Schema.NullOr(Schema.Number),
+});
+
+export type ResolvedInstallation = typeof ResolvedInstallationSchema.Type;
+
+/**
+ * The installation id that owns a repo, resolved from the read model (DB only,
+ * no GitHub). Lets a page scope its SSE stream without the live installations
+ * list.
+ */
+const resolveInstallation = HttpApiEndpoint.get(
+  "resolveInstallation",
+  "/api/github/installations/resolve/:owner"
+)
+  .setPath(Schema.Struct({ owner: Schema.String }))
+  .setHeaders(cookieHeaders)
+  .addSuccess(ResolvedInstallationSchema);
+
 const getPipeline = HttpApiEndpoint.get("getPipeline", "/api/github/pipeline")
   .setHeaders(installationHeaders)
   .addSuccess(PipelineSchema);
@@ -286,6 +305,7 @@ const resyncInstallation = HttpApiEndpoint.post(
 
 export const ReviewQueueApi = HttpApiGroup.make("reviewQueue")
   .add(listInstallations)
+  .add(resolveInstallation)
   .add(getPipeline)
   .add(getQueue)
   .add(getPullBody)

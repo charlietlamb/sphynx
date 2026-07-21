@@ -28,9 +28,9 @@ import {
 import { Schema } from "effect";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { useInstallations } from "@/components/dashboard/use-installations";
 import { recordAccessBlock } from "@/components/pull-request/access-block-store";
 import { usePullFreshnessStream } from "@/components/pull-request/use-pull-freshness-stream";
+import { usePullInstallation } from "@/components/pull-request/use-pull-installation";
 import { useSession } from "@/lib/auth-client";
 import { keys } from "@/lib/query/keys";
 
@@ -183,11 +183,7 @@ export function usePullRequestFreshness(ref: PullRequestRef) {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const authed = Boolean(session?.user);
-  const { active } = useInstallations(null, authed);
-  const installationId =
-    active?.accountLogin.toLowerCase() === ref.owner.toLowerCase()
-      ? active.id
-      : (active?.id ?? null);
+  const installationId = usePullInstallation(ref.owner, authed);
 
   const summary = useQuery(pullRequestQuery(ref));
 

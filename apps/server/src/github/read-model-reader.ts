@@ -306,6 +306,25 @@ const makeReadModelReader = Effect.gen(function* () {
         .where(eq(reviewRepo.installationId, installationId))
     ).pipe(Effect.orDie);
 
+  /**
+   * The installation id that owns a repo, from the read model — DB only, no
+   * GitHub. Null when the owner isn't materialized (e.g. a repo outside the
+   * tracked queue), leaving the caller to fall back.
+   */
+  const installationForOwner = (owner: string): Effect.Effect<number | null> =>
+    Effect.tryPromise(() =>
+      db
+        .select({ installationId: reviewRepo.installationId })
+        .from(reviewRepo)
+        .where(eq(reviewRepo.owner, owner))
+        .limit(1)
+    ).pipe(
+      Effect.orDie,
+      Effect.map((rows) => rows[0]?.installationId ?? null),
+      Effect.withSpan("ReadModelReader.installationForOwner"),
+      Effect.annotateLogs({ "github.owner": owner })
+    );
+
   /** Every stage gap for the installation with its promoted pulls, in one query. */
   const gapsWithPulls = (installationId: number) =>
     Effect.tryPromise(() =>
@@ -447,7 +466,12 @@ const makeReadModelReader = Effect.gen(function* () {
       })
     );
 
-  return { readQueue, readPipeline, readWorkbench };
+  return {
+    readQueue,
+    readPipeline,
+    readWorkbench,
+    installationForOwner,
+  };
 });
 
 export class ReadModelReader extends Context.Tag(

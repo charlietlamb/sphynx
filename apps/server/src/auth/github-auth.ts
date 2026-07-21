@@ -244,6 +244,8 @@ const makeGitHubAuth = Effect.gen(function* () {
     readToken,
     writeCredential,
     writeToken,
+    /** Validate the session without resolving an installation or calling GitHub. */
+    requireSession: sessionFor,
   };
 });
 

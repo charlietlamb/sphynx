@@ -20,8 +20,13 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
       const reader = yield* ReadModelReader;
       const materializer = yield* Materializer;
       const search = yield* SearchCache;
-      const { listInstallations, readCredential, readToken, writeToken } =
-        yield* GitHubAuth;
+      const {
+        listInstallations,
+        readCredential,
+        readToken,
+        writeToken,
+        requireSession,
+      } = yield* GitHubAuth;
 
       /**
        * Writes act as the signed-in user so GitHub attributes them correctly.
@@ -105,6 +110,12 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
         )
         .handle("getQueue", ({ headers }) =>
           queueFor(headers.cookie, requested(headers))
+        )
+        .handle("resolveInstallation", ({ path, headers }) =>
+          requireSession(headers.cookie).pipe(
+            Effect.zipRight(reader.installationForOwner(path.owner)),
+            Effect.map((installationId) => ({ installationId }))
+          )
         )
         .handle("getPullBody", ({ path, headers }) =>
           readToken(headers.cookie, requested(headers)).pipe(
