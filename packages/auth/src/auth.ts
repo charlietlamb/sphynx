@@ -39,6 +39,18 @@ const makeAuth = Effect.gen(function* () {
     advanced: {
       cookiePrefix: "sphynx",
     },
+    session: {
+      /**
+       * Cache the validated session in a signed cookie so the hot read path
+       * (every getPipeline/getQueue/events request calls getSession) resolves
+       * from the cookie instead of a DB round-trip. Short TTL keeps revocation
+       * responsive; better-auth still hits the DB once the cache expires.
+       */
+      cookieCache: {
+        enabled: true,
+        maxAge: 300,
+      },
+    },
     databaseHooks: {
       session: {
         create: {

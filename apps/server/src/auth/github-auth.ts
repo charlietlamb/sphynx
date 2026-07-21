@@ -142,16 +142,21 @@ const makeGitHubAuth = Effect.gen(function* () {
       Effect.withSpan("GitHubAuth.listInstallations")
     );
 
-  /** Installation ids the user is known to reach, without calling GitHub. */
-  const knownInstallationIds = (userId: string) =>
+  /**
+   * Whether a specific installation id is one Sphynx has seen, without calling
+   * GitHub. A targeted existence check, not a full-table scan — the caller only
+   * needs to confirm the one id the client requested.
+   */
+  const installationKnown = (installationId: number) =>
     Effect.tryPromise(() =>
       db
         .select({ installationId: githubInstallation.installationId })
         .from(githubInstallation)
+        .where(eq(githubInstallation.installationId, installationId))
+        .limit(1)
     ).pipe(
       Effect.orDie,
-      Effect.map((rows) => new Set(rows.map((row) => row.installationId))),
-      Effect.annotateLogs({ "user.id": userId })
+      Effect.map((rows) => rows.length > 0)
     );
 
   /**
@@ -169,8 +174,8 @@ const makeGitHubAuth = Effect.gen(function* () {
   ) =>
     Effect.gen(function* () {
       if (requested !== null) {
-        const known = yield* knownInstallationIds(session.userId);
-        if (known.has(requested)) {
+        const known = yield* installationKnown(requested);
+        if (known) {
           return requested;
         }
       }

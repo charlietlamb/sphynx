@@ -35,7 +35,16 @@ export function useDashboardState() {
   const repoKey = settings.selectedRepo;
 
   const orgs = useInstallations(settings.selectedInstallation, authed);
-  const installationId = orgs.active?.id ?? null;
+  /**
+   * Drive the reads off the cookie's installation id the moment the session is
+   * ready, without waiting on `useInstallations` — that endpoint makes a live
+   * GitHub call to list installations, which would gate the (instant, Neon)
+   * dashboard reads behind a GitHub round-trip. The server revalidates the id
+   * and falls back if it is stale, so an out-of-date cookie is safe.
+   * `useInstallations` still resolves in parallel to populate the org switcher.
+   */
+  const installationId =
+    settings.selectedInstallation ?? orgs.active?.id ?? null;
   const ready = authed && !sessionPending && installationId !== null;
   const settled = authed && !(sessionPending || orgs.isPending);
   /** Signed in, installations resolved, but the App is on no organization. */
