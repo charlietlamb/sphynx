@@ -68,6 +68,17 @@ const PULL_BODY_QUERY = `query($owner: String!, $repo: String!, $number: Int!) {
   }
 }`;
 
+const SINGLE_PULL_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      state
+      mergedAt
+      ...PullFields
+    }
+  }
+}
+${PULL_FIELDS_FRAGMENT}`;
+
 const PullBodySchema = Schema.Struct({
   repository: Schema.NullOr(
     Schema.Struct({
@@ -308,6 +319,22 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
         Effect.annotateLogs({ "github.search": query })
       );
 
+  /**
+   * Re-derive one pull request from GitHub into the queue shape. This is the
+   * projector's per-PR refresh: a webhook identifies a PR, and this fetches
+   * just that PR through the same `toQueuePull` mapping the batch build uses,
+   * so a webhook-driven update and a full rebuild agree.
+   */
+  const refreshPull = (
+    ref: PullRequestRef,
+    token: string
+  ): Effect.Effect<QueuePull, GitHubAuthedError> =>
+    github.pullRequestQuery(token, RawPullSchema, SINGLE_PULL_QUERY, ref).pipe(
+      Effect.map((pull) => toQueuePull(ref.owner, ref.repo, pull)),
+      Effect.withSpan("GitHubReviewQueue.refreshPull"),
+      Effect.annotateLogs(refAnnotations(ref))
+    );
+
   const pullBody = (
     ref: PullRequestRef,
     token: string
@@ -349,6 +376,7 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
     discoverRepos,
     openPullsEtag,
     openPullsForRepos,
+    refreshPull,
     mergePull,
     blockPull,
     createPull,

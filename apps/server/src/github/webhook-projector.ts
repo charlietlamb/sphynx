@@ -1,0 +1,194 @@
+import type { PullRequestRef } from "@sphynx/schema/pull-requests";
+import { Context, Effect, Layer, Schema } from "effect";
+import { GitHubAppAuth } from "./app-auth";
+import { ReadModelWriter } from "./read-model-writer";
+import { GitHubReviewQueue } from "./review-queue";
+
+const RepoSchema = Schema.Struct({
+  name: Schema.String,
+  owner: Schema.Struct({ login: Schema.String }),
+});
+
+const InstallationSchema = Schema.Struct({ id: Schema.Number });
+
+const base = {
+  installation: Schema.optional(InstallationSchema),
+  repository: Schema.optional(RepoSchema),
+};
+
+const PullNumberSchema = Schema.Struct({
+  ...base,
+  pull_request: Schema.optional(Schema.Struct({ number: Schema.Number })),
+});
+
+const IssueCommentSchema = Schema.Struct({
+  ...base,
+  issue: Schema.optional(
+    Schema.Struct({
+      number: Schema.Number,
+      pull_request: Schema.optional(Schema.Unknown),
+    })
+  ),
+});
+
+const CheckSchema = Schema.Struct({
+  ...base,
+  check_run: Schema.optional(
+    Schema.Struct({
+      pull_requests: Schema.optional(
+        Schema.Array(Schema.Struct({ number: Schema.Number }))
+      ),
+    })
+  ),
+  check_suite: Schema.optional(
+    Schema.Struct({
+      pull_requests: Schema.optional(
+        Schema.Array(Schema.Struct({ number: Schema.Number }))
+      ),
+    })
+  ),
+});
+
+/** What a delivery asks the read model to re-derive. */
+export type Projection =
+  | {
+      readonly _tag: "Pull";
+      readonly installationId: number;
+      readonly ref: PullRequestRef;
+    }
+  | { readonly _tag: "None" };
+
+const decodePull = Schema.decodeUnknownOption(PullNumberSchema);
+const decodeIssue = Schema.decodeUnknownOption(IssueCommentSchema);
+const decodeCheck = Schema.decodeUnknownOption(CheckSchema);
+
+const pullFrom = (
+  installationId: number,
+  owner: string,
+  repo: string,
+  number: number
+): Projection => ({
+  _tag: "Pull",
+  installationId,
+  ref: { owner, repo, number },
+});
+
+const NONE: Projection = { _tag: "None" };
+
+const PULL_EVENTS = new Set([
+  "pull_request",
+  "pull_request_review",
+  "pull_request_review_comment",
+  "pull_request_review_thread",
+]);
+
+const CHECK_EVENTS = new Set(["check_run", "check_suite", "status"]);
+
+const fromPullEvent = (payload: unknown): Projection => {
+  const decoded = decodePull(payload);
+  if (decoded._tag === "None") {
+    return NONE;
+  }
+  const { installation, repository, pull_request } = decoded.value;
+  return installation && repository && pull_request
+    ? pullFrom(
+        installation.id,
+        repository.owner.login,
+        repository.name,
+        pull_request.number
+      )
+    : NONE;
+};
+
+const fromIssueComment = (payload: unknown): Projection => {
+  const decoded = decodeIssue(payload);
+  if (decoded._tag === "None") {
+    return NONE;
+  }
+  const { installation, repository, issue } = decoded.value;
+  return installation && repository && issue?.pull_request
+    ? pullFrom(
+        installation.id,
+        repository.owner.login,
+        repository.name,
+        issue.number
+      )
+    : NONE;
+};
+
+const fromCheckEvent = (payload: unknown): Projection => {
+  const decoded = decodeCheck(payload);
+  if (decoded._tag === "None") {
+    return NONE;
+  }
+  const { installation, repository, check_run, check_suite } = decoded.value;
+  const number =
+    check_run?.pull_requests?.[0]?.number ??
+    check_suite?.pull_requests?.[0]?.number ??
+    null;
+  return installation && repository && number !== null
+    ? pullFrom(installation.id, repository.owner.login, repository.name, number)
+    : NONE;
+};
+
+/**
+ * Reduce a delivery to the one PR it should refresh. Repo/owner/installation
+ * come from the envelope; the PR number's location varies by event family.
+ * Events without a resolvable PR (pushes, installs, non-PR issue comments)
+ * map to None here — the rail recompute and backfill handle those.
+ */
+export const projectionFor = (
+  eventType: string,
+  payload: unknown
+): Projection => {
+  if (PULL_EVENTS.has(eventType)) {
+    return fromPullEvent(payload);
+  }
+  if (eventType === "issue_comment") {
+    return fromIssueComment(payload);
+  }
+  if (CHECK_EVENTS.has(eventType)) {
+    return fromCheckEvent(payload);
+  }
+  return NONE;
+};
+
+const makeWebhookProjector = Effect.gen(function* () {
+  const app = yield* GitHubAppAuth;
+  const queue = yield* GitHubReviewQueue;
+  const writer = yield* ReadModelWriter;
+
+  const project = (eventType: string, payload: unknown) =>
+    Effect.gen(function* () {
+      const projection = projectionFor(eventType, payload);
+      if (projection._tag === "None") {
+        return;
+      }
+      const credential = app.installationCredential(projection.installationId);
+      const token = yield* credential.token;
+      const pull = yield* queue.refreshPull(projection.ref, token);
+      yield* writer.writePull(
+        projection.installationId,
+        projection.ref.owner,
+        projection.ref.repo,
+        pull
+      );
+    }).pipe(
+      Effect.catchAllCause((cause) =>
+        Effect.logWarning("webhook projection failed", cause)
+      ),
+      Effect.withSpan("WebhookProjector.project"),
+      Effect.annotateLogs({ "github.event": eventType })
+    );
+
+  return { project };
+});
+
+export class WebhookProjector extends Context.Tag(
+  "@sphynx/server/WebhookProjector"
+)<WebhookProjector, Effect.Effect.Success<typeof makeWebhookProjector>>() {}
+
+export const WebhookProjectorLive = Layer.effect(
+  WebhookProjector,
+  makeWebhookProjector
+);
