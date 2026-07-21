@@ -5,6 +5,10 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
+import {
+  forgetMerged,
+  recordMerged,
+} from "@/components/dashboard/pending-merges-store";
 import { useSettings } from "@/components/settings/settings-provider";
 import { logWorkbenchEvent } from "@/components/workbench/workbench-store";
 import { isAccessBlocked, postJson } from "@/lib/api";
@@ -98,6 +102,13 @@ export function usePullActions(pull: QueuePull) {
     /**
      * The row leaves the queue immediately. Without this it sat there until a
      * refetch that could take seconds, which read as the merge not working.
+     *
+     * A tombstone keeps it gone: GitHub confirms the merge before its webhook
+     * updates the read model, so any refetch in that ~1s window would return
+     * the pull as still open and resurrect it. The tombstone suppresses it
+     * until a read no longer carries it. No `onSettled` invalidate — refetching
+     * before the model catches up is exactly what caused the resurrection; the
+     * SSE `dirty` signal invalidates once the merge has actually landed.
      */
     onMutate: async () => {
       await queryClient.cancelQueries({
@@ -106,10 +117,12 @@ export function usePullActions(pull: QueuePull) {
       const previous = queryClient.getQueriesData({
         queryKey: [...keys.all, "installation"],
       });
+      recordMerged(pull);
       removePullEverywhere(queryClient, pull);
       return { previous };
     },
     onError: (error, _input, context) => {
+      forgetMerged(pull);
       for (const [key, data] of context?.previous ?? []) {
         queryClient.setQueryData(key, data);
       }
@@ -124,7 +137,6 @@ export function usePullActions(pull: QueuePull) {
       });
       confirm(`Merged #${pull.number}`, pull.title);
     },
-    onSettled: invalidate,
   });
 
   const block = useMutation({

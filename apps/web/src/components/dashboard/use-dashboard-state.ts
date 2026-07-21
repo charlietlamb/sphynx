@@ -1,7 +1,12 @@
 import type { QueuePull, RepoFlow } from "@sphynx/schema/review-queue";
 import { useNavigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDialog } from "@/components/dashboard/dashboard-dialogs";
+import { withoutMerged } from "@/components/dashboard/pending-merges";
+import {
+  reconcilePendingMerges,
+  usePendingMerges,
+} from "@/components/dashboard/pending-merges-store";
 import { useDashboardKeys } from "@/components/dashboard/use-dashboard-keys";
 import { useInstallations } from "@/components/dashboard/use-installations";
 import {
@@ -58,6 +63,20 @@ export function useDashboardState() {
   const queue0 = useQueue(installationId, ready);
   const pipeline = usePipeline(installationId, ready);
   useReadModelStream(installationId, ready);
+  const pendingMerges = usePendingMerges();
+
+  /**
+   * A merge is confirmed by GitHub before its webhook materializes into the
+   * read model, so a refetch in that ~1s window returns the pull as still open.
+   * Retire each tombstone as soon as the freshest read no longer carries the
+   * pull, so it suppresses the pull for exactly the stale window and no longer.
+   */
+  useEffect(() => {
+    const latest = pipeline.data ?? queue0.data;
+    if (latest) {
+      reconcilePendingMerges(latest);
+    }
+  }, [pipeline.data, queue0.data]);
   const dialogs = useDialog();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
@@ -72,17 +91,22 @@ export function useDashboardState() {
    * the rail fills in without the queue ever having been blocked on it.
    */
   const flows = useMemo(() => {
-    const full = pipeline.data?.repos;
+    const full = pipeline.data
+      ? withoutMerged(pipeline.data, pendingMerges).repos
+      : undefined;
+    const queued = queue0.data
+      ? withoutMerged(queue0.data, pendingMerges).repos
+      : [];
     const source: readonly RepoFlow[] =
       full ??
-      (queue0.data?.repos ?? []).map((flow) => ({
+      queued.map((flow) => ({
         ...flow,
         stages: [],
         gaps: [],
       }));
     const active = source.filter((flow) => flow.openPulls.length > 0);
     return [...active].sort((a, b) => b.openPulls.length - a.openPulls.length);
-  }, [pipeline.data, queue0.data]);
+  }, [pipeline.data, queue0.data, pendingMerges]);
 
   const repos = useMemo(() => flows.map(toRepoOption), [flows]);
 
