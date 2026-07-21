@@ -53,7 +53,7 @@ export const ListenerLive = Layer.scoped(
 
     const openClient = Effect.gen(function* () {
       const client = new Client({
-        connectionString: Redacted.value(config.url),
+        connectionString: Redacted.value(config.listenUrl),
       });
       yield* Effect.tryPromise(() => client.connect());
       client.on("notification", (message) => {
