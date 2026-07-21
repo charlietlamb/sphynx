@@ -17,7 +17,7 @@ import { GitHubClientLive } from "./github/client";
 import { GitHubConfigLive } from "./github/config";
 import { GitHubConversationLive } from "./github/conversation";
 import { type EventBus, EventBusLive } from "./github/event-bus";
-import { Materializer, MaterializerLive } from "./github/materializer";
+import { type Materializer, MaterializerLive } from "./github/materializer";
 import { GitHubPipelineLive } from "./github/pipeline";
 import { ReadModelReaderLive } from "./github/read-model-reader";
 import { ReadModelWriterLive } from "./github/read-model-writer";
@@ -36,6 +36,7 @@ import { PullRequestCommentsApiLive } from "./routes/comments";
 import { PullRequestConversationApiLive } from "./routes/conversation";
 import { handleEvents, isEventsPath } from "./routes/events";
 import { PullRequestsApiLive } from "./routes/pulls";
+import { handleReconcile, isReconcilePath } from "./routes/reconcile";
 import { ReviewQueueApiLive } from "./routes/review-queue";
 import { PullRequestViewsApiLive } from "./routes/views";
 import { handleWebhook, isWebhookPath } from "./routes/webhooks";
@@ -56,7 +57,12 @@ const httpServerLive = (memoMap: Layer.MemoMap) =>
       const config = yield* ServerConfig;
       const auth = yield* Auth;
       const streamRuntime = yield* Effect.runtime<
-        WebhookIngest | WebhookProjector | EventBus | GitHubAuth
+        | WebhookIngest
+        | WebhookProjector
+        | EventBus
+        | GitHubAuth
+        | Materializer
+        | ServerConfig
       >();
       const api = yield* Effect.acquireRelease(
         Effect.sync(() => HttpApiBuilder.toWebHandler(ApiLive, { memoMap })),
@@ -80,6 +86,15 @@ const httpServerLive = (memoMap: Layer.MemoMap) =>
             Effect.orElseSucceed(() => new Response("error", { status: 500 }))
           )
         );
+      const reconcile = (request: Request) =>
+        Runtime.runPromise(streamRuntime)(
+          handleReconcile(request).pipe(
+            Effect.tapErrorCause((cause) =>
+              Effect.logError("reconcile handler failed", cause)
+            ),
+            Effect.orElseSucceed(() => new Response("error", { status: 500 }))
+          )
+        );
       const server = yield* Effect.acquireRelease(
         Effect.sync(() =>
           Bun.serve({
@@ -90,6 +105,9 @@ const httpServerLive = (memoMap: Layer.MemoMap) =>
               }
               if (isEventsPath(pathname)) {
                 return events(request);
+              }
+              if (isReconcilePath(pathname)) {
+                return reconcile(request);
               }
               const response = await (isAuthPath(pathname)
                 ? auth.handler(request)
@@ -104,9 +122,10 @@ const httpServerLive = (memoMap: Layer.MemoMap) =>
         (server) => Effect.sync(() => server.stop(true))
       );
 
-      const materializer = yield* Materializer;
-      yield* materializer.startReconcile;
-
+      /**
+       * Reconcile is driven by Vercel Cron hitting `/api/github/reconcile`, not
+       * an in-container loop, so the sweep no longer pins the container awake.
+       */
       yield* Effect.logInfo(
         `server listening on http://${config.host}:${server.port}`
       );

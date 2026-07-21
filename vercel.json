@@ -2,14 +2,28 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
     "web": {
-      "root": "apps/web"
+      "root": "apps/web",
+      "ignoreCommand": "npx turbo-ignore @sphynx/web",
+      "headers": [
+        {
+          "source": "/assets/(.*)",
+          "headers": [
+            {
+              "key": "cache-control",
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        }
+      ]
     },
     "server": {
       "root": ".",
       "runtime": "container",
-      "entrypoint": "Dockerfile.vercel"
+      "entrypoint": "Dockerfile.vercel",
+      "ignoreCommand": "npx turbo-ignore @sphynx/server"
     }
   },
+  "crons": [{ "schedule": "*/15 * * * *", "path": "/api/github/reconcile" }],
   "rewrites": [
     { "source": "/api/(.*)", "destination": { "service": "server" } },
     { "source": "/(.*)", "destination": { "service": "web" } }

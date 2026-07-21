@@ -1,16 +1,7 @@
 import { Database } from "@sphynx/db/client";
 import { githubInstallation, webhookDelivery } from "@sphynx/db/schema";
 import { and, eq, gt, isNotNull, sql } from "drizzle-orm";
-import {
-  Clock,
-  Context,
-  Deferred,
-  Duration,
-  Effect,
-  Layer,
-  Ref,
-  Schedule,
-} from "effect";
+import { Clock, Context, Deferred, Duration, Effect, Layer, Ref } from "effect";
 import { GitHubAppAuth } from "./app-auth";
 import { GitHubPipeline } from "./pipeline";
 import { workbenchEventRow } from "./read-model-rows";
@@ -24,14 +15,6 @@ import { toWorkbenchEvents } from "./workbench-mappers";
  * multiple containers do not reconcile the same installations at once.
  */
 const RECONCILE_LOCK = 8_273_610_411;
-
-/**
- * The reconcile backstop interval. Webhooks are the real-time freshness path
- * (state is live within ~1s of a delivery); reconcile only repairs drift from
- * missed or out-of-order deliveries, so it runs infrequently. A shorter
- * interval multiplies GitHub fan-out and container CPU for near-zero benefit.
- */
-const RECONCILE_INTERVAL = Duration.minutes(15);
 
 /**
  * An installation that received a webhook within this window is already fresh,
@@ -293,14 +276,7 @@ const makeMaterializer = Effect.gen(function* () {
     Effect.annotateLogs({ reconcile: true })
   );
 
-  /** Run the reconcile sweep forever on a fixed interval, forked as a daemon. */
-  const startReconcile = reconcileOnce.pipe(
-    Effect.schedule(Schedule.spaced(RECONCILE_INTERVAL)),
-    Effect.forkDaemon,
-    Effect.asVoid
-  );
-
-  return { materialize, reconcileOnce, startReconcile };
+  return { materialize, reconcileOnce };
 });
 
 export class Materializer extends Context.Tag("@sphynx/server/Materializer")<

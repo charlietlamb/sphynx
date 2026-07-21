@@ -1,5 +1,5 @@
 import type { PullRequestRef } from "@sphynx/schema/pull-requests";
-import { Clock, Context, Effect, Layer, Option, Schema } from "effect";
+import { Clock, Context, Effect, Layer, Option, Ref, Schema } from "effect";
 import { GitHubAppAuth } from "./app-auth";
 import { Materializer } from "./materializer";
 import { ReadModelReader } from "./read-model-reader";
@@ -300,13 +300,63 @@ const makeWebhookProjector = Effect.gen(function* () {
   const materializer = yield* Materializer;
   const reader = yield* ReadModelReader;
 
-  const projectPull = (installationId: number, ref: PullRequestRef) =>
+  /**
+   * PRs with a projection currently in flight. A burst of deliveries for the
+   * same PR (a CI matrix firing 50 check_run events) would otherwise be 50
+   * full GitHub refetches + writes whose final state is identical. While one
+   * projection runs, further deliveries only flag the key `pending`; the runner
+   * loops once more to capture the latest state, so a burst collapses to one or
+   * two refetches without ever dropping the final event.
+   */
+  const pending = yield* Ref.make(new Set<string>());
+  const running = yield* Ref.make(new Set<string>());
+
+  const refreshOnce = (installationId: number, ref: PullRequestRef) =>
     Effect.gen(function* () {
       const credential = app.installationCredential(installationId);
       const token = yield* credential.token;
       const pull = yield* queue.refreshPull(ref, token);
       yield* writer.writePull(installationId, ref.owner, ref.repo, pull);
       yield* writer.notifyPull(installationId, ref.owner, ref.repo, ref.number);
+    });
+
+  const projectPull = (installationId: number, ref: PullRequestRef) =>
+    Effect.gen(function* () {
+      const key = `${installationId}:${ref.owner}/${ref.repo}#${ref.number}`;
+      const alreadyRunning = yield* Ref.modify(running, (set) => {
+        if (set.has(key)) {
+          return [true, set] as const;
+        }
+        return [false, new Set(set).add(key)] as const;
+      });
+      if (alreadyRunning) {
+        yield* Ref.update(pending, (set) => new Set(set).add(key));
+        return;
+      }
+      yield* Effect.iterate(true, {
+        while: (go) => go,
+        body: () =>
+          refreshOnce(installationId, ref).pipe(
+            Effect.zipRight(
+              Ref.modify(pending, (set) => {
+                if (set.has(key)) {
+                  const next = new Set(set);
+                  next.delete(key);
+                  return [true, next] as const;
+                }
+                return [false, set] as const;
+              })
+            )
+          ),
+      }).pipe(
+        Effect.ensuring(
+          Ref.update(running, (set) => {
+            const next = new Set(set);
+            next.delete(key);
+            return next;
+          })
+        )
+      );
     });
 
   /**
