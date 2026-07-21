@@ -6,8 +6,8 @@ interface VerdictRowSkeletonProps {
 
 export function VerdictRowSkeleton({ nameWidth }: VerdictRowSkeletonProps) {
   return (
-    <div className="flex h-9 items-center gap-2.5">
-      <Skeleton className="size-5 shrink-0 rounded-full" />
+    <div className="-mx-4 flex h-10 items-center gap-2.5 px-4">
+      <Skeleton className="size-5 shrink-0 rounded-[5px]" />
       <span className="min-w-0 flex-1">
         <Skeleton className="h-3.5" style={{ width: nameWidth }} />
       </span>

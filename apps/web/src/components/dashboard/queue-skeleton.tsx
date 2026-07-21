@@ -14,14 +14,12 @@ function BranchHeaderSkeleton({
   return (
     <div
       className={cn(
-        "-mx-4 mb-1 flex items-center gap-2 border-border border-b px-[26px] pt-3 pb-2",
+        "-mx-4 flex h-9 items-center gap-2 border-border border-b px-[26px]",
         !first && "border-t"
       )}
     >
-      <span className="flex h-[16.5px] items-center gap-2">
-        <Skeleton className="h-3" style={{ width: nameWidth }} />
-        <Skeleton className="h-3 w-6" />
-      </span>
+      <Skeleton className="h-3" style={{ width: nameWidth }} />
+      <Skeleton className="h-3 w-6" />
     </div>
   );
 }
@@ -29,7 +27,7 @@ function BranchHeaderSkeleton({
 export function QueueSkeleton() {
   return (
     <div className="flex flex-col px-4 pb-3">
-      <div className="-mx-4 flex h-[37px] shrink-0 items-center justify-between border-border border-b px-4">
+      <div className="-mx-4 flex h-9 shrink-0 items-center justify-between border-border border-b px-4">
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-3 w-4" />
       </div>

@@ -12,16 +12,29 @@ import { useSettings } from "@/components/settings/settings-provider";
 import { useResync } from "@/components/settings/use-resync";
 import { INSTALL_URL } from "@/lib/github-app";
 
+function AccessRowSkeleton({ control }: { control: string }) {
+  return (
+    <div className="flex items-center justify-between gap-6 py-3.5 first:pt-0 last:pb-0">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <Skeleton className="h-3.5 w-32" />
+        <Skeleton className="h-3 w-48" />
+      </div>
+      <Skeleton
+        className="h-7 shrink-0 rounded-md"
+        style={{ width: control }}
+      />
+    </div>
+  );
+}
+
 function AccessSkeleton() {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-3 py-2.5">
-        <Skeleton className="size-6 shrink-0 rounded-[5px]" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <Skeleton className="h-3 w-24" />
-          <Skeleton className="h-3 w-40" />
-        </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col divide-y divide-border">
+        <AccessRowSkeleton control="6rem" />
+        <AccessRowSkeleton control="4.5rem" />
       </div>
+      <Skeleton className="mx-2 h-3.5 w-40" />
     </div>
   );
 }

@@ -1,7 +1,10 @@
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
+import { SectionHeader } from "@/components/layout/section-header";
 
 const ITEM_KEYS = ["first", "second", "third"];
 const REVIEWER_KEYS = ["one", "two"];
+
+const headerIcon = <Skeleton className="size-2.5 rounded-[2px]" />;
 
 export function ConversationSkeleton() {
   return (
@@ -41,11 +44,8 @@ export function ConversationSkeleton() {
         </div>
       </div>
       <aside className="hidden min-h-0 w-[26rem] shrink-0 flex-col border-border border-l lg:flex">
-        <div className="flex flex-col gap-2 border-border border-b px-4 pb-3">
-          <div className="-mx-4 mb-2 flex items-center gap-1.5 border-border border-b px-4 py-2.5">
-            <Skeleton className="size-3 rounded-sm" />
-            <Skeleton className="h-3 w-14" />
-          </div>
+        <div className="flex flex-col gap-2 border-border border-b px-4 pb-2">
+          <SectionHeader icon={headerIcon} label="Overview" />
           <div className="flex items-center gap-5 py-0.5">
             {ITEM_KEYS.map((key) => (
               <div className="flex items-center gap-1.5" key={key}>
@@ -57,11 +57,8 @@ export function ConversationSkeleton() {
           </div>
           <Skeleton className="h-[3px] w-full rounded-full" />
         </div>
-        <div className="flex flex-col gap-2 px-4 pb-3">
-          <div className="-mx-4 mb-2 flex items-center gap-1.5 border-border border-b px-4 py-2.5">
-            <Skeleton className="size-3 rounded-sm" />
-            <Skeleton className="h-3 w-16" />
-          </div>
+        <div className="flex flex-col gap-2 px-4 pb-2">
+          <SectionHeader icon={headerIcon} label="Reviewers" />
           {REVIEWER_KEYS.map((key) => (
             <div className="flex items-center gap-2" key={key}>
               <Skeleton className="size-4 rounded-full" />

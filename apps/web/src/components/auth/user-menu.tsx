@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@sphynx/ui/components/ui/dropdown-menu";
+import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { cn } from "@sphynx/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { signOut, useSession } from "@/lib/auth-client";
@@ -21,7 +22,10 @@ import { signOut, useSession } from "@/lib/auth-client";
 export function UserMenu() {
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
-  if (isPending || !session?.user) {
+  if (isPending) {
+    return <Skeleton className="size-[1.875rem] rounded-md" />;
+  }
+  if (!session?.user) {
     return null;
   }
   const { user } = session;

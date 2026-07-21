@@ -18,6 +18,7 @@ export function QueueRowSkeleton({ titleWidth }: QueueRowSkeletonProps) {
       </span>
       <Skeleton className="h-3 w-8 shrink-0" />
       <Skeleton className="h-[9px] w-5 shrink-0" />
+      <Skeleton className="h-2.5 w-[19px] shrink-0" />
       <Skeleton className="h-3 w-7 shrink-0" />
     </div>
   );

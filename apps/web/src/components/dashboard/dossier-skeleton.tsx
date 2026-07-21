@@ -1,6 +1,7 @@
 import { SealCheckIcon } from "@phosphor-icons/react";
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { VerdictRowSkeleton } from "@/components/dashboard/verdict-row-skeleton";
+import { SectionHeader } from "@/components/layout/section-header";
 
 const REVIEWER_WIDTHS = ["5.5rem", "7rem", "4.5rem"];
 
@@ -16,7 +17,7 @@ export function DossierSkeleton() {
             <Skeleton className="h-5 w-3/5" />
           </span>
         </div>
-        <span className="flex h-[18px] items-center">
+        <span className="flex h-[16.5px] items-center">
           <Skeleton className="h-3 w-3/5" />
         </span>
         <div className="flex h-[16.5px] items-center gap-2">
@@ -29,18 +30,15 @@ export function DossierSkeleton() {
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-1 border-border border-b px-2 pb-1">
+      <div className="flex items-center gap-1 border-border border-y px-2 pt-1 pb-1">
         <Skeleton className="h-8 w-[4.5rem] rounded-md" />
         <Skeleton className="h-8 w-20 rounded-md" />
       </div>
       <div className="flex flex-col gap-1 border-border border-b px-4 pb-4">
-        <div className="-mx-4 mb-2 flex items-center gap-1.5 border-border border-b px-4 py-2.5">
-          <SealCheckIcon
-            className="size-3 text-muted-foreground/60"
-            weight="fill"
-          />
-          <p className="font-medium text-[11px] text-foreground">Verdicts</p>
-        </div>
+        <SectionHeader
+          icon={<SealCheckIcon weight="fill" />}
+          label="Verdicts"
+        />
         {REVIEWER_WIDTHS.map((width) => (
           <VerdictRowSkeleton key={width} nameWidth={width} />
         ))}
