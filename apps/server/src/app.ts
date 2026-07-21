@@ -17,7 +17,7 @@ import { GitHubClientLive } from "./github/client";
 import { GitHubConfigLive } from "./github/config";
 import { GitHubConversationLive } from "./github/conversation";
 import { type EventBus, EventBusLive } from "./github/event-bus";
-import { type Materializer, MaterializerLive } from "./github/materializer";
+import { Materializer, MaterializerLive } from "./github/materializer";
 import { GitHubPipelineLive } from "./github/pipeline";
 import { ReadModelReaderLive } from "./github/read-model-reader";
 import { ReadModelWriterLive } from "./github/read-model-writer";
@@ -123,9 +123,15 @@ const httpServerLive = (memoMap: Layer.MemoMap) =>
       );
 
       /**
-       * Reconcile is driven by Vercel Cron hitting `/api/github/reconcile`, not
-       * an in-container loop, so the sweep no longer pins the container awake.
+       * Reconcile runs in-process on a 15-min interval. It is cheap now (ETag
+       * 304 fast-path, webhook-active installs skipped) and the container is
+       * already always-on for LISTEN/SSE, so it adds negligible cost. The
+       * protected `/api/github/reconcile` endpoint also allows an on-demand
+       * sweep (and a Vercel Cron on Pro plans).
        */
+      const materializer = yield* Materializer;
+      yield* materializer.startReconcile;
+
       yield* Effect.logInfo(
         `server listening on http://${config.host}:${server.port}`
       );

@@ -23,7 +23,6 @@
       "ignoreCommand": "npx turbo-ignore @sphynx/server"
     }
   },
-  "crons": [{ "schedule": "*/15 * * * *", "path": "/api/github/reconcile" }],
   "rewrites": [
     { "source": "/api/(.*)", "destination": { "service": "server" } },
     { "source": "/(.*)", "destination": { "service": "web" } }

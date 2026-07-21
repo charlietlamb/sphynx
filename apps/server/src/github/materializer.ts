@@ -1,7 +1,16 @@
 import { Database } from "@sphynx/db/client";
 import { githubInstallation, webhookDelivery } from "@sphynx/db/schema";
 import { and, eq, gt, isNotNull, sql } from "drizzle-orm";
-import { Clock, Context, Deferred, Duration, Effect, Layer, Ref } from "effect";
+import {
+  Clock,
+  Context,
+  Deferred,
+  Duration,
+  Effect,
+  Layer,
+  Ref,
+  Schedule,
+} from "effect";
 import { GitHubAppAuth } from "./app-auth";
 import { GitHubPipeline } from "./pipeline";
 import { workbenchEventRow } from "./read-model-rows";
@@ -15,6 +24,15 @@ import { toWorkbenchEvents } from "./workbench-mappers";
  * multiple containers do not reconcile the same installations at once.
  */
 const RECONCILE_LOCK = 8_273_610_411;
+
+/**
+ * The reconcile backstop interval. Webhooks are the real-time freshness path
+ * (state is live within ~1s of a delivery); reconcile only repairs drift from
+ * missed or out-of-order deliveries, and — now that an unchanged install
+ * revalidates as cheap 304s and webhook-active installs are skipped — a sweep
+ * costs almost nothing, so it can run in-process without pinning extra cost.
+ */
+const RECONCILE_INTERVAL = Duration.minutes(15);
 
 /**
  * An installation that received a webhook within this window is already fresh,
@@ -276,7 +294,19 @@ const makeMaterializer = Effect.gen(function* () {
     Effect.annotateLogs({ reconcile: true })
   );
 
-  return { materialize, reconcileOnce };
+  /**
+   * Run the reconcile sweep forever on a fixed interval, forked as a daemon.
+   * Cheap now (ETag 304 fast-path + webhook-active installs skipped), so it runs
+   * in-process rather than as a cron — the container is already always-on for
+   * LISTEN/SSE, and Vercel Hobby does not permit sub-daily crons anyway.
+   */
+  const startReconcile = reconcileOnce.pipe(
+    Effect.schedule(Schedule.spaced(RECONCILE_INTERVAL)),
+    Effect.forkDaemon,
+    Effect.asVoid
+  );
+
+  return { materialize, reconcileOnce, startReconcile };
 });
 
 export class Materializer extends Context.Tag("@sphynx/server/Materializer")<
