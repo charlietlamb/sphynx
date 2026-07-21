@@ -1,7 +1,15 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Database } from "@sphynx/db/client";
 import { webhookDelivery } from "@sphynx/db/schema";
-import { Clock, Context, Effect, Layer, Redacted } from "effect";
+import {
+  Clock,
+  Context,
+  Effect,
+  Layer,
+  Option,
+  Redacted,
+  Schema,
+} from "effect";
 import { GitHubConfig } from "./config";
 
 const SIGNATURE_PREFIX = "sha256=";
@@ -43,12 +51,21 @@ const signatureMatches = (
   });
 };
 
+const InstallationEnvelopeSchema = Schema.Struct({
+  installation: Schema.optional(Schema.Struct({ id: Schema.Number })),
+});
+
+const decodeEnvelope = Schema.decodeUnknownOption(InstallationEnvelopeSchema);
+
 const installationIdFrom = (body: Uint8Array): number | null => {
   try {
-    const payload = JSON.parse(Buffer.from(body).toString("utf8")) as {
-      installation?: { id?: number };
-    };
-    return payload.installation?.id ?? null;
+    const parsed: unknown = JSON.parse(Buffer.from(body).toString("utf8"));
+    return Option.getOrNull(
+      Option.map(
+        decodeEnvelope(parsed),
+        (envelope) => envelope.installation?.id ?? null
+      )
+    );
   } catch {
     return null;
   }

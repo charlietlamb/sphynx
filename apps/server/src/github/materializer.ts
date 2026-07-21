@@ -1,5 +1,6 @@
 import { Database } from "@sphynx/db/client";
 import { githubInstallation } from "@sphynx/db/schema";
+import { sql } from "drizzle-orm";
 import { Context, Duration, Effect, Layer, Schedule } from "effect";
 import { GitHubAppAuth } from "./app-auth";
 import { GitHubPipeline } from "./pipeline";
@@ -52,35 +53,49 @@ const makeMaterializer = Effect.gen(function* () {
   );
 
   /**
-   * Try to become the reconcile leader for this tick. `pg_try_advisory_lock`
-   * is non-blocking: exactly one instance gets true, the others get false and
-   * skip. The lock is session-scoped and released when the connection returns,
-   * so a crashed leader frees it automatically.
+   * Try to claim tick leadership on a single pinned connection.
+   *
+   * `pg_try_advisory_lock` + its unlock must run on the SAME connection — a
+   * session lock released on a different pooled connection than it was taken on
+   * silently leaks. `db.transaction` pins one pooled connection for the
+   * callback, so acquire, release, and the guard all share it. The lock is held
+   * only for this fast check, not across the slow sweep, so no DB transaction
+   * stays open while GitHub is called.
+   *
+   * Returns true at most once per tick across all instances; the others skip.
+   * A crashed leader's lock frees when its connection resets.
    */
-  const acquireLeader = Effect.tryPromise(() =>
-    db.execute(`SELECT pg_try_advisory_lock(${RECONCILE_LOCK}) AS locked`)
+  const claimLeadership = Effect.tryPromise(() =>
+    db.transaction(async (tx) => {
+      const claim = await tx.execute(
+        sql`SELECT pg_try_advisory_lock(${RECONCILE_LOCK}) AS locked`
+      );
+      const locked = (claim.rows as { locked?: boolean }[])[0]?.locked === true;
+      if (locked) {
+        await tx.execute(sql`SELECT pg_advisory_unlock(${RECONCILE_LOCK})`);
+      }
+      return locked;
+    })
   ).pipe(
-    Effect.map((result) => {
-      const rows = result.rows as { locked?: boolean }[];
-      return rows[0]?.locked === true;
-    }),
     Effect.catchAllCause((cause) =>
-      Effect.logWarning("advisory lock failed", cause).pipe(Effect.as(false))
+      Effect.logWarning("reconcile leadership check failed", cause).pipe(
+        Effect.as(false)
+      )
     )
   );
 
-  const releaseLeader = Effect.tryPromise(() =>
-    db.execute(`SELECT pg_advisory_unlock(${RECONCILE_LOCK})`)
-  ).pipe(Effect.ignore);
-
+  /**
+   * Reconcile every known installation once. Leadership dedupes concurrent
+   * instances, but write idempotency (watermarked upserts) is the real
+   * guarantee, so a rare overlapping sweep only wastes work — it cannot move
+   * state backwards.
+   */
   const reconcileOnce = Effect.gen(function* () {
-    const leader = yield* acquireLeader;
-    if (!leader) {
+    if (!(yield* claimLeadership)) {
       return;
     }
     const ids = yield* knownInstallationIds;
     yield* Effect.forEach(ids, materialize, { concurrency: 2 });
-    yield* releaseLeader;
   }).pipe(
     Effect.withSpan("Materializer.reconcileOnce"),
     Effect.annotateLogs({ reconcile: true })

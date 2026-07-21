@@ -41,7 +41,7 @@ export const handleEvents = (request: Request) =>
       return new Response("unauthorized", { status: 401 });
     }
 
-    const runtime = yield* Effect.runtime();
+    const runtime = yield* Effect.runtime<never>();
     const dirty = bus
       .subscribe(installationId)
       .pipe(

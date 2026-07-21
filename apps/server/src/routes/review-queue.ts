@@ -41,12 +41,6 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
         return Number.isInteger(parsed) ? parsed : null;
       };
 
-      /**
-       * Resolve the installation for a read, materializing it once if it has
-       * never been seen. Steady state is a single indexed Neon query; a cold
-       * installation is backfilled from GitHub (also done eagerly on the install
-       * webhook, so this path is rare) and then read from rows like any other.
-       */
       const installationFor = (
         cookie: string | undefined,
         want: number | null
@@ -57,38 +51,40 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
           )
         );
 
-      const ensureMaterialized = (installationId: number) =>
-        reader
-          .readPipeline(installationId)
-          .pipe(
-            Effect.flatMap((pipeline) =>
-              pipeline.repos.length > 0
-                ? Effect.void
-                : materializer.materialize(installationId)
-            )
-          );
+      /**
+       * Read `{ repos }` from Neon, materializing once if the installation has
+       * never been seen. Steady state is a single indexed query; a cold
+       * installation is backfilled from GitHub (also done eagerly on the install
+       * webhook, so this path is rare) and re-read. The warm path reads once —
+       * only an empty first read pays for the materialize and second read.
+       */
+      const readOrMaterialize = <T extends { repos: readonly unknown[] }>(
+        cookie: string | undefined,
+        want: number | null,
+        read: (installationId: number) => Effect.Effect<T>
+      ) =>
+        installationFor(cookie, want).pipe(
+          Effect.flatMap((installationId) => {
+            if (installationId === null) {
+              return Effect.succeed({ repos: [] } as unknown as T);
+            }
+            return read(installationId).pipe(
+              Effect.flatMap((result) =>
+                result.repos.length > 0
+                  ? Effect.succeed(result)
+                  : materializer
+                      .materialize(installationId)
+                      .pipe(Effect.zipRight(read(installationId)))
+              )
+            );
+          })
+        );
 
       const pipelineFor = (cookie: string | undefined, want: number | null) =>
-        installationFor(cookie, want).pipe(
-          Effect.flatMap((installationId) =>
-            installationId === null
-              ? Effect.succeed({ repos: [] })
-              : ensureMaterialized(installationId).pipe(
-                  Effect.zipRight(reader.readPipeline(installationId))
-                )
-          )
-        );
+        readOrMaterialize(cookie, want, reader.readPipeline);
 
       const queueFor = (cookie: string | undefined, want: number | null) =>
-        installationFor(cookie, want).pipe(
-          Effect.flatMap((installationId) =>
-            installationId === null
-              ? Effect.succeed({ repos: [] })
-              : ensureMaterialized(installationId).pipe(
-                  Effect.zipRight(reader.readQueue(installationId))
-                )
-          )
-        );
+        readOrMaterialize(cookie, want, reader.readQueue);
 
       return handlers
         .handle("listInstallations", ({ headers }) =>
