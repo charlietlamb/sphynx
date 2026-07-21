@@ -10,8 +10,16 @@ COPY packages/auth/package.json packages/auth/package.json
 COPY packages/db/package.json packages/db/package.json
 COPY packages/schema/package.json packages/schema/package.json
 COPY packages/ui/package.json packages/ui/package.json
-RUN bun install --frozen-lockfile --production --ignore-scripts
-COPY packages packages
+# Install only the server workspace's closure. `bun src/server.ts` never loads
+# the web app or the UI package, so keeping their dependency trees out of the
+# image (~100M+: tanstack, vite, recharts, fonts, simple-icons…) shrinks the
+# registry image and speeds cold builds. The full set of package.json files is
+# still copied so the frozen lockfile validates against the whole workspace.
+RUN bun install --frozen-lockfile --production --ignore-scripts \
+  --filter '@sphynx/server'
+COPY packages/auth packages/auth
+COPY packages/db packages/db
+COPY packages/schema packages/schema
 COPY apps/server apps/server
 WORKDIR /app/apps/server
 EXPOSE 3003

@@ -8,6 +8,7 @@ import {
   reviewThread,
   stageGap,
   stageGapPull,
+  webhookDelivery,
   workbenchEvent,
 } from "@sphynx/db/schema";
 import type {
@@ -15,7 +16,7 @@ import type {
   QueuePull,
   RepoFlow,
 } from "@sphynx/schema/review-queue";
-import { and, eq, lt, notInArray, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, notInArray, sql } from "drizzle-orm";
 import { Clock, Context, Effect, Layer } from "effect";
 import {
   DIRTY_CHANNEL,
@@ -420,6 +421,49 @@ const makeReadModelWriter = Effect.gen(function* () {
       })
     );
 
+  /**
+   * Retire rows nothing reads any more, so three append-only tables don't grow
+   * without bound (storage + index bloat that slows the hot reconcile scan).
+   * Run from the reconcile leader so it fires once per sweep, not per replica.
+   *
+   * - `webhook_delivery`: only the last 20 minutes gate reconcile and dedup is
+   *   idempotent past that; 48h matches GitHub's own redelivery window.
+   * - `workbench_event`: the feed only ever serves the newest ~100/repo.
+   * - merged/closed `review_pull`: the dashboard reads `state='open'` only;
+   *   child rows cascade. The rail rebuilds promotion history from GitHub, so it
+   *   does not depend on these historical rows.
+   */
+  const prune = Effect.gen(function* () {
+    const now = new Date(yield* Clock.currentTimeMillis);
+    const deliveryCutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const historyCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    yield* Effect.tryPromise(() =>
+      db
+        .delete(webhookDelivery)
+        .where(lt(webhookDelivery.receivedAt, deliveryCutoff))
+    ).pipe(Effect.orDie);
+    yield* Effect.tryPromise(() =>
+      db
+        .delete(workbenchEvent)
+        .where(lt(workbenchEvent.occurredAt, historyCutoff))
+    ).pipe(Effect.orDie);
+    yield* Effect.tryPromise(() =>
+      db
+        .delete(reviewPull)
+        .where(
+          and(
+            inArray(reviewPull.state, ["merged", "closed"]),
+            lt(reviewPull.updatedAt, historyCutoff)
+          )
+        )
+    ).pipe(Effect.orDie);
+  }).pipe(
+    Effect.catchAllCause((cause) =>
+      Effect.logWarning("read-model prune failed", cause)
+    ),
+    Effect.withSpan("ReadModelWriter.prune")
+  );
+
   return {
     writePipeline,
     writePull,
@@ -427,6 +471,7 @@ const makeReadModelWriter = Effect.gen(function* () {
     writeWorkbenchEvents,
     notifyPull,
     deletePullHead,
+    prune,
   };
 });
 

@@ -31,6 +31,7 @@ import { makeRest } from "./http";
 import { RawIssueCommentSchema } from "./rest-schemas";
 
 const CONVERSATION_TTL = Duration.seconds(45);
+const TOKEN_CAPACITY = 256;
 /**
  * Keyed on the credential id, never the raw token: installation tokens rotate
  * hourly, so a token-keyed entry would be orphaned on every rotation.
@@ -97,15 +98,30 @@ const makeGitHubConversation = Effect.gen(function* () {
       ),
   });
 
+  /**
+   * Register the token in place, bounded to the cache capacity. The previous
+   * copy-on-write grew the map one entry per credential ever seen (unbounded on
+   * an always-on process) and re-allocated it on every request.
+   */
+  const rememberToken = (credentialId: string, token: string) =>
+    Ref.update(tokens, (live) => {
+      if (!live.has(credentialId) && live.size >= TOKEN_CAPACITY) {
+        const oldest = live.keys().next().value;
+        if (oldest !== undefined) {
+          live.delete(oldest);
+        }
+      }
+      live.set(credentialId, token);
+      return live;
+    });
+
   const get = (
     ref: PullRequestRef,
     credentialId: string,
     token: string
   ): Effect.Effect<Conversation, GitHubAuthedRestError> => {
     const key = keyFor(ref, credentialId);
-    return Ref.update(tokens, (live) =>
-      new Map(live).set(credentialId, token)
-    ).pipe(
+    return rememberToken(credentialId, token).pipe(
       Effect.zipRight(cache.get(key)),
       Effect.tapError(() => cache.invalidate(key)),
       Effect.withSpan("GitHubConversation.get"),

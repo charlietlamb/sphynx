@@ -50,6 +50,23 @@ const makeSearchCache = Effect.gen(function* () {
       ),
   });
 
+  /**
+   * Register the latest credential in place, bounded to the same capacity as the
+   * result cache. Copy-on-write here was O(n) per request and the map grew one
+   * entry per credential ever seen — an unbounded leak on an always-on process.
+   */
+  const remember = (credential: GitHubCredential) =>
+    Ref.update(credentials, (live) => {
+      if (!live.has(credential.id) && live.size >= SEARCH_CAPACITY) {
+        const oldest = live.keys().next().value;
+        if (oldest !== undefined) {
+          live.delete(oldest);
+        }
+      }
+      live.set(credential.id, credential);
+      return live;
+    });
+
   return {
     get: (query: string, limit: number, credential: GitHubCredential) => {
       const key = new SearchKey({
@@ -57,9 +74,7 @@ const makeSearchCache = Effect.gen(function* () {
         limit,
         query,
       });
-      return Ref.update(credentials, (live) =>
-        new Map(live).set(credential.id, credential)
-      ).pipe(
+      return remember(credential).pipe(
         Effect.zipRight(cache.get(key)),
         Effect.tapError(() => cache.invalidate(key)),
         Effect.withSpan("SearchCache.get")

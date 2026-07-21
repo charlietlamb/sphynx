@@ -284,6 +284,7 @@ const makeMaterializer = Effect.gen(function* () {
     if (!(yield* claimLeadership)) {
       return;
     }
+    yield* writer.prune;
     const now = new Date(yield* Clock.currentTimeMillis);
     const ids = yield* staleInstallationIds(now);
     yield* Effect.forEach(ids, (id) => materialize(id, false), {

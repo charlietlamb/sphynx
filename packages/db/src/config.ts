@@ -25,6 +25,6 @@ export const DatabaseConfigLive = Layer.effect(
     listenUrl: Config.redacted("LISTEN_DATABASE_URL").pipe(
       Config.orElse(() => Config.redacted("DATABASE_URL"))
     ),
-    poolMax: Config.integer("DATABASE_POOL_MAX").pipe(Config.withDefault(20)),
+    poolMax: Config.integer("DATABASE_POOL_MAX").pipe(Config.withDefault(8)),
   })
 );
