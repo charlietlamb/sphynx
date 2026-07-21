@@ -27,6 +27,8 @@ export const githubInstallation = pgTable(
     accountType: text("account_type").notNull(),
     avatarUrl: text("avatar_url"),
     repositorySelection: text("repository_selection").notNull(),
+    pipelineEtag: text("pipeline_etag"),
+    reconciledAt: timestamp("reconciled_at"),
     createdAt: timestamp("created_at").notNull(),
     updatedAt: timestamp("updated_at").notNull(),
   },

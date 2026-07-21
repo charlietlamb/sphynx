@@ -20,5 +20,6 @@ export const pullHead = pgTable(
   (table) => [
     primaryKey({ columns: [table.owner, table.repo, table.number] }),
     index("pull_head_installation_idx").on(table.installationId),
+    index("pull_head_head_sha_idx").on(table.owner, table.repo, table.headSha),
   ]
 );

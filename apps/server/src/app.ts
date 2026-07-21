@@ -31,6 +31,7 @@ import {
   type WebhookProjector,
   WebhookProjectorLive,
 } from "./github/webhook-projector";
+import { compressed } from "./http/compress";
 import { PullRequestCommentsApiLive } from "./routes/comments";
 import { PullRequestConversationApiLive } from "./routes/conversation";
 import { handleEvents, isEventsPath } from "./routes/events";
@@ -82,7 +83,7 @@ const httpServerLive = (memoMap: Layer.MemoMap) =>
       const server = yield* Effect.acquireRelease(
         Effect.sync(() =>
           Bun.serve({
-            fetch: (request) => {
+            fetch: async (request) => {
               const { pathname } = new URL(request.url);
               if (isWebhookPath(pathname)) {
                 return webhook(request);
@@ -90,9 +91,10 @@ const httpServerLive = (memoMap: Layer.MemoMap) =>
               if (isEventsPath(pathname)) {
                 return events(request);
               }
-              return isAuthPath(pathname)
+              const response = await (isAuthPath(pathname)
                 ? auth.handler(request)
-                : api.handler(request);
+                : api.handler(request));
+              return compressed(request, response);
             },
             hostname: config.host,
             idleTimeout: REQUEST_IDLE_TIMEOUT_SECONDS,

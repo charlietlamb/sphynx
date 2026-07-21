@@ -1,6 +1,6 @@
 import { Database } from "@sphynx/db/client";
-import { githubInstallation } from "@sphynx/db/schema";
-import { sql } from "drizzle-orm";
+import { githubInstallation, webhookDelivery } from "@sphynx/db/schema";
+import { and, eq, gt, isNotNull, sql } from "drizzle-orm";
 import {
   Clock,
   Context,
@@ -25,7 +25,20 @@ import { toWorkbenchEvents } from "./workbench-mappers";
  */
 const RECONCILE_LOCK = 8_273_610_411;
 
-const RECONCILE_INTERVAL = Duration.minutes(3);
+/**
+ * The reconcile backstop interval. Webhooks are the real-time freshness path
+ * (state is live within ~1s of a delivery); reconcile only repairs drift from
+ * missed or out-of-order deliveries, so it runs infrequently. A shorter
+ * interval multiplies GitHub fan-out and container CPU for near-zero benefit.
+ */
+const RECONCILE_INTERVAL = Duration.minutes(15);
+
+/**
+ * An installation that received a webhook within this window is already fresh,
+ * so reconcile skips it — it only sweeps the quiet installs a missed delivery
+ * could have left stale.
+ */
+const RECENT_WEBHOOK_WINDOW = Duration.minutes(20);
 
 /** Repos seeded with feed history at backfill; the rest fill in via webhooks. */
 const SEED_REPOS = 10;
@@ -92,7 +105,34 @@ const makeMaterializer = Effect.gen(function* () {
       { concurrency: 3, discard: true }
     );
 
-  const materializeOnce = (installationId: number) =>
+  /** The stored composite ETag for an installation, or null before first build. */
+  const storedEtag = (installationId: number) =>
+    Effect.tryPromise(() =>
+      db
+        .select({ etag: githubInstallation.pipelineEtag })
+        .from(githubInstallation)
+        .where(eq(githubInstallation.installationId, installationId))
+        .limit(1)
+    ).pipe(
+      Effect.orDie,
+      Effect.map((rows) => rows[0]?.etag ?? null)
+    );
+
+  const rememberEtag = (installationId: number, etag: string, now: Date) =>
+    Effect.tryPromise(() =>
+      db
+        .update(githubInstallation)
+        .set({ pipelineEtag: etag, reconciledAt: now })
+        .where(eq(githubInstallation.installationId, installationId))
+    ).pipe(Effect.orDie);
+
+  /**
+   * `seed` requests a workbench backfill from the Events API — only wanted on a
+   * cold install or an explicit resync. The periodic reconcile passes `false`:
+   * webhooks already stream feed events, so re-pulling the Events API every
+   * sweep is pure waste (the writes are idempotent no-ops).
+   */
+  const materializeOnce = (installationId: number, seed: boolean) =>
     Effect.gen(function* () {
       const credential = app.installationCredential(installationId);
       const token = yield* credential.token;
@@ -102,16 +142,25 @@ const makeMaterializer = Effect.gen(function* () {
        * a PR while the (slow) fetch runs is never clobbered as merged.
        */
       const snapshotAt = new Date(yield* Clock.currentTimeMillis);
-      const discovered = yield* queue.discoverRepos(token);
-      const refreshed = yield* pipeline.refresh(token, null);
+      /**
+       * Reuse the last composite ETag so an unchanged installation revalidates
+       * as `NotModified` — cheap authorized 304s that skip the whole per-repo
+       * compare fan-out — instead of a full refetch every sweep.
+       */
+      const previousEtag = yield* storedEtag(installationId);
+      const refreshed = yield* pipeline.refresh(token, previousEtag);
       if (refreshed._tag === "Modified") {
         yield* writer.writePipeline(
           installationId,
           { repos: refreshed.repos },
           snapshotAt
         );
+        yield* rememberEtag(installationId, refreshed.etag, snapshotAt);
       }
-      yield* seedWorkbench(installationId, discovered, token);
+      if (seed) {
+        const discovered = yield* queue.discoverRepos(token);
+        yield* seedWorkbench(installationId, discovered, token);
+      }
     }).pipe(
       Effect.catchAllCause((cause) =>
         Effect.logWarning("materialize failed", cause)
@@ -128,7 +177,7 @@ const makeMaterializer = Effect.gen(function* () {
    * getPipeline + getQueue together, and several users can land at once) share
    * one build instead of each triggering a full GitHub rebuild.
    */
-  const materialize = (installationId: number) =>
+  const materialize = (installationId: number, seed = true) =>
     Effect.gen(function* () {
       const latch = yield* Deferred.make<void>();
       /**
@@ -146,7 +195,7 @@ const makeMaterializer = Effect.gen(function* () {
       if (leader) {
         return yield* Deferred.await(leader);
       }
-      yield* materializeOnce(installationId).pipe(
+      yield* materializeOnce(installationId, seed).pipe(
         Effect.ensuring(
           Ref.update(inFlight, (map) => {
             const next = new Map(map);
@@ -160,14 +209,37 @@ const makeMaterializer = Effect.gen(function* () {
       Effect.annotateLogs({ "github.installation": installationId })
     );
 
-  const knownInstallationIds = Effect.tryPromise(() =>
-    db
-      .select({ installationId: githubInstallation.installationId })
-      .from(githubInstallation)
-  ).pipe(
-    Effect.orDie,
-    Effect.map((rows) => rows.map((row) => row.installationId))
-  );
+  /**
+   * Installations that reconcile should sweep: every known install *except*
+   * those that received a webhook within `RECENT_WEBHOOK_WINDOW`. A
+   * webhook-active install is already live via the projector, so re-deriving it
+   * from GitHub would only repeat work the webhook just did.
+   */
+  const staleInstallationIds = (now: Date) => {
+    const cutoff = new Date(
+      now.getTime() - Duration.toMillis(RECENT_WEBHOOK_WINDOW)
+    );
+    const recentlyActive = db
+      .select({ installationId: webhookDelivery.installationId })
+      .from(webhookDelivery)
+      .where(
+        and(
+          isNotNull(webhookDelivery.installationId),
+          gt(webhookDelivery.receivedAt, cutoff)
+        )
+      );
+    return Effect.tryPromise(() =>
+      db
+        .select({ installationId: githubInstallation.installationId })
+        .from(githubInstallation)
+        .where(
+          sql`${githubInstallation.installationId} NOT IN (${recentlyActive})`
+        )
+    ).pipe(
+      Effect.orDie,
+      Effect.map((rows) => rows.map((row) => row.installationId))
+    );
+  };
 
   /**
    * Try to claim tick leadership on a single pinned connection.
@@ -211,8 +283,11 @@ const makeMaterializer = Effect.gen(function* () {
     if (!(yield* claimLeadership)) {
       return;
     }
-    const ids = yield* knownInstallationIds;
-    yield* Effect.forEach(ids, materialize, { concurrency: 2 });
+    const now = new Date(yield* Clock.currentTimeMillis);
+    const ids = yield* staleInstallationIds(now);
+    yield* Effect.forEach(ids, (id) => materialize(id, false), {
+      concurrency: 2,
+    });
   }).pipe(
     Effect.withSpan("Materializer.reconcileOnce"),
     Effect.annotateLogs({ reconcile: true })
