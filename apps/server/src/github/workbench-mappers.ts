@@ -165,6 +165,13 @@ const REVIEW_KINDS: Record<string, WorkbenchEventKind> = {
   changes_requested: "review-changes",
 };
 
+/**
+ * The Events API reports a submitted review as `created`; webhooks report it as
+ * `submitted`. Accept both so the same mapper serves the seed backfill and the
+ * live webhook stream.
+ */
+const REVIEW_ACTIONS = new Set(["created", "submitted"]);
+
 function fromReview(
   base: EventBase,
   payload: unknown,
@@ -172,7 +179,7 @@ function fromReview(
   repo: string
 ): WorkbenchEvent | null {
   const decoded = decodeReviewPayload(payload);
-  if (Option.isNone(decoded) || decoded.value.action !== "created") {
+  if (Option.isNone(decoded) || !REVIEW_ACTIONS.has(decoded.value.action)) {
     return null;
   }
   const { review, pull_request } = decoded.value;
@@ -308,6 +315,41 @@ function fromRelease(base: EventBase, payload: unknown): WorkbenchEvent | null {
   };
 }
 
+/**
+ * Dispatch a decoded event to the mapper for its Events-API type. The `base`
+ * (id, timestamp, actor) is already assembled, and `payload` is the type's
+ * payload object — identical whether it came from the Events API's `payload`
+ * field or a webhook body, so both entry points share this.
+ */
+function dispatchByType(
+  type: string,
+  base: EventBase,
+  payload: unknown,
+  owner: string,
+  repo: string
+): WorkbenchEvent | null {
+  switch (type) {
+    case "PullRequestEvent":
+      return fromPull(base, payload, owner, repo);
+    case "PullRequestReviewEvent":
+      return fromReview(base, payload, owner, repo);
+    case "PullRequestReviewCommentEvent":
+      return fromReviewComment(base, payload);
+    case "IssueCommentEvent":
+      return fromIssueComment(base, payload);
+    case "PushEvent":
+      return fromPush(base, payload, owner, repo);
+    case "CreateEvent":
+      return fromRef(base, payload, "branch-created", owner, repo);
+    case "DeleteEvent":
+      return fromRef(base, payload, "branch-deleted", owner, repo);
+    case "ReleaseEvent":
+      return fromRelease(base, payload);
+    default:
+      return null;
+  }
+}
+
 export function toWorkbenchEvent(
   owner: string,
   repo: string,
@@ -329,26 +371,68 @@ export function toWorkbenchEvent(
       avatarUrl: actor.avatar_url,
     },
   };
-  switch (type) {
-    case "PullRequestEvent":
-      return fromPull(base, payload, owner, repo);
-    case "PullRequestReviewEvent":
-      return fromReview(base, payload, owner, repo);
-    case "PullRequestReviewCommentEvent":
-      return fromReviewComment(base, payload);
-    case "IssueCommentEvent":
-      return fromIssueComment(base, payload);
-    case "PushEvent":
-      return fromPush(base, payload, owner, repo);
-    case "CreateEvent":
-      return fromRef(base, payload, "branch-created", owner, repo);
-    case "DeleteEvent":
-      return fromRef(base, payload, "branch-deleted", owner, repo);
-    case "ReleaseEvent":
-      return fromRelease(base, payload);
-    default:
-      return null;
+  return dispatchByType(type, base, payload, owner, repo);
+}
+
+/**
+ * The Events-API type name for a webhook `x-github-event` header. Webhooks name
+ * events by resource (`pull_request`), the Events API by class name
+ * (`PullRequestEvent`); the payload objects underneath are the same, so mapping
+ * the header lets the webhook body flow through the shared `dispatchByType`.
+ */
+const WEBHOOK_EVENT_TYPES: Record<string, string> = {
+  pull_request: "PullRequestEvent",
+  pull_request_review: "PullRequestReviewEvent",
+  pull_request_review_comment: "PullRequestReviewCommentEvent",
+  issue_comment: "IssueCommentEvent",
+  push: "PushEvent",
+  create: "CreateEvent",
+  delete: "DeleteEvent",
+  release: "ReleaseEvent",
+};
+
+const WebhookSenderSchema = Schema.Struct({
+  sender: Schema.optional(
+    Schema.Struct({
+      login: Schema.String,
+      avatar_url: Schema.NullishOr(Schema.String),
+    })
+  ),
+});
+
+const decodeSender = Schema.decodeUnknownOption(WebhookSenderSchema);
+
+/**
+ * Map a raw webhook delivery to a workbench event, reusing the same per-type
+ * mappers as the Events-API path. The actor comes from `sender`, the id and
+ * timestamp are supplied by the caller (delivery id + `Clock`), and the webhook
+ * body IS the payload.
+ */
+export function webhookToWorkbenchEvent(
+  owner: string,
+  repo: string,
+  eventType: string,
+  deliveryId: string,
+  occurredAt: string,
+  payload: unknown
+): WorkbenchEvent | null {
+  const type = WEBHOOK_EVENT_TYPES[eventType];
+  if (!type) {
+    return null;
   }
+  const sender = decodeSender(payload);
+  if (Option.isNone(sender) || !sender.value.sender) {
+    return null;
+  }
+  const base: EventBase = {
+    id: deliveryId,
+    at: occurredAt,
+    actor: {
+      login: sender.value.sender.login.replace(BOT_SUFFIX, ""),
+      avatarUrl: sender.value.sender.avatar_url ?? "",
+    },
+  };
+  return dispatchByType(type, base, payload, owner, repo);
 }
 
 export function toWorkbenchEvents(

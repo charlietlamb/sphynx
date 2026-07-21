@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { toWorkbenchEvent, toWorkbenchEvents } from "./workbench-mappers";
+import {
+  toWorkbenchEvent,
+  toWorkbenchEvents,
+  webhookToWorkbenchEvent,
+} from "./workbench-mappers";
 
 const OWNER = "acme";
 const REPO = "widgets";
@@ -280,5 +284,90 @@ describe("toWorkbenchEvents", () => {
       ),
     ]);
     expect(events.map((entry) => entry.id)).toEqual(["3", "1"]);
+  });
+});
+
+const AT = "2026-07-20T00:00:00.000Z";
+
+const sender = { login: "charlie", avatar_url: "https://avatars.test/1" };
+
+function webhook(eventType: string, payload: object) {
+  return webhookToWorkbenchEvent(OWNER, REPO, eventType, "d-1", AT, {
+    sender,
+    ...payload,
+  });
+}
+
+describe("webhookToWorkbenchEvent", () => {
+  test("maps an opened pull request with real title and url", () => {
+    const event = webhook("pull_request", {
+      action: "opened",
+      pull_request: {
+        number: 7,
+        title: "Add widget",
+        html_url: "https://github.com/acme/widgets/pull/7",
+        head: { ref: "feat/x" },
+        base: { ref: "dev" },
+      },
+    });
+    expect(event).toMatchObject({
+      kind: "pr-opened",
+      pull: { number: 7, title: "Add widget" },
+      detail: "feat/x → dev",
+      url: "https://github.com/acme/widgets/pull/7",
+      actor: { login: "charlie", avatarUrl: "https://avatars.test/1" },
+      id: "d-1",
+      at: AT,
+    });
+  });
+
+  test("maps a closed+merged pull request to pr-merged", () => {
+    const event = webhook("pull_request", {
+      action: "closed",
+      pull_request: { number: 8, title: "x", merged: true },
+    });
+    expect(event?.kind).toBe("pr-merged");
+  });
+
+  test("accepts a review with action=submitted (webhook shape)", () => {
+    const event = webhook("pull_request_review", {
+      action: "submitted",
+      review: { state: "approved" },
+      pull_request: { number: 9, title: "y" },
+    });
+    expect(event?.kind).toBe("review-approved");
+  });
+
+  test("maps an issue comment on a PR", () => {
+    const event = webhook("issue_comment", {
+      action: "created",
+      issue: { number: 3, title: "t", pull_request: { url: "x" } },
+      comment: { body: "looks good", html_url: "https://c" },
+    });
+    expect(event).toMatchObject({
+      kind: "comment",
+      pull: { number: 3 },
+    });
+  });
+
+  test("maps a push to a branch", () => {
+    const event = webhook("push", {
+      ref: "refs/heads/main",
+      distinct_size: 2,
+      before: "aaa",
+      head: "bbb",
+    });
+    expect(event).toMatchObject({ kind: "push", detail: "main · 2 commits" });
+  });
+
+  test("ignores an event type with no workbench meaning", () => {
+    expect(webhook("star", { action: "created" })).toBeNull();
+  });
+
+  test("ignores a delivery with no sender", () => {
+    const event = webhookToWorkbenchEvent(OWNER, REPO, "push", "d-2", AT, {
+      ref: "refs/heads/main",
+    });
+    expect(event).toBeNull();
   });
 });

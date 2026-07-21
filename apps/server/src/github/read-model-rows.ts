@@ -1,4 +1,5 @@
 import type { QueuePull, RepoFlow } from "@sphynx/schema/review-queue";
+import type { WorkbenchEvent } from "@sphynx/schema/workbench";
 
 export const repoRowId = (
   installationId: number,
@@ -193,3 +194,38 @@ export const gapRows = (
   }
   return { gaps, gapPulls };
 };
+
+export interface WorkbenchEventRow {
+  readonly actor: string | null;
+  readonly actorAvatarUrl: string | null;
+  readonly detail: string | null;
+  readonly id: string;
+  readonly installationId: number;
+  readonly kind: string;
+  readonly occurredAt: Date;
+  readonly owner: string;
+  readonly pullNumber: number | null;
+  readonly repo: string;
+  readonly title: string | null;
+  readonly url: string | null;
+}
+
+export const workbenchEventRow = (
+  installationId: number,
+  owner: string,
+  repo: string,
+  event: WorkbenchEvent
+): WorkbenchEventRow => ({
+  id: event.id,
+  installationId,
+  owner,
+  repo,
+  kind: event.kind,
+  actor: event.actor.login,
+  actorAvatarUrl: event.actor.avatarUrl || null,
+  pullNumber: event.pull?.number ?? null,
+  title: event.pull?.title ?? null,
+  detail: event.detail,
+  url: event.url,
+  occurredAt: new Date(event.at),
+});

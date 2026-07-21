@@ -7,6 +7,7 @@ import {
   reviewThread,
   stageGap,
   stageGapPull,
+  workbenchEvent,
 } from "@sphynx/db/schema";
 import type {
   Pipeline,
@@ -16,7 +17,13 @@ import type {
 import { and, eq, lt, notInArray, sql } from "drizzle-orm";
 import { Clock, Context, Effect, Layer } from "effect";
 import { DIRTY_CHANNEL } from "./event-bus";
-import { gapRows, type PullRows, pullRows, repoRowId } from "./read-model-rows";
+import {
+  gapRows,
+  type PullRows,
+  pullRows,
+  repoRowId,
+  type WorkbenchEventRow,
+} from "./read-model-rows";
 
 type Tx = Parameters<Parameters<Database["Type"]["transaction"]>[0]>[0];
 
@@ -211,7 +218,35 @@ const makeReadModelWriter = Effect.gen(function* () {
       })
     );
 
-  return { writePipeline, writePull };
+  /**
+   * Append workbench events. Idempotent on the delivery-scoped id, so a webhook
+   * redelivery or an overlapping seed is a no-op. Notifies once so an open feed
+   * refreshes. Empty input is a no-op (no spurious notify).
+   */
+  const writeWorkbenchEvents = (
+    installationId: number,
+    rows: readonly WorkbenchEventRow[]
+  ) =>
+    Effect.gen(function* () {
+      if (rows.length === 0) {
+        return;
+      }
+      yield* Effect.tryPromise(() =>
+        db
+          .insert(workbenchEvent)
+          .values([...rows])
+          .onConflictDoNothing()
+      ).pipe(Effect.orDie);
+      yield* notifyDirty(installationId);
+    }).pipe(
+      Effect.withSpan("ReadModelWriter.writeWorkbenchEvents"),
+      Effect.annotateLogs({
+        "github.installation": installationId,
+        eventCount: rows.length,
+      })
+    );
+
+  return { writePipeline, writePull, writeWorkbenchEvents };
 });
 
 export class ReadModelWriter extends Context.Tag(

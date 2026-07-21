@@ -21,11 +21,11 @@ import { Materializer, MaterializerLive } from "./github/materializer";
 import { GitHubPipelineLive } from "./github/pipeline";
 import { ReadModelReaderLive } from "./github/read-model-reader";
 import { ReadModelWriterLive } from "./github/read-model-writer";
-import { GitHubRepoEventsLive } from "./github/repo-events";
 import { GitHubReviewQueueLive } from "./github/review-queue";
 import { GitHubReviewsLive } from "./github/reviews";
 import { SearchCacheLive } from "./github/search-cache";
 import { GitHubViewerLive } from "./github/viewer";
+import { ViewerLoginLive } from "./github/viewer-login";
 import { type WebhookIngest, WebhookIngestLive } from "./github/webhook-ingest";
 import {
   type WebhookProjector,
@@ -129,7 +129,7 @@ const GitHubLive = SearchCacheLive.pipe(
       GitHubViewerLive,
       GitHubReviewsLive,
       GitHubReviewQueueLive,
-      GitHubRepoEventsLive,
+      ViewerLoginLive,
       GitHubConversationLive,
       GitHubAppAuthLive,
       ReadModelWriterLive.pipe(Layer.provide(DatabaseLiveLayer)),

@@ -37,7 +37,7 @@ export const handleWebhook = (request: Request) =>
     switch (outcome._tag) {
       case "Accepted":
         yield* projector
-          .project(eventType ?? "", parsePayload(body))
+          .project(eventType ?? "", outcome.deliveryId, parsePayload(body))
           .pipe(Effect.forkDaemon);
         return respond(202, "accepted");
       case "Duplicate":

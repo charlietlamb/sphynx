@@ -30,8 +30,6 @@ function workbenchEventsQuery(
   return queryOptions({
     queryKey: keys.repoEvents({ owner, repo }, installationId),
     queryFn: () => fetchWorkbenchEvents(owner, repo, installationId),
-    refetchInterval: 60_000,
-    staleTime: 30_000,
   });
 }
 

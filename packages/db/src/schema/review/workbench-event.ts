@@ -9,9 +9,11 @@ export const workbenchEvent = pgTable(
     repo: text("repo").notNull(),
     kind: text("kind").notNull(),
     actor: text("actor"),
+    actorAvatarUrl: text("actor_avatar_url"),
     pullNumber: integer("pull_number"),
     title: text("title"),
     detail: text("detail"),
+    url: text("url"),
     occurredAt: timestamp("occurred_at").notNull(),
   },
   (table) => [

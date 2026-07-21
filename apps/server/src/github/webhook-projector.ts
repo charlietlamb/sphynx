@@ -1,9 +1,11 @@
 import type { PullRequestRef } from "@sphynx/schema/pull-requests";
-import { Context, Effect, Layer, Schema } from "effect";
+import { Clock, Context, Effect, Layer, Option, Schema } from "effect";
 import { GitHubAppAuth } from "./app-auth";
 import { Materializer } from "./materializer";
+import { workbenchEventRow } from "./read-model-rows";
 import { ReadModelWriter } from "./read-model-writer";
 import { GitHubReviewQueue } from "./review-queue";
+import { webhookToWorkbenchEvent } from "./workbench-mappers";
 
 const RepoSchema = Schema.Struct({
   name: Schema.String,
@@ -60,9 +62,34 @@ export type Projection =
   | { readonly _tag: "Install"; readonly installationId: number }
   | { readonly _tag: "None" };
 
+const EnvelopeSchema = Schema.Struct(base);
+
 const decodePull = Schema.decodeUnknownOption(PullNumberSchema);
 const decodeIssue = Schema.decodeUnknownOption(IssueCommentSchema);
 const decodeCheck = Schema.decodeUnknownOption(CheckSchema);
+const decodeEnvelope = Schema.decodeUnknownOption(EnvelopeSchema);
+
+interface WorkbenchTarget {
+  readonly installationId: number;
+  readonly owner: string;
+  readonly repo: string;
+}
+
+/** The installation + repo a delivery belongs to, if the envelope carries both. */
+const workbenchTargetFor = (payload: unknown): WorkbenchTarget | null => {
+  const decoded = decodeEnvelope(payload);
+  if (Option.isNone(decoded)) {
+    return null;
+  }
+  const { installation, repository } = decoded.value;
+  return installation && repository
+    ? {
+        installationId: installation.id,
+        owner: repository.owner.login,
+        repo: repository.name,
+      }
+    : null;
+};
 
 const pullFrom = (
   installationId: number,
@@ -182,7 +209,43 @@ const makeWebhookProjector = Effect.gen(function* () {
       yield* writer.writePull(installationId, ref.owner, ref.repo, pull);
     });
 
-  const project = (eventType: string, payload: unknown) =>
+  /**
+   * Append this delivery to the workbench feed, if it maps to a feed event.
+   * Runs for every delivery independent of the queue projection, so a
+   * pull_request both refreshes the PR row and lands in the feed.
+   */
+  const projectWorkbench = (
+    eventType: string,
+    deliveryId: string,
+    payload: unknown
+  ) =>
+    Effect.gen(function* () {
+      const target = workbenchTargetFor(payload);
+      if (target === null) {
+        return;
+      }
+      const occurredAt = new Date(yield* Clock.currentTimeMillis).toISOString();
+      const event = webhookToWorkbenchEvent(
+        target.owner,
+        target.repo,
+        eventType,
+        deliveryId,
+        occurredAt,
+        payload
+      );
+      if (event) {
+        yield* writer.writeWorkbenchEvents(target.installationId, [
+          workbenchEventRow(
+            target.installationId,
+            target.owner,
+            target.repo,
+            event
+          ),
+        ]);
+      }
+    });
+
+  const project = (eventType: string, deliveryId: string, payload: unknown) =>
     Effect.gen(function* () {
       const projection = projectionFor(eventType, payload);
       if (projection._tag === "Pull") {
@@ -190,6 +253,7 @@ const makeWebhookProjector = Effect.gen(function* () {
       } else if (projection._tag === "Install") {
         yield* materializer.materialize(projection.installationId);
       }
+      yield* projectWorkbench(eventType, deliveryId, payload);
     }).pipe(
       Effect.catchAllCause((cause) =>
         Effect.logWarning("webhook projection failed", cause)
