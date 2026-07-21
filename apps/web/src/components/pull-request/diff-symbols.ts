@@ -17,15 +17,19 @@ export const DIFF_UNSAFE_CSS = `
 [data-diffs-header] [data-change-icon] {
   display: none;
 }
-[data-diffs-header="default"] [data-header-content] {
-  flex: 0 1 auto;
+[data-diffs-header="default"] {
+  justify-content: flex-start !important;
 }
-[data-diffs-header="default"] [data-metadata] {
-  flex: 1 1 auto;
+[data-diffs-header="default"] [data-header-content] {
+  flex: 0 1 auto !important;
   min-width: 0;
 }
-[data-diffs-header="default"] [data-metadata] [data-deletions-count] {
-  margin-left: auto;
+[data-diffs-header="default"] [data-metadata] {
+  flex: 1 1 auto !important;
+  min-width: 0;
+}
+[data-diffs-header="default"] [data-metadata] ::slotted([data-copy-path]) {
+  margin-right: auto;
 }
 [data-diffs-header] {
   border-bottom: 1px solid var(--border);
