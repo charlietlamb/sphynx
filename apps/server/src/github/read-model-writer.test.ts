@@ -74,7 +74,7 @@ const flow = (overrides: Partial<RepoFlow>): RepoFlow => ({
 const write = (pipeline: Pipeline) =>
   runtime.runPromise(
     Effect.flatMap(ReadModelWriter, (writer) =>
-      writer.writePipeline(INSTALLATION, pipeline)
+      writer.writePipeline(INSTALLATION, pipeline, new Date())
     )
   );
 

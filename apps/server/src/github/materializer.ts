@@ -1,7 +1,16 @@
 import { Database } from "@sphynx/db/client";
 import { githubInstallation } from "@sphynx/db/schema";
 import { sql } from "drizzle-orm";
-import { Context, Duration, Effect, Layer, Schedule } from "effect";
+import {
+  Clock,
+  Context,
+  Deferred,
+  Duration,
+  Effect,
+  Layer,
+  Ref,
+  Schedule,
+} from "effect";
 import { GitHubAppAuth } from "./app-auth";
 import { GitHubPipeline } from "./pipeline";
 import { workbenchEventRow } from "./read-model-rows";
@@ -27,6 +36,7 @@ const makeMaterializer = Effect.gen(function* () {
   const queue = yield* GitHubReviewQueue;
   const writer = yield* ReadModelWriter;
   const db = yield* Database;
+  const inFlight = yield* Ref.make(new Map<number, Deferred.Deferred<void>>());
 
   /**
    * Seed the workbench feed with recent history from the Events API. Only runs
@@ -82,25 +92,70 @@ const makeMaterializer = Effect.gen(function* () {
       { concurrency: 3, discard: true }
     );
 
-  /**
-   * Build an installation's full pipeline from GitHub and write it to the read
-   * model, and seed the workbench feed. The one place a read of GitHub happens
-   * for the dashboard — on backfill and reconcile, never on a user read.
-   */
-  const materialize = (installationId: number) =>
+  const materializeOnce = (installationId: number) =>
     Effect.gen(function* () {
       const credential = app.installationCredential(installationId);
       const token = yield* credential.token;
+      /**
+       * Stamp the snapshot start before touching GitHub. `writePipeline` only
+       * marks-merged pulls untouched since this instant, so a webhook that opens
+       * a PR while the (slow) fetch runs is never clobbered as merged.
+       */
+      const snapshotAt = new Date(yield* Clock.currentTimeMillis);
       const discovered = yield* queue.discoverRepos(token);
       const refreshed = yield* pipeline.refresh(token, null);
       if (refreshed._tag === "Modified") {
-        yield* writer.writePipeline(installationId, { repos: refreshed.repos });
+        yield* writer.writePipeline(
+          installationId,
+          { repos: refreshed.repos },
+          snapshotAt
+        );
       }
       yield* seedWorkbench(installationId, discovered, token);
     }).pipe(
       Effect.catchAllCause((cause) =>
         Effect.logWarning("materialize failed", cause)
-      ),
+      )
+    );
+
+  /**
+   * Build an installation's full pipeline from GitHub and write it to the read
+   * model, and seed the workbench feed. The one place a read of GitHub happens
+   * for the dashboard — on backfill, reconcile, and cold-read, never on a warm
+   * user read.
+   *
+   * Single-flighted per installation: concurrent cold reads (a dashboard fires
+   * getPipeline + getQueue together, and several users can land at once) share
+   * one build instead of each triggering a full GitHub rebuild.
+   */
+  const materialize = (installationId: number) =>
+    Effect.gen(function* () {
+      const latch = yield* Deferred.make<void>();
+      /**
+       * Atomically claim leadership: install our latch only if none is present.
+       * The follower gets back the existing latch and awaits it; exactly one
+       * fiber runs the build per installation.
+       */
+      const leader = yield* Ref.modify(inFlight, (map) => {
+        const running = map.get(installationId);
+        if (running) {
+          return [running, map] as const;
+        }
+        return [null, new Map(map).set(installationId, latch)] as const;
+      });
+      if (leader) {
+        return yield* Deferred.await(leader);
+      }
+      yield* materializeOnce(installationId).pipe(
+        Effect.ensuring(
+          Ref.update(inFlight, (map) => {
+            const next = new Map(map);
+            next.delete(installationId);
+            return next;
+          }).pipe(Effect.zipRight(Deferred.succeed(latch, undefined)))
+        )
+      );
+    }).pipe(
       Effect.withSpan("Materializer.materialize"),
       Effect.annotateLogs({ "github.installation": installationId })
     );

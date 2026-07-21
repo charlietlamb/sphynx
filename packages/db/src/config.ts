@@ -2,6 +2,7 @@ import { Config, Context, Layer } from "effect";
 import type { Redacted } from "effect/Redacted";
 
 export interface DatabaseConfigShape {
+  readonly poolMax: number;
   readonly url: Redacted<string>;
 }
 
@@ -14,5 +15,6 @@ export const DatabaseConfigLive = Layer.effect(
   DatabaseConfig,
   Config.all({
     url: Config.redacted("DATABASE_URL"),
+    poolMax: Config.integer("DATABASE_POOL_MAX").pipe(Config.withDefault(20)),
   })
 );

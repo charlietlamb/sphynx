@@ -57,13 +57,21 @@ const writePullRows = async (
   now: Date
 ) => {
   const rows = pullRows(installationId, repoId, pull);
+  /**
+   * Last-writer-wins on `(gh_updated_at, fetched_at)`. `gh_updated_at` alone is
+   * not enough: `check_run`/`status` events don't bump a PR's `updated_at`, so a
+   * CI update carries the same `gh_updated_at` as the push before it and would
+   * be dropped by a strict `<`. `fetched_at` breaks the tie — this write's is
+   * `now`, always newer — so a fresh refetch wins on an equal timestamp while a
+   * genuinely stale write (older `gh_updated_at`) is still rejected.
+   */
   const applied = await tx
     .insert(reviewPull)
     .values({ ...rows.pull, fetchedAt: now, updatedAt: now })
     .onConflictDoUpdate({
       target: reviewPull.id,
       set: { ...rows.pull, fetchedAt: now, updatedAt: now },
-      setWhere: lt(reviewPull.ghUpdatedAt, rows.pull.ghUpdatedAt),
+      setWhere: sql`(${reviewPull.ghUpdatedAt}, ${reviewPull.fetchedAt}) < (${rows.pull.ghUpdatedAt}, ${now})`,
     })
     .returning({ id: reviewPull.id });
   if (applied.length > 0) {
@@ -180,7 +188,8 @@ const makeReadModelWriter = Effect.gen(function* () {
     tx: Tx,
     installationId: number,
     flow: RepoFlow,
-    now: Date
+    now: Date,
+    snapshotAt: Date
   ) => {
     const repoId = await upsertRepo(
       tx,
@@ -195,19 +204,26 @@ const makeReadModelWriter = Effect.gen(function* () {
       await writePullRows(tx, installationId, repoId, pull, now);
     }
 
+    /**
+     * Close pulls that left the open set — but only ones not touched since the
+     * GitHub snapshot began. A pull a concurrent webhook opened *during* the
+     * snapshot has `fetched_at >= snapshotAt` and is spared, so a full rebuild
+     * never marks a freshly-opened PR merged just because it postdates the
+     * snapshot.
+     */
     const openNumbers = flow.openPulls.map((pull) => pull.number);
+    const departed = and(
+      eq(reviewPull.repoId, repoId),
+      eq(reviewPull.state, "open"),
+      lt(reviewPull.fetchedAt, snapshotAt),
+      openNumbers.length > 0
+        ? notInArray(reviewPull.number, openNumbers)
+        : undefined
+    );
     await tx
       .update(reviewPull)
       .set({ state: "merged", updatedAt: now })
-      .where(
-        openNumbers.length > 0
-          ? and(
-              eq(reviewPull.repoId, repoId),
-              eq(reviewPull.state, "open"),
-              notInArray(reviewPull.number, openNumbers)
-            )
-          : and(eq(reviewPull.repoId, repoId), eq(reviewPull.state, "open"))
-      );
+      .where(departed);
 
     await tx.delete(stageGap).where(eq(stageGap.repoId, repoId));
     await tx.delete(stageGapPull).where(eq(stageGapPull.repoId, repoId));
@@ -222,13 +238,17 @@ const makeReadModelWriter = Effect.gen(function* () {
     }
   };
 
-  const writePipeline = (installationId: number, pipeline: Pipeline) =>
+  const writePipeline = (
+    installationId: number,
+    pipeline: Pipeline,
+    snapshotAt: Date
+  ) =>
     Effect.gen(function* () {
       const now = new Date(yield* Clock.currentTimeMillis);
       yield* Effect.tryPromise(() =>
         db.transaction(async (tx) => {
           for (const flow of pipeline.repos) {
-            await writeRepo(tx, installationId, flow, now);
+            await writeRepo(tx, installationId, flow, now, snapshotAt);
           }
         })
       ).pipe(Effect.orDie);

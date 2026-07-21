@@ -139,7 +139,7 @@ describe.skipIf(!hasDatabase)("read model round trip", () => {
 
     await runtime.runPromise(
       Effect.flatMap(ReadModelWriter, (writer) =>
-        writer.writePipeline(INSTALLATION, source)
+        writer.writePipeline(INSTALLATION, source, new Date())
       )
     );
 

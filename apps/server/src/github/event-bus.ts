@@ -11,6 +11,13 @@ interface DirtyEvent {
   readonly installationId: number;
 }
 
+/**
+ * A wildcard installation id: a dirty event carrying it wakes every subscriber
+ * regardless of their installation. Used after a LISTEN reconnect, where any
+ * notification during the gap was lost, so all clients must re-read.
+ */
+const ALL_INSTALLATIONS = -1;
+
 export interface PullDirtyEvent {
   readonly headSha: string;
   readonly installationId: number;
@@ -68,6 +75,16 @@ const makeEventBus = Effect.gen(function* () {
       Runtime.runFork(runtime)(pulls.publish(event));
     }
   });
+  /**
+   * After a LISTEN reconnect, notifications sent during the gap were lost, so
+   * wake every subscriber to re-read. A wildcard dirty event is enough — the
+   * dashboard reload is cheap and idempotent.
+   */
+  yield* listener.onReconnect(() => {
+    Runtime.runFork(runtime)(
+      dirty.publish({ installationId: ALL_INSTALLATIONS })
+    );
+  });
   yield* Effect.logInfo(
     `listening on ${DIRTY_CHANNEL} and ${PULL_DIRTY_CHANNEL}`
   );
@@ -77,7 +94,11 @@ const makeEventBus = Effect.gen(function* () {
     Stream.unwrapScoped(
       Effect.map(dirty.subscribe, (subscription) =>
         Stream.fromQueue(subscription).pipe(
-          Stream.filter((event) => event.installationId === installationId)
+          Stream.filter(
+            (event) =>
+              event.installationId === installationId ||
+              event.installationId === ALL_INSTALLATIONS
+          )
         )
       )
     );

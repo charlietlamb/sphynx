@@ -15,7 +15,13 @@ export const DatabaseLive = Layer.scoped(
     const config = yield* DatabaseConfig;
     const pool = yield* Effect.acquireRelease(
       Effect.sync(
-        () => new Pool({ connectionString: Redacted.value(config.url) })
+        () =>
+          new Pool({
+            connectionString: Redacted.value(config.url),
+            max: config.poolMax,
+            idleTimeoutMillis: 30_000,
+            connectionTimeoutMillis: 10_000,
+          })
       ),
       (pool) => Effect.promise(() => pool.end()).pipe(Effect.orDie)
     );
