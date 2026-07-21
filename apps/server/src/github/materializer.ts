@@ -39,8 +39,26 @@ const makeMaterializer = Effect.gen(function* () {
     repos: readonly { owner: string; repo: string }[],
     token: string
   ) =>
+    Effect.gen(function* () {
+      const seeded = repos.slice(0, SEED_REPOS);
+      if (repos.length > SEED_REPOS) {
+        yield* Effect.logInfo(
+          `workbench seed covers ${SEED_REPOS} of ${repos.length} repos; the rest fill in from webhooks`
+        );
+      }
+      yield* seedRepos(installationId, seeded, token);
+    }).pipe(
+      Effect.withSpan("Materializer.seedWorkbench"),
+      Effect.annotateLogs({ "github.installation": installationId })
+    );
+
+  const seedRepos = (
+    installationId: number,
+    repos: readonly { owner: string; repo: string }[],
+    token: string
+  ) =>
     Effect.forEach(
-      repos.slice(0, SEED_REPOS),
+      repos,
       (entry) =>
         queue.repoEvents(entry, token).pipe(
           Effect.map((raw) => toWorkbenchEvents(entry.owner, entry.repo, raw)),
