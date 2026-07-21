@@ -77,9 +77,23 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
               Effect.flatMap((result) =>
                 result.repos.length > 0
                   ? Effect.succeed(result)
-                  : materializer
-                      .materialize(installationId)
-                      .pipe(Effect.zipRight(read(installationId)))
+                  : /**
+                     * An empty read is either a cold installation or a quiet one
+                     * (materialized, no open PRs). Only the cold case needs a
+                     * GitHub backfill; `hasRepos` tells them apart so a quiet org
+                     * doesn't re-materialize on every read.
+                     */
+                    reader
+                      .hasRepos(installationId)
+                      .pipe(
+                        Effect.flatMap((materialized) =>
+                          materialized
+                            ? Effect.succeed(result)
+                            : materializer
+                                .materialize(installationId)
+                                .pipe(Effect.zipRight(read(installationId)))
+                        )
+                      )
               )
             );
           })

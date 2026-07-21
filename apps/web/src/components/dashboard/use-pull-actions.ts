@@ -63,7 +63,11 @@ function reportWriteError(pull: QueuePull, action: string, error: unknown) {
       action: {
         label: "Review access",
         onClick: () => {
-          window.open(installationSettingsUrl(pull.owner), "_blank");
+          window.open(
+            installationSettingsUrl(pull.owner),
+            "_blank",
+            "noopener,noreferrer"
+          );
         },
       },
       duration: 10_000,
@@ -83,18 +87,6 @@ export function usePullActions(pull: QueuePull) {
       toast.success(message, { description });
     }
   };
-  /**
-   * Reaches the pull's own subtree and every installation-scoped view of it.
-   * The installation id is not known here, so the whole installation branch is
-   * invalidated rather than threading it through every call site.
-   */
-  const invalidate = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: keys.pull(pull) }),
-      queryClient.invalidateQueries({
-        queryKey: [...keys.all, "installation"],
-      }),
-    ]);
 
   const merge = useMutation({
     mutationKey: ["merge", pull.owner, pull.repo, pull.number],
@@ -142,6 +134,13 @@ export function usePullActions(pull: QueuePull) {
   const block = useMutation({
     mutationKey: ["block", pull.owner, pull.repo, pull.number],
     mutationFn: (body: string) => postJson(`${pullPath(pull)}/block`, { body }),
+    /**
+     * Refetch only the pull's own subtree — that reads live from GitHub and
+     * reflects the review at once. The installation queue/pipeline is the
+     * webhook-lagged read model, so refetching it here would read the pre-review
+     * `ready` state and flicker the row back for ~1s; the SSE `dirty` signal
+     * repaints it once the review webhook has actually materialized.
+     */
     onSuccess: (_data, body) => {
       logWorkbenchEvent({
         owner: pull.owner,
@@ -151,7 +150,7 @@ export function usePullActions(pull: QueuePull) {
         detail: body,
       });
       confirm(`Requested changes on #${pull.number}`, pull.title);
-      invalidate();
+      queryClient.invalidateQueries({ queryKey: keys.pull(pull) });
     },
     onError: (error) => reportWriteError(pull, "block", error),
   });

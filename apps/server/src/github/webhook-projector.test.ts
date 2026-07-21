@@ -79,6 +79,12 @@ describe("projectionFor", () => {
     expect(projectionFor("push", envelope)._tag).toBe("None");
   });
 
+  test("status has no PR number in the envelope, so it resolves out-of-band", () => {
+    expect(projectionFor("status", { ...envelope, sha: "abc123" })._tag).toBe(
+      "None"
+    );
+  });
+
   test("installation triggers a backfill", () => {
     expect(projectionFor("installation", { installation: { id: 42 } })).toEqual(
       { _tag: "Install", installationId: 42 }

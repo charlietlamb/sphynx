@@ -54,24 +54,38 @@ const writePullRows = async (
   installationId: number,
   repoId: string,
   pull: QueuePull,
-  now: Date
+  now: Date,
+  snapshotAt: Date
 ) => {
   const rows = pullRows(installationId, repoId, pull);
   /**
-   * Last-writer-wins on `(gh_updated_at, fetched_at)`. `gh_updated_at` alone is
-   * not enough: `check_run`/`status` events don't bump a PR's `updated_at`, so a
-   * CI update carries the same `gh_updated_at` as the push before it and would
-   * be dropped by a strict `<`. `fetched_at` breaks the tie — this write's is
-   * `now`, always newer — so a fresh refetch wins on an equal timestamp while a
-   * genuinely stale write (older `gh_updated_at`) is still rejected.
+   * Last-writer-wins on `(gh_updated_at, fetched_at)`, with two guards.
+   *
+   * `gh_updated_at` alone is not enough: `check_run`/`status` events don't bump
+   * a PR's `updated_at`, so a CI update carries the same `gh_updated_at` as the
+   * push before it and would be dropped by a strict `<`. The tie-break lets a
+   * write win on an equal `gh_updated_at` — but only against a row that predates
+   * this snapshot (`fetched_at < snapshotAt`). A live webhook passes
+   * `snapshotAt = now`, so its fresh CI refetch still wins every tie; a reconcile
+   * passes the instant it began reading GitHub, so its stale snapshot loses the
+   * tie to any webhook that landed after the snapshot — the model never moves
+   * backward on the large class of events that leave `gh_updated_at` unchanged.
+   *
+   * The second guard is state monotonicity: a terminal row (`merged`/`closed`)
+   * is not reopened by a write that isn't strictly newer by `gh_updated_at`. A
+   * lagging GitHub read replica can return a pre-merge `state=open` snapshot
+   * whose `updated_at` still equals the merge's, winning the tie and resurrecting
+   * a merged PR into the open queue. A genuine reopen bumps `gh_updated_at`
+   * strictly past the merge, so it still lands.
    */
+  const staleReopen = sql`${reviewPull.state} <> 'open' AND ${rows.pull.state} = 'open' AND ${rows.pull.ghUpdatedAt} <= ${reviewPull.ghUpdatedAt}`;
   const applied = await tx
     .insert(reviewPull)
     .values({ ...rows.pull, fetchedAt: now, updatedAt: now })
     .onConflictDoUpdate({
       target: reviewPull.id,
       set: { ...rows.pull, fetchedAt: now, updatedAt: now },
-      setWhere: sql`(${reviewPull.ghUpdatedAt}, ${reviewPull.fetchedAt}) < (${rows.pull.ghUpdatedAt}, ${now})`,
+      setWhere: sql`(${reviewPull.ghUpdatedAt}, ${reviewPull.fetchedAt}) < (${rows.pull.ghUpdatedAt}, ${snapshotAt}) AND NOT (${staleReopen})`,
     })
     .returning({ id: reviewPull.id });
   if (applied.length > 0) {
@@ -201,7 +215,7 @@ const makeReadModelWriter = Effect.gen(function* () {
     );
 
     for (const pull of flow.openPulls) {
-      await writePullRows(tx, installationId, repoId, pull, now);
+      await writePullRows(tx, installationId, repoId, pull, now, snapshotAt);
     }
 
     /**
@@ -289,7 +303,7 @@ const makeReadModelWriter = Effect.gen(function* () {
               updatedAt: now,
             })
             .onConflictDoNothing();
-          await writePullRows(tx, installationId, repoId, pull, now);
+          await writePullRows(tx, installationId, repoId, pull, now, now);
         })
       ).pipe(Effect.orDie);
       yield* notifyDirty(installationId);
@@ -299,6 +313,82 @@ const makeReadModelWriter = Effect.gen(function* () {
         "github.installation": installationId,
         "github.repo": `${owner}/${repo}`,
         "github.pull_number": pull.number,
+      })
+    );
+
+  /**
+   * Drop a closed/merged pull's head cursor. `pull_head` tracks only open pulls
+   * as the PR-page freshness signal; leaving a row behind would let a later
+   * reuse of the number (or a stray re-delivery) fire a spurious head move.
+   */
+  const deletePullHead = (owner: string, repo: string, number: number) =>
+    Effect.tryPromise(() =>
+      db
+        .delete(pullHead)
+        .where(
+          and(
+            eq(pullHead.owner, owner),
+            eq(pullHead.repo, repo),
+            eq(pullHead.number, number)
+          )
+        )
+    ).pipe(
+      Effect.orDie,
+      Effect.asVoid,
+      Effect.withSpan("ReadModelWriter.deletePullHead"),
+      Effect.annotateLogs({
+        "github.repo": `${owner}/${repo}`,
+        "github.pull_number": number,
+      })
+    );
+
+  /**
+   * Wake the PR page for a change that did not move the head sha — a review,
+   * label, CI result, or a merge. The head-sha notify only fires on a push, so
+   * without this the PR page's live summary would stay stale until reload. The
+   * stored head sha (or empty before one is known) rides along so the client's
+   * new-commits banner stays accurate: an unchanged sha reads as "no new work".
+   */
+  const notifyPull = (
+    installationId: number,
+    owner: string,
+    repo: string,
+    number: number
+  ) =>
+    Effect.gen(function* () {
+      const rows = yield* Effect.tryPromise(() =>
+        db
+          .select({ headSha: pullHead.headSha })
+          .from(pullHead)
+          .where(
+            and(
+              eq(pullHead.owner, owner),
+              eq(pullHead.repo, repo),
+              eq(pullHead.number, number)
+            )
+          )
+          .limit(1)
+      ).pipe(Effect.orDie);
+      const payload = encodePullDirty({
+        installationId,
+        owner,
+        repo,
+        number,
+        headSha: rows[0]?.headSha ?? "",
+      });
+      yield* Effect.tryPromise(() =>
+        db.execute(sql`SELECT pg_notify(${PULL_DIRTY_CHANNEL}, ${payload})`)
+      ).pipe(
+        Effect.catchAllCause((cause) =>
+          Effect.logWarning("pull notify failed", cause)
+        )
+      );
+    }).pipe(
+      Effect.withSpan("ReadModelWriter.notifyPull"),
+      Effect.annotateLogs({
+        "github.installation": installationId,
+        "github.repo": `${owner}/${repo}`,
+        "github.pull_number": number,
       })
     );
 
@@ -330,7 +420,14 @@ const makeReadModelWriter = Effect.gen(function* () {
       })
     );
 
-  return { writePipeline, writePull, writePullHead, writeWorkbenchEvents };
+  return {
+    writePipeline,
+    writePull,
+    writePullHead,
+    writeWorkbenchEvents,
+    notifyPull,
+    deletePullHead,
+  };
 });
 
 export class ReadModelWriter extends Context.Tag(

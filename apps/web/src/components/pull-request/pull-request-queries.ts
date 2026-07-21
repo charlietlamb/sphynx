@@ -424,6 +424,7 @@ export function useResolveThread(ref: PullRequestRef) {
       postJson(`${commentsUrl(ref)}/comment-threads/resolve`, payload),
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData(queryKey);
       queryClient.setQueryData(queryKey, (current) =>
         current
           ? {
@@ -435,9 +436,14 @@ export function useResolveThread(ref: PullRequestRef) {
             }
           : current
       );
+      return { previous };
     },
-    onError: (error) =>
-      reportMutationError(ref, "Couldn't update thread", error),
+    onError: (error, _payload, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+      reportMutationError(ref, "Couldn't update thread", error);
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
   return { resolve: mutation.mutate, resolving: mutation.isPending };

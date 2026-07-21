@@ -1,5 +1,6 @@
 import { Database } from "@sphynx/db/client";
 import {
+  pullHead,
   type reviewCheck,
   type reviewPull,
   reviewRepo,
@@ -307,6 +308,25 @@ const makeReadModelReader = Effect.gen(function* () {
     ).pipe(Effect.orDie);
 
   /**
+   * Whether an installation has ever been materialized — any repo row exists,
+   * open pulls or not. Distinguishes a quiet installation (materialized, zero
+   * open PRs) from a cold one, so the read path materializes only the cold case
+   * instead of rebuilding from GitHub on every read of a quiet org.
+   */
+  const hasRepos = (installationId: number): Effect.Effect<boolean> =>
+    Effect.tryPromise(() =>
+      db
+        .select({ id: reviewRepo.id })
+        .from(reviewRepo)
+        .where(eq(reviewRepo.installationId, installationId))
+        .limit(1)
+    ).pipe(
+      Effect.orDie,
+      Effect.map((rows) => rows.length > 0),
+      Effect.withSpan("ReadModelReader.hasRepos")
+    );
+
+  /**
    * The installation id that owns a repo, from the read model — DB only, no
    * GitHub. Null when the owner isn't materialized (e.g. a repo outside the
    * tracked queue), leaving the caller to fall back.
@@ -317,12 +337,41 @@ const makeReadModelReader = Effect.gen(function* () {
         .select({ installationId: reviewRepo.installationId })
         .from(reviewRepo)
         .where(eq(reviewRepo.owner, owner))
+        .orderBy(desc(reviewRepo.updatedAt))
         .limit(1)
     ).pipe(
       Effect.orDie,
       Effect.map((rows) => rows[0]?.installationId ?? null),
       Effect.withSpan("ReadModelReader.installationForOwner"),
       Effect.annotateLogs({ "github.owner": owner })
+    );
+
+  /**
+   * The open pull numbers whose head is this sha — how a `status` webhook (which
+   * carries only a commit sha, no PR number) finds the PRs to refresh. Scoped to
+   * the repo so a sha shared across forks stays isolated.
+   */
+  const pullNumbersForHead = (
+    owner: string,
+    repo: string,
+    headSha: string
+  ): Effect.Effect<readonly number[]> =>
+    Effect.tryPromise(() =>
+      db
+        .select({ number: pullHead.number })
+        .from(pullHead)
+        .where(
+          and(
+            eq(pullHead.owner, owner),
+            eq(pullHead.repo, repo),
+            eq(pullHead.headSha, headSha)
+          )
+        )
+    ).pipe(
+      Effect.orDie,
+      Effect.map((rows) => rows.map((row) => row.number)),
+      Effect.withSpan("ReadModelReader.pullNumbersForHead"),
+      Effect.annotateLogs({ "github.repo": `${owner}/${repo}` })
     );
 
   /** Every stage gap for the installation with its promoted pulls, in one query. */
@@ -471,6 +520,8 @@ const makeReadModelReader = Effect.gen(function* () {
     readPipeline,
     readWorkbench,
     installationForOwner,
+    pullNumbersForHead,
+    hasRepos,
   };
 });
 

@@ -1,16 +1,15 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { postJson } from "@/lib/api";
-import { keys } from "@/lib/query/keys";
 
 /**
  * Re-materialize an installation as if it were freshly connected. The server
  * backfills the read model and seeds the workbench feed, then the SSE `dirty`
- * signal repaints the open dashboard — so there is no manual reload.
+ * signal repaints the open dashboard as rows land — so there is no manual
+ * reload, and no eager invalidate here: refetching now would read the read model
+ * mid-rebuild and could flash a partial or empty dashboard before SSE repaints.
  */
 export function useResync(installationId: number | null, label: string) {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationKey: ["resync", installationId],
     mutationFn: () => {
@@ -27,9 +26,5 @@ export function useResync(installationId: number | null, label: string) {
     onError: () => {
       toast.error("Could not start resync");
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({
-        queryKey: [...keys.all, "installation"],
-      }),
   });
 }

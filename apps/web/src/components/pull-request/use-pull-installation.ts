@@ -18,14 +18,19 @@ async function resolveInstallation(owner: string) {
 /**
  * The installation id owning a repo, resolved from the read model (DB only, no
  * GitHub call) so the PR page can scope its SSE stream without the live
- * installations list. Cached long — an owner's installation rarely changes.
+ * installations list.
+ *
+ * Cached only a few minutes: the resolve is a cheap indexed read, and after an
+ * uninstall or an installation move a longer cache would keep the freshness
+ * stream pointed at a dead installation (repeated 401s, no updates) for that
+ * whole window.
  */
 export function usePullInstallation(owner: string, enabled: boolean) {
   const query = useQuery({
     queryKey: [...keys.all, "installation-for-owner", owner],
     queryFn: () => resolveInstallation(owner),
     enabled,
-    staleTime: 30 * 60_000,
+    staleTime: 3 * 60_000,
   });
   return query.data ?? null;
 }

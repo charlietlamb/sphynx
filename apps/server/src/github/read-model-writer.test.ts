@@ -71,10 +71,17 @@ const flow = (overrides: Partial<RepoFlow>): RepoFlow => ({
   ...overrides,
 });
 
-const write = (pipeline: Pipeline) =>
+const write = (pipeline: Pipeline, snapshotAt = new Date()) =>
   runtime.runPromise(
     Effect.flatMap(ReadModelWriter, (writer) =>
-      writer.writePipeline(INSTALLATION, pipeline, new Date())
+      writer.writePipeline(INSTALLATION, pipeline, snapshotAt)
+    )
+  );
+
+const writeOne = (value: QueuePull) =>
+  runtime.runPromise(
+    Effect.flatMap(ReadModelWriter, (writer) =>
+      writer.writePull(INSTALLATION, value.owner, value.repo, value)
     )
   );
 
@@ -228,5 +235,88 @@ describe.skipIf(!hasDatabase)("ReadModelWriter.writePipeline", () => {
         .where(and(eq(reviewPull.id, pullId), eq(reviewPull.state, "open")))
     );
     expect(pulls).toHaveLength(0);
+  });
+
+  test("a merged pull is not reopened by a lagging same-timestamp write", async () => {
+    const repoId = repoRowId(INSTALLATION, "acme", "widgets");
+    const pullId = pullRowId(repoId, 21);
+    const mergedAt = "2026-07-05T00:00:00Z";
+    await writeOne(
+      pull({ number: 21, state: "merged", mergedAt, updatedAt: mergedAt })
+    );
+    await writeOne(
+      pull({ number: 21, state: "open", mergedAt: null, updatedAt: mergedAt })
+    );
+    const pulls = await query((db) =>
+      db.select().from(reviewPull).where(eq(reviewPull.id, pullId))
+    );
+    expect(pulls[0]?.state).toBe("merged");
+  });
+
+  test("a genuine reopen with a newer timestamp does land", async () => {
+    const repoId = repoRowId(INSTALLATION, "acme", "widgets");
+    const pullId = pullRowId(repoId, 22);
+    await writeOne(
+      pull({
+        number: 22,
+        state: "closed",
+        updatedAt: "2026-07-05T00:00:00Z",
+      })
+    );
+    await writeOne(
+      pull({
+        number: 22,
+        state: "open",
+        mergedAt: null,
+        updatedAt: "2026-07-06T00:00:00Z",
+      })
+    );
+    const pulls = await query((db) =>
+      db.select().from(reviewPull).where(eq(reviewPull.id, pullId))
+    );
+    expect(pulls[0]?.state).toBe("open");
+  });
+
+  test("reconcile's older snapshot does not overwrite a newer webhook row", async () => {
+    const repoId = repoRowId(INSTALLATION, "acme", "widgets");
+    const pullId = pullRowId(repoId, 23);
+    const sameTs = "2026-07-07T00:00:00Z";
+    const snapshotAt = new Date("2026-07-07T12:00:00Z");
+    await writeOne(
+      pull({
+        number: 23,
+        updatedAt: sameTs,
+        ciCounts: { failed: 0, passed: 0, pending: 3 },
+      })
+    );
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await writeOne(
+      pull({
+        number: 23,
+        updatedAt: sameTs,
+        ciCounts: { failed: 0, passed: 3, pending: 0 },
+      })
+    );
+    await write(
+      {
+        repos: [
+          flow({
+            openPulls: [
+              pull({
+                number: 23,
+                updatedAt: sameTs,
+                ciCounts: { failed: 0, passed: 0, pending: 3 },
+              }),
+            ],
+          }),
+        ],
+      },
+      snapshotAt
+    );
+    const pulls = await query((db) =>
+      db.select().from(reviewPull).where(eq(reviewPull.id, pullId))
+    );
+    expect(pulls[0]?.ciPassed).toBe(3);
+    expect(pulls[0]?.ciPending).toBe(0);
   });
 });

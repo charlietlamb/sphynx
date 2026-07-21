@@ -33,12 +33,14 @@ export function usePromote(owner: string, repo: string) {
           description: `Release ${from} to ${to}`,
         });
       }
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: keys.repo({ owner, repo }) }),
-        queryClient.invalidateQueries({
-          queryKey: [...keys.all, "installation"],
-        }),
-      ]);
+      /**
+       * Refetch only the repo's own subtree. The installation queue/pipeline is
+       * the webhook-lagged read model: refetching it now reads the model before
+       * the `opened` webhook has materialized the new pull, so the just-created
+       * PR would briefly be absent from the queue. The SSE `dirty` signal brings
+       * it in once the row actually lands.
+       */
+      queryClient.invalidateQueries({ queryKey: keys.repo({ owner, repo }) });
     },
   });
 }

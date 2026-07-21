@@ -46,9 +46,42 @@ export function useReadModelStream(
         },
       });
     };
-    source.addEventListener("dirty", invalidate);
+    /**
+     * Coalesce a burst of `dirty` events (a CI matrix reporting 50 checks at
+     * once notifies per write) into a single trailing refetch, so the dashboard
+     * refetches once when the burst settles rather than churning per event.
+     */
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const invalidateSoon = () => {
+      if (timer !== null) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(invalidate, 300);
+    };
+    /**
+     * SSE frames carry no id and are not replayed, so any `dirty` that fired
+     * while the socket was down (a server redeploy, a laptop wake, a dropped
+     * connection) is lost. `onopen` fires on the first connect and on every
+     * browser auto-reconnect; skipping the first, a reconnect refetches once to
+     * recover whatever was missed during the gap — the only backstop now that
+     * the wall-clock poll is gone. This one is immediate, not debounced: a
+     * reconnect should recover promptly.
+     */
+    let connected = false;
+    const onOpen = () => {
+      if (connected) {
+        invalidate();
+      }
+      connected = true;
+    };
+    source.addEventListener("dirty", invalidateSoon);
+    source.addEventListener("open", onOpen);
     return () => {
-      source.removeEventListener("dirty", invalidate);
+      if (timer !== null) {
+        clearTimeout(timer);
+      }
+      source.removeEventListener("dirty", invalidateSoon);
+      source.removeEventListener("open", onOpen);
       source.close();
     };
   }, [installationId, enabled, queryClient]);

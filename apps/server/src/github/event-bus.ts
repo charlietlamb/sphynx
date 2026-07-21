@@ -57,10 +57,20 @@ const parsePullDirty = (payload: string | null): PullDirtyEvent | null => {
   };
 };
 
+/**
+ * A sliding, bounded buffer, not unbounded: an unbounded PubSub holds every
+ * message until *every* subscriber drains it, so one connected-but-not-draining
+ * SSE client (a throttled tab, a half-open socket) would grow the queue without
+ * limit on a fixed-memory container. Sliding drops the oldest on overflow; a
+ * dropped `dirty` is recovered by the reconnect wildcard and the client's
+ * on-reconnect refetch, so bounded loss is safe where unbounded growth is not.
+ */
+const BUFFER = 256;
+
 const makeEventBus = Effect.gen(function* () {
   const listener = yield* Listener;
-  const dirty = yield* PubSub.unbounded<DirtyEvent>();
-  const pulls = yield* PubSub.unbounded<PullDirtyEvent>();
+  const dirty = yield* PubSub.sliding<DirtyEvent>(BUFFER);
+  const pulls = yield* PubSub.sliding<PullDirtyEvent>(BUFFER);
   const runtime = yield* Effect.runtime<never>();
 
   yield* listener.listen(DIRTY_CHANNEL, (payload) => {

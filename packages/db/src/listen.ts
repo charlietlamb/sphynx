@@ -50,6 +50,7 @@ export const ListenerLive = Layer.scoped(
     const notifyHandlers = new Map<string, (payload: string | null) => void>();
     const reconnectHandlers = new Set<() => void>();
     const current = yield* Ref.make<Client | null>(null);
+    const hasConnected = yield* Ref.make(false);
 
     const openClient = Effect.gen(function* () {
       const client = new Client({
@@ -66,14 +67,23 @@ export const ListenerLive = Layer.scoped(
     });
 
     /**
-     * Own the connection: open one, publish it, wait for it to drop, then loop
-     * to reopen (with backoff) and replay the LISTENs + reconnect handlers.
+     * Own the connection: open one (with backoff), replaying every LISTEN, then
+     * wait for it to drop and loop. The reconnect handlers must fire *after* the
+     * new connection is listening — not when the old one drops — or the wake
+     * they trigger races ahead of the re-LISTEN and misses notifies sent in the
+     * reconnect gap. So a successful open that isn't the first fires them here,
+     * once the replayed LISTENs are already in place.
      * Supervised so a blip never escapes as an uncaught process error.
      */
     const cycle = Effect.gen(function* () {
       const client = yield* openClient.pipe(Effect.retry(RETRY));
       yield* Ref.set(current, client);
-      const hadChannels = notifyHandlers.size > 0;
+      const reconnected = yield* Ref.getAndSet(hasConnected, true);
+      if (reconnected && notifyHandlers.size > 0) {
+        for (const handler of reconnectHandlers) {
+          handler();
+        }
+      }
       yield* Effect.async<void>((resume) => {
         client.on("error", () => resume(Effect.void));
         client.on("end", () => resume(Effect.void));
@@ -85,11 +95,6 @@ export const ListenerLive = Layer.scoped(
           /* already broken */
         });
       });
-      if (hadChannels) {
-        for (const handler of reconnectHandlers) {
-          handler();
-        }
-      }
     }).pipe(
       Effect.catchAllCause((cause) =>
         Effect.logWarning("listener connection error", cause)

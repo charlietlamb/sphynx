@@ -194,6 +194,7 @@ const WebhookProjectorLiveLayer = WebhookProjectorLive.pipe(
     Layer.mergeAll(
       GitHubLive,
       ReadModelWriterLive.pipe(Layer.provide(DatabaseLiveLayer)),
+      ReadModelReaderLive.pipe(Layer.provide(DatabaseLiveLayer)),
       MaterializerLiveLayer
     )
   )
