@@ -8,14 +8,14 @@ export function useViewedHeader(
 ) {
   return useCallback(
     (item: { id: string }) => (
-      <>
+      <span className="flex items-center gap-2">
         <CopyPathButton path={item.id} />
         <ViewedCheckbox
           disabled={viewedFiles === null}
           onViewedChange={(viewed) => onSetViewed({ path: item.id, viewed })}
           viewed={viewedFiles?.has(item.id) ?? false}
         />
-      </>
+      </span>
     ),
     [viewedFiles, onSetViewed]
   );
