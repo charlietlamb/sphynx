@@ -24,6 +24,16 @@ const PullNumberSchema = Schema.Struct({
   pull_request: Schema.optional(Schema.Struct({ number: Schema.Number })),
 });
 
+const PullHeadSchema = Schema.Struct({
+  ...base,
+  pull_request: Schema.optional(
+    Schema.Struct({
+      number: Schema.Number,
+      head: Schema.optional(Schema.Struct({ sha: Schema.String })),
+    })
+  ),
+});
+
 const IssueCommentSchema = Schema.Struct({
   ...base,
   issue: Schema.optional(
@@ -65,9 +75,36 @@ export type Projection =
 const EnvelopeSchema = Schema.Struct(base);
 
 const decodePull = Schema.decodeUnknownOption(PullNumberSchema);
+const decodePullHead = Schema.decodeUnknownOption(PullHeadSchema);
 const decodeIssue = Schema.decodeUnknownOption(IssueCommentSchema);
 const decodeCheck = Schema.decodeUnknownOption(CheckSchema);
 const decodeEnvelope = Schema.decodeUnknownOption(EnvelopeSchema);
+
+interface HeadMove {
+  readonly headSha: string;
+  readonly installationId: number;
+  readonly number: number;
+  readonly owner: string;
+  readonly repo: string;
+}
+
+/** The head sha a `pull_request` delivery moved to, if it carries one. */
+const headMoveFor = (payload: unknown): HeadMove | null => {
+  const decoded = decodePullHead(payload);
+  if (Option.isNone(decoded)) {
+    return null;
+  }
+  const { installation, repository, pull_request } = decoded.value;
+  return installation && repository && pull_request?.head
+    ? {
+        installationId: installation.id,
+        owner: repository.owner.login,
+        repo: repository.name,
+        number: pull_request.number,
+        headSha: pull_request.head.sha,
+      }
+    : null;
+};
 
 interface WorkbenchTarget {
   readonly installationId: number;
@@ -245,6 +282,25 @@ const makeWebhookProjector = Effect.gen(function* () {
       }
     });
 
+  /** Record a PR head move so the PR page gets a freshness signal. */
+  const projectHead = (eventType: string, payload: unknown) =>
+    Effect.gen(function* () {
+      if (eventType !== "pull_request") {
+        return;
+      }
+      const move = headMoveFor(payload);
+      if (move === null) {
+        return;
+      }
+      yield* writer.writePullHead(
+        move.installationId,
+        move.owner,
+        move.repo,
+        move.number,
+        move.headSha
+      );
+    });
+
   const project = (eventType: string, deliveryId: string, payload: unknown) =>
     Effect.gen(function* () {
       const projection = projectionFor(eventType, payload);
@@ -253,6 +309,7 @@ const makeWebhookProjector = Effect.gen(function* () {
       } else if (projection._tag === "Install") {
         yield* materializer.materialize(projection.installationId);
       }
+      yield* projectHead(eventType, payload);
       yield* projectWorkbench(eventType, deliveryId, payload);
     }).pipe(
       Effect.catchAllCause((cause) =>

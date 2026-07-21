@@ -28,7 +28,9 @@ import {
 import { Schema } from "effect";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { useInstallations } from "@/components/dashboard/use-installations";
 import { recordAccessBlock } from "@/components/pull-request/access-block-store";
+import { usePullFreshnessStream } from "@/components/pull-request/use-pull-freshness-stream";
 import { useSession } from "@/lib/auth-client";
 import { keys } from "@/lib/query/keys";
 
@@ -164,38 +166,47 @@ export function useFileContents(
   return query.data?.content ?? null;
 }
 
-const HEAD_POLL_INTERVAL = 45_000;
-
 /**
  * Watches for new commits on the open pull request.
  *
- * One polled query, not two. A second query against the same URL under a
- * different key cannot be deduplicated by TanStack, so the page held two
- * independently refreshing copies of the summary.
+ * Freshness is pushed, not polled: the server sends a `pull` SSE event when a
+ * webhook moves the head, and `usePullFreshnessStream` reports the new sha and
+ * invalidates the summary/conversation/threads. The installation is resolved
+ * from the owner so the stream can be scoped to it.
  *
- * `viewing` is the sha the reviewer is currently looking at. It is state
- * rather than a ref because it is read during render, and it is seeded from
- * the first head sha via the render-time comparison React supports for
- * derived state.
+ * `viewing` is the sha the reviewer is currently looking at. It is state rather
+ * than a ref because it is read during render, seeded from the first head sha
+ * via the render-time comparison React supports for derived state, and advanced
+ * by the stream as new commits land.
  */
 export function usePullRequestFreshness(ref: PullRequestRef) {
   const queryClient = useQueryClient();
-  const summary = useQuery({
-    ...pullRequestQuery(ref),
-    refetchInterval: HEAD_POLL_INTERVAL,
-  });
+  const { data: session } = useSession();
+  const authed = Boolean(session?.user);
+  const { active } = useInstallations(null, authed);
+  const installationId =
+    active?.accountLogin.toLowerCase() === ref.owner.toLowerCase()
+      ? active.id
+      : (active?.id ?? null);
+
+  const summary = useQuery(pullRequestQuery(ref));
 
   const head = summary.data?.head.sha ?? null;
   const [viewing, setViewing] = useState<string | null>(head);
+  const [pushedHead, setPushedHead] = useState<string | null>(null);
   if (viewing === null && head !== null) {
     setViewing(head);
   }
-  const hasNewChanges = head !== null && viewing !== null && viewing !== head;
+  const latestHead = pushedHead ?? head;
+  const hasNewChanges =
+    latestHead !== null && viewing !== null && viewing !== latestHead;
+
+  usePullFreshnessStream(installationId, ref, setPushedHead);
 
   const refresh = useCallback(() => {
-    setViewing(head);
+    setViewing(latestHead);
     return queryClient.invalidateQueries({ queryKey: keys.pull(ref) });
-  }, [queryClient, ref, head]);
+  }, [queryClient, ref, latestHead]);
 
   return { hasNewChanges, refresh, refreshing: summary.isFetching };
 }

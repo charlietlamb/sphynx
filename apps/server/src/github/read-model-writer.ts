@@ -1,5 +1,6 @@
 import { Database } from "@sphynx/db/client";
 import {
+  pullHead,
   reviewCheck,
   reviewPull,
   reviewRepo,
@@ -16,7 +17,11 @@ import type {
 } from "@sphynx/schema/review-queue";
 import { and, eq, lt, notInArray, sql } from "drizzle-orm";
 import { Clock, Context, Effect, Layer } from "effect";
-import { DIRTY_CHANNEL } from "./event-bus";
+import {
+  DIRTY_CHANNEL,
+  encodePullDirty,
+  PULL_DIRTY_CHANNEL,
+} from "./event-bus";
 import {
   gapRows,
   type PullRows,
@@ -110,6 +115,65 @@ const makeReadModelWriter = Effect.gen(function* () {
       Effect.catchAllCause((cause) =>
         Effect.logWarning("read-model notify failed", cause)
       )
+    );
+
+  /**
+   * Record a PR's head sha and wake the PR-page subscribers. The freshness
+   * signal for the PR page: the client compares the pushed sha to the one it
+   * loaded and refetches the (still live-GitHub) summary/conversation/threads.
+   * Only fires when the sha actually moved, so re-deliveries are quiet.
+   */
+  const writePullHead = (
+    installationId: number,
+    owner: string,
+    repo: string,
+    number: number,
+    headSha: string
+  ) =>
+    Effect.gen(function* () {
+      const now = new Date(yield* Clock.currentTimeMillis);
+      const moved = yield* Effect.tryPromise(() =>
+        db
+          .insert(pullHead)
+          .values({
+            installationId,
+            owner,
+            repo,
+            number,
+            headSha,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [pullHead.owner, pullHead.repo, pullHead.number],
+            set: { headSha, installationId, updatedAt: now },
+            setWhere: sql`${pullHead.headSha} <> ${headSha}`,
+          })
+          .returning({ number: pullHead.number })
+      ).pipe(Effect.orDie);
+      if (moved.length === 0) {
+        return;
+      }
+      const payload = encodePullDirty({
+        installationId,
+        owner,
+        repo,
+        number,
+        headSha,
+      });
+      yield* Effect.tryPromise(() =>
+        db.execute(sql`SELECT pg_notify(${PULL_DIRTY_CHANNEL}, ${payload})`)
+      ).pipe(
+        Effect.catchAllCause((cause) =>
+          Effect.logWarning("pull-head notify failed", cause)
+        )
+      );
+    }).pipe(
+      Effect.withSpan("ReadModelWriter.writePullHead"),
+      Effect.annotateLogs({
+        "github.installation": installationId,
+        "github.repo": `${owner}/${repo}`,
+        "github.pull_number": number,
+      })
     );
 
   const writeRepo = async (
@@ -246,7 +310,7 @@ const makeReadModelWriter = Effect.gen(function* () {
       })
     );
 
-  return { writePipeline, writePull, writeWorkbenchEvents };
+  return { writePipeline, writePull, writePullHead, writeWorkbenchEvents };
 });
 
 export class ReadModelWriter extends Context.Tag(

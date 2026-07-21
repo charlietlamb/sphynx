@@ -18,10 +18,10 @@ const sseHeaders = {
 };
 
 /**
- * Server-sent events for one installation's read model. A dirty notification
- * (webhook projected, pipeline mirrored) pushes a `dirty` event; the client
- * invalidates its queries and refetches from Neon. Heartbeats keep proxies from
- * closing an idle stream.
+ * Server-sent events for one installation. Two event types share the stream:
+ * `dirty` (the read model moved — invalidate the dashboard/queue/workbench) and
+ * `pull` (a PR's head moved — the PR page refetches that pull). Heartbeats keep
+ * proxies from closing an idle stream.
  */
 export const handleEvents = (request: Request) =>
   Effect.gen(function* () {
@@ -49,11 +49,22 @@ export const handleEvents = (request: Request) =>
           () => `event: dirty\ndata: ${JSON.stringify({ installationId })}\n\n`
         )
       );
+    const pulls = bus.subscribePull(installationId).pipe(
+      Stream.map(
+        (event) =>
+          `event: pull\ndata: ${JSON.stringify({
+            owner: event.owner,
+            repo: event.repo,
+            number: event.number,
+            headSha: event.headSha,
+          })}\n\n`
+      )
+    );
     const heartbeats = Stream.repeatValue(": heartbeat\n\n").pipe(
       Stream.schedule(Schedule.spaced(`${HEARTBEAT_MS} millis`))
     );
 
-    const body = Stream.merge(dirty, heartbeats).pipe(
+    const body = Stream.merge(Stream.merge(dirty, pulls), heartbeats).pipe(
       Stream.map((chunk) => encoder.encode(chunk)),
       Stream.toReadableStreamRuntime(runtime)
     );
