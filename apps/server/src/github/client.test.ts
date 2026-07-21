@@ -15,6 +15,7 @@ const config = Layer.succeed(GitHubConfig, {
   apiUrl: "https://api.github.test",
   apiVersion: "2022-11-28",
   timeout: Duration.seconds(1),
+  webhookSecrets: [Redacted.make("test-webhook-secret")],
   app: {
     appId: "1",
     clientId: "Iv1.test",

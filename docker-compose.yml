@@ -19,5 +19,17 @@ services:
       timeout: 5s
       retries: 10
 
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: sphynx-ngrok
+    restart: unless-stopped
+    command: http host.docker.internal:${PORT:-3003} --url=${NGROK_DOMAIN}
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4041:4040"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   sphynx-app-postgres-data:

@@ -11,6 +11,7 @@ export interface GitHubConfigShape {
   readonly apiVersion: string;
   readonly app: GitHubAppCredentials;
   readonly timeout: Duration.Duration;
+  readonly webhookSecrets: readonly Redacted.Redacted<string>[];
 }
 
 export class GitHubConfig extends Context.Tag("@sphynx/server/GitHubConfig")<
@@ -38,6 +39,16 @@ export const GitHubConfigLive = Layer.effect(
     ),
     timeout: Config.duration("GITHUB_REQUEST_TIMEOUT").pipe(
       Config.withDefault(Duration.seconds(10))
+    ),
+    webhookSecrets: Config.all([
+      Config.string("GITHUB_WEBHOOK_SECRET"),
+      Config.string("GITHUB_WEBHOOK_SECRET_PREVIOUS").pipe(
+        Config.withDefault("")
+      ),
+    ]).pipe(
+      Config.map((secrets) =>
+        secrets.filter((secret) => secret.length > 0).map(Redacted.make)
+      )
     ),
     app: Config.all({
       appId: Config.string("GITHUB_APP_ID"),
