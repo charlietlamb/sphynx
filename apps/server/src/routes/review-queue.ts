@@ -139,6 +139,26 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
           mutate(headers.cookie, (token) =>
             queue.blockPull(path, payload.body, token)
           ).pipe(Effect.map(() => OK))
+        )
+        .handle("resyncInstallation", ({ path, headers }) =>
+          /**
+           * Backfill an already-linked installation as if freshly connected.
+           * `readCredential` authorizes: it only resolves an installation the
+           * user can reach, so a request for an unreachable id resolves to a
+           * different one and is ignored. Materialize is forked so the response
+           * returns immediately; the SSE `dirty` signal repaints when rows land.
+           */
+          readCredential(headers.cookie, path.installationId).pipe(
+            Effect.flatMap((credential) => {
+              const resolved = installationIdFromCredentialId(credential.id);
+              if (resolved !== path.installationId) {
+                return Effect.succeed(OK);
+              }
+              return materializer
+                .materialize(resolved)
+                .pipe(Effect.forkDaemon, Effect.as(OK));
+            })
+          )
         );
     })
 );

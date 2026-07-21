@@ -276,6 +276,14 @@ const blockPull = HttpApiEndpoint.post(
   .setPayload(BlockPullSchema)
   .addSuccess(OkSchema);
 
+const resyncInstallation = HttpApiEndpoint.post(
+  "resyncInstallation",
+  "/api/github/installations/:installationId/resync"
+)
+  .setPath(Schema.Struct({ installationId: Schema.NumberFromString }))
+  .setHeaders(cookieHeaders)
+  .addSuccess(OkSchema);
+
 export const ReviewQueueApi = HttpApiGroup.make("reviewQueue")
   .add(listInstallations)
   .add(getPipeline)
@@ -285,6 +293,7 @@ export const ReviewQueueApi = HttpApiGroup.make("reviewQueue")
   .add(mergePull)
   .add(blockPull)
   .add(createPromotion)
+  .add(resyncInstallation)
   .addError(Unauthorized, { status: 401 })
   .addError(InstallationRequired, { status: 403 })
   .addError(PullRequestNotFound, { status: 404 })

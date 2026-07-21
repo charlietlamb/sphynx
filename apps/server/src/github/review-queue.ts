@@ -265,6 +265,34 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
       Effect.withSpan("GitHubReviewQueue.discoverRepos")
     );
 
+  /**
+   * A repo's recent activity from the Events API — the one-time seed for the
+   * workbench feed at backfill/resync. Steady-state feed updates come from
+   * webhooks; this fills history that predates them. Returns raw entries for
+   * `toWorkbenchEvents` to map.
+   */
+  const repoEvents = (
+    entry: { owner: string; repo: string },
+    token: string
+  ): Effect.Effect<readonly unknown[], GitHubAuthedError> =>
+    rest(
+      token,
+      "GET",
+      `/repos/${entry.owner}/${entry.repo}/events?per_page=100`
+    ).pipe(
+      Effect.flatMap((response) =>
+        HttpClientResponse.schemaBodyJson(Schema.Array(Schema.Unknown))(
+          response
+        ).pipe(
+          Effect.mapError(
+            () => new GitHubUnavailable({ message: "Invalid events response" })
+          )
+        )
+      ),
+      Effect.withSpan("GitHubReviewQueue.repoEvents"),
+      Effect.annotateLogs({ "github.repo": repoKey(entry) })
+    );
+
   const createPull = (
     owner: string,
     repo: string,
@@ -377,6 +405,7 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
     openPullsEtag,
     openPullsForRepos,
     refreshPull,
+    repoEvents,
     mergePull,
     blockPull,
     createPull,

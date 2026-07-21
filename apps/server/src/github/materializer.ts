@@ -4,7 +4,10 @@ import { sql } from "drizzle-orm";
 import { Context, Duration, Effect, Layer, Schedule } from "effect";
 import { GitHubAppAuth } from "./app-auth";
 import { GitHubPipeline } from "./pipeline";
+import { workbenchEventRow } from "./read-model-rows";
 import { ReadModelWriter } from "./read-model-writer";
+import { GitHubReviewQueue } from "./review-queue";
+import { toWorkbenchEvents } from "./workbench-mappers";
 
 /**
  * The advisory-lock key for the reconcile leader. A single arbitrary 64-bit
@@ -15,26 +18,67 @@ const RECONCILE_LOCK = 8_273_610_411;
 
 const RECONCILE_INTERVAL = Duration.minutes(3);
 
+/** Repos seeded with feed history at backfill; the rest fill in via webhooks. */
+const SEED_REPOS = 10;
+
 const makeMaterializer = Effect.gen(function* () {
   const pipeline = yield* GitHubPipeline;
   const app = yield* GitHubAppAuth;
+  const queue = yield* GitHubReviewQueue;
   const writer = yield* ReadModelWriter;
   const db = yield* Database;
 
   /**
+   * Seed the workbench feed with recent history from the Events API. Only runs
+   * at backfill/resync — steady-state feed updates arrive via webhooks. Rows
+   * are idempotent on the Events-API id, so re-seeding is safe. Best-effort:
+   * a repo that fails to seed still gets live events going forward.
+   */
+  const seedWorkbench = (
+    installationId: number,
+    repos: readonly { owner: string; repo: string }[],
+    token: string
+  ) =>
+    Effect.forEach(
+      repos.slice(0, SEED_REPOS),
+      (entry) =>
+        queue.repoEvents(entry, token).pipe(
+          Effect.map((raw) => toWorkbenchEvents(entry.owner, entry.repo, raw)),
+          Effect.flatMap((events) =>
+            writer.writeWorkbenchEvents(
+              installationId,
+              events.map((event) =>
+                workbenchEventRow(
+                  installationId,
+                  entry.owner,
+                  entry.repo,
+                  event
+                )
+              )
+            )
+          ),
+          Effect.catchAllCause((cause) =>
+            Effect.logWarning("workbench seed failed for repo", cause)
+          )
+        ),
+      { concurrency: 3, discard: true }
+    );
+
+  /**
    * Build an installation's full pipeline from GitHub and write it to the read
-   * model. The one place a read of GitHub happens for the dashboard — on
-   * backfill and reconcile, never on a user read.
+   * model, and seed the workbench feed. The one place a read of GitHub happens
+   * for the dashboard — on backfill and reconcile, never on a user read.
    */
   const materialize = (installationId: number) =>
     Effect.gen(function* () {
       const credential = app.installationCredential(installationId);
       const token = yield* credential.token;
+      const discovered = yield* queue.discoverRepos(token);
       const refreshed = yield* pipeline.refresh(token, null);
-      if (refreshed._tag === "NotModified") {
-        return;
+      if (refreshed._tag === "Modified") {
+        yield* writer.writePipeline(installationId, { repos: refreshed.repos });
       }
-      yield* writer.writePipeline(installationId, { repos: refreshed.repos });
+      yield* seedWorkbench(installationId, discovered, token);
     }).pipe(
       Effect.catchAllCause((cause) =>
         Effect.logWarning("materialize failed", cause)

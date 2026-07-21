@@ -4,10 +4,12 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
+import { Button } from "@sphynx/ui/components/ui/button";
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { useInstallations } from "@/components/dashboard/use-installations";
 import { SettingRow } from "@/components/settings/setting-row";
 import { useSettings } from "@/components/settings/settings-provider";
+import { useResync } from "@/components/settings/use-resync";
 import { INSTALL_URL } from "@/lib/github-app";
 
 function AccessSkeleton() {
@@ -27,6 +29,10 @@ function AccessSkeleton() {
 export function SettingsAccess() {
   const { settings } = useSettings();
   const orgs = useInstallations(settings.selectedInstallation, true);
+  const resync = useResync(
+    orgs.active?.id ?? null,
+    orgs.active?.accountLogin ?? "organization"
+  );
 
   if (orgs.isPending) {
     return <AccessSkeleton />;
@@ -98,6 +104,19 @@ export function SettingsAccess() {
             </span>
           </SettingRow>
         ) : null}
+        <SettingRow
+          description="Pull the latest state from GitHub for this organization."
+          title="Resync"
+        >
+          <Button
+            disabled={resync.isPending}
+            onClick={() => resync.mutate()}
+            size="sm"
+            variant="outline"
+          >
+            {resync.isPending ? "Resyncing…" : "Resync"}
+          </Button>
+        </SettingRow>
       </div>
       <a
         className="flex items-center gap-1.5 px-2 text-muted-foreground/70 text-xs transition-colors hover:text-foreground"
