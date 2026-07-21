@@ -17,6 +17,7 @@ import { GitHubClientLive } from "./github/client";
 import { GitHubConfigLive } from "./github/config";
 import { GitHubConversationLive } from "./github/conversation";
 import { type EventBus, EventBusLive } from "./github/event-bus";
+import { Materializer, MaterializerLive } from "./github/materializer";
 import { GitHubPipelineLive } from "./github/pipeline";
 import { PipelineCacheLive } from "./github/pipeline-cache";
 import { ReadModelReaderLive } from "./github/read-model-reader";
@@ -102,6 +103,9 @@ const httpServerLive = (memoMap: Layer.MemoMap) =>
         (server) => Effect.sync(() => server.stop(true))
       );
 
+      const materializer = yield* Materializer;
+      yield* materializer.startReconcile;
+
       yield* Effect.logInfo(
         `server listening on http://${config.host}:${server.port}`
       );
@@ -174,11 +178,22 @@ const WebhookIngestLiveLayer = WebhookIngestLive.pipe(
   Layer.provide(Layer.mergeAll(DatabaseLiveLayer, GitHubConfigLive))
 );
 
+const MaterializerLiveLayer = MaterializerLive.pipe(
+  Layer.provide(
+    Layer.mergeAll(
+      GitHubLive,
+      ReadModelWriterLive.pipe(Layer.provide(DatabaseLiveLayer)),
+      DatabaseLiveLayer
+    )
+  )
+);
+
 const WebhookProjectorLiveLayer = WebhookProjectorLive.pipe(
   Layer.provide(
     Layer.mergeAll(
       GitHubLive,
-      ReadModelWriterLive.pipe(Layer.provide(DatabaseLiveLayer))
+      ReadModelWriterLive.pipe(Layer.provide(DatabaseLiveLayer)),
+      MaterializerLiveLayer
     )
   )
 );
@@ -198,7 +213,8 @@ export const main = Effect.scoped(
         WebhookIngestLiveLayer,
         WebhookProjectorLiveLayer,
         EventBusLiveLayer,
-        GitHubAuthLiveLayer
+        GitHubAuthLiveLayer,
+        MaterializerLiveLayer
       ),
       memoMap,
       scope

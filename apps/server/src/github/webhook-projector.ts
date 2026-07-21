@@ -1,6 +1,7 @@
 import type { PullRequestRef } from "@sphynx/schema/pull-requests";
 import { Context, Effect, Layer, Schema } from "effect";
 import { GitHubAppAuth } from "./app-auth";
+import { Materializer } from "./materializer";
 import { ReadModelWriter } from "./read-model-writer";
 import { GitHubReviewQueue } from "./review-queue";
 
@@ -56,6 +57,7 @@ export type Projection =
       readonly installationId: number;
       readonly ref: PullRequestRef;
     }
+  | { readonly _tag: "Install"; readonly installationId: number }
   | { readonly _tag: "None" };
 
 const decodePull = Schema.decodeUnknownOption(PullNumberSchema);
@@ -83,6 +85,16 @@ const PULL_EVENTS = new Set([
 ]);
 
 const CHECK_EVENTS = new Set(["check_run", "check_suite", "status"]);
+
+const INSTALL_EVENTS = new Set(["installation", "installation_repositories"]);
+
+const fromInstallEvent = (payload: unknown): Projection => {
+  const decoded = decodePull(payload);
+  if (decoded._tag === "None" || !decoded.value.installation) {
+    return NONE;
+  }
+  return { _tag: "Install", installationId: decoded.value.installation.id };
+};
 
 const fromPullEvent = (payload: unknown): Projection => {
   const decoded = decodePull(payload);
@@ -150,6 +162,9 @@ export const projectionFor = (
   if (CHECK_EVENTS.has(eventType)) {
     return fromCheckEvent(payload);
   }
+  if (INSTALL_EVENTS.has(eventType)) {
+    return fromInstallEvent(payload);
+  }
   return NONE;
 };
 
@@ -157,22 +172,24 @@ const makeWebhookProjector = Effect.gen(function* () {
   const app = yield* GitHubAppAuth;
   const queue = yield* GitHubReviewQueue;
   const writer = yield* ReadModelWriter;
+  const materializer = yield* Materializer;
+
+  const projectPull = (installationId: number, ref: PullRequestRef) =>
+    Effect.gen(function* () {
+      const credential = app.installationCredential(installationId);
+      const token = yield* credential.token;
+      const pull = yield* queue.refreshPull(ref, token);
+      yield* writer.writePull(installationId, ref.owner, ref.repo, pull);
+    });
 
   const project = (eventType: string, payload: unknown) =>
     Effect.gen(function* () {
       const projection = projectionFor(eventType, payload);
-      if (projection._tag === "None") {
-        return;
+      if (projection._tag === "Pull") {
+        yield* projectPull(projection.installationId, projection.ref);
+      } else if (projection._tag === "Install") {
+        yield* materializer.materialize(projection.installationId);
       }
-      const credential = app.installationCredential(projection.installationId);
-      const token = yield* credential.token;
-      const pull = yield* queue.refreshPull(projection.ref, token);
-      yield* writer.writePull(
-        projection.installationId,
-        projection.ref.owner,
-        projection.ref.repo,
-        pull
-      );
     }).pipe(
       Effect.catchAllCause((cause) =>
         Effect.logWarning("webhook projection failed", cause)

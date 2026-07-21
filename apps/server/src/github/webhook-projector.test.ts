@@ -79,10 +79,18 @@ describe("projectionFor", () => {
     expect(projectionFor("push", envelope)._tag).toBe("None");
   });
 
-  test("installation is not a per-PR refresh", () => {
+  test("installation triggers a backfill", () => {
+    expect(projectionFor("installation", { installation: { id: 42 } })).toEqual(
+      { _tag: "Install", installationId: 42 }
+    );
+  });
+
+  test("installation_repositories triggers a backfill", () => {
     expect(
-      projectionFor("installation", { installation: { id: 42 } })._tag
-    ).toBe("None");
+      projectionFor("installation_repositories", {
+        installation: { id: 42 },
+      })._tag
+    ).toBe("Install");
   });
 
   test("a delivery missing the installation is ignored", () => {
