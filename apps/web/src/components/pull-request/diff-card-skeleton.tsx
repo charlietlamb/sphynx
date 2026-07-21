@@ -27,11 +27,11 @@ export function DiffCardSkeleton({ lines = 10 }: DiffCardSkeletonProps) {
         <Skeleton className="h-3 w-10" />
         <Skeleton className="size-3.5 rounded-sm" />
       </div>
-      <div className="flex flex-col gap-2 px-3 py-3">
+      <div className="flex flex-col pt-0 pb-2">
         {LINE_WIDTHS.slice(0, lines).map((width) => (
-          <div className="flex items-center gap-3" key={width}>
-            <Skeleton className="h-3 w-6 shrink-0" />
-            <Skeleton className="h-3" style={{ width }} />
+          <div className="flex h-5 items-center gap-3 px-3" key={width}>
+            <Skeleton className="h-2.5 w-6 shrink-0" />
+            <Skeleton className="h-2.5" style={{ width }} />
           </div>
         ))}
       </div>
