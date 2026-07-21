@@ -1,9 +1,12 @@
 import { FetchHttpClient } from "@effect/platform";
+import { DatabaseLive } from "@sphynx/db/client";
+import { DatabaseConfigLive } from "@sphynx/db/config";
 import { Effect, Layer } from "effect";
 import { GitHubAppAuth, GitHubAppAuthLive } from "./app-auth";
 import { GitHubConfigLive } from "./config";
 import { GitHubPipelineLive } from "./pipeline";
 import { PipelineCache, PipelineCacheLive } from "./pipeline-cache";
+import { ReadModelWriterLive } from "./read-model-writer";
 import { GitHubReviewQueueLive } from "./review-queue";
 
 /**
@@ -17,7 +20,15 @@ const installationId = Number(process.argv[2] ?? "147791198");
 
 const GitHubLive = PipelineCacheLive.pipe(
   Layer.provideMerge(GitHubPipelineLive),
-  Layer.provideMerge(Layer.mergeAll(GitHubReviewQueueLive, GitHubAppAuthLive)),
+  Layer.provideMerge(
+    Layer.mergeAll(
+      GitHubReviewQueueLive,
+      GitHubAppAuthLive,
+      ReadModelWriterLive.pipe(
+        Layer.provide(DatabaseLive.pipe(Layer.provide(DatabaseConfigLive)))
+      )
+    )
+  ),
   Layer.provide(Layer.mergeAll(GitHubConfigLive, FetchHttpClient.layer))
 );
 

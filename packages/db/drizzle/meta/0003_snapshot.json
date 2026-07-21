@@ -1,5 +1,5 @@
 {
-  "id": "41ea6cd2-9dec-49fc-b54b-9096e609d417",
+  "id": "afdd91e3-ee09-402c-8f0d-93745e8bc84c",
   "prevId": "567d7d42-83c2-4ca7-a1a9-9edc056e0515",
   "version": "7",
   "dialect": "postgresql",
@@ -843,6 +843,34 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'none'"
+        },
+        "ci_failed": {
+          "name": "ci_failed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "ci_passed": {
+          "name": "ci_passed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "ci_pending": {
+          "name": "ci_pending",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "unresolved_threads": {
+          "name": "unresolved_threads",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "decision": {
           "name": "decision",

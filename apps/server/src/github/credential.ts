@@ -28,3 +28,11 @@ export const installationCredentialId = (installationId: number) =>
   `inst:${installationId}`;
 
 export const userCredentialId = (userId: string) => `user:${userId}`;
+
+const INSTALLATION_ID_PATTERN = /^inst:(\d+)$/;
+
+/** The installation id encoded in an installation credential's id, if any. */
+export const installationIdFromCredentialId = (id: string): number | null => {
+  const match = INSTALLATION_ID_PATTERN.exec(id);
+  return match ? Number(match[1]) : null;
+};

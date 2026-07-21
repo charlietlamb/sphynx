@@ -1,8 +1,12 @@
 import type { Pipeline, Queue } from "@sphynx/schema/review-queue";
 import { Context, Duration, Effect, Layer } from "effect";
-import type { GitHubCredential } from "./credential";
+import {
+  type GitHubCredential,
+  installationIdFromCredentialId,
+} from "./credential";
 import type { GitHubAuthedError } from "./errors";
 import { GitHubPipeline } from "./pipeline";
+import { ReadModelWriter } from "./read-model-writer";
 import { makeRevalidatingCache } from "./revalidating-cache";
 
 /**
@@ -25,6 +29,26 @@ export interface PipelineCacheShape {
 
 const makePipelineCache = Effect.gen(function* () {
   const pipeline = yield* GitHubPipeline;
+  const writer = yield* ReadModelWriter;
+
+  /**
+   * Mirror a fresh build into the Neon read model. Forked so a read never
+   * waits on the write, and swallowed so a write failure never fails the read
+   * the cache still serves the built pipeline from memory.
+   */
+  const mirror = (credential: GitHubCredential, value: Pipeline) => {
+    const installationId = installationIdFromCredentialId(credential.id);
+    if (installationId === null) {
+      return Effect.void;
+    }
+    return writer.writePipeline(installationId, value).pipe(
+      Effect.catchAllCause((cause) =>
+        Effect.logWarning("read-model mirror failed", cause)
+      ),
+      Effect.forkDaemon,
+      Effect.asVoid
+    );
+  };
 
   const cache = yield* makeRevalidatingCache<
     GitHubCredential,
@@ -46,9 +70,11 @@ const makePipelineCache = Effect.gen(function* () {
         if (result._tag === "NotModified") {
           return { _tag: "NotModified" as const };
         }
+        const value = { repos: result.repos } satisfies Pipeline;
+        yield* mirror(credential, value);
         return {
           _tag: "Modified" as const,
-          value: { repos: result.repos } satisfies Pipeline,
+          value,
           etag: result.etag,
         };
       }),

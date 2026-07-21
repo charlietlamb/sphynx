@@ -3,6 +3,11 @@ import { Effect, Layer, Ref, TestClock, TestContext } from "effect";
 import type { GitHubCredential } from "./credential";
 import { GitHubPipeline } from "./pipeline";
 import { PipelineCache, PipelineCacheLive } from "./pipeline-cache";
+import { ReadModelWriter } from "./read-model-writer";
+
+const stubWriter = Layer.succeed(ReadModelWriter, {
+  writePipeline: () => Effect.void,
+} as unknown as typeof ReadModelWriter.Service);
 
 interface Counters {
   /** Refreshes that actually rebuilt, as opposed to reporting NotModified. */
@@ -58,7 +63,11 @@ const run = <E>(
     yield* program.pipe(
       Effect.orDie,
       Effect.provide(
-        PipelineCacheLive.pipe(Layer.provide(stubPipeline(counters, options)))
+        PipelineCacheLive.pipe(
+          Layer.provide(
+            Layer.merge(stubPipeline(counters, options), stubWriter)
+          )
+        )
       )
     );
     return {

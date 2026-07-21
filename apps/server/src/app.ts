@@ -17,6 +17,7 @@ import { GitHubConfigLive } from "./github/config";
 import { GitHubConversationLive } from "./github/conversation";
 import { GitHubPipelineLive } from "./github/pipeline";
 import { PipelineCacheLive } from "./github/pipeline-cache";
+import { ReadModelWriterLive } from "./github/read-model-writer";
 import { GitHubRepoEventsLive } from "./github/repo-events";
 import { GitHubReviewQueueLive } from "./github/review-queue";
 import { GitHubReviewsLive } from "./github/reviews";
@@ -94,6 +95,8 @@ const HealthApiLive = HttpApiBuilder.group(SphynxApi, "health", (handlers) =>
   handlers.handle("health", () => Effect.succeed({ ok: true }))
 );
 
+const DatabaseLiveLayer = DatabaseLive.pipe(Layer.provide(DatabaseConfigLive));
+
 const GitHubLive = Layer.mergeAll(PipelineCacheLive, SearchCacheLive).pipe(
   Layer.provideMerge(GitHubPipelineLive),
   Layer.provideMerge(
@@ -104,13 +107,12 @@ const GitHubLive = Layer.mergeAll(PipelineCacheLive, SearchCacheLive).pipe(
       GitHubReviewQueueLive,
       GitHubRepoEventsLive,
       GitHubConversationLive,
-      GitHubAppAuthLive
+      GitHubAppAuthLive,
+      ReadModelWriterLive.pipe(Layer.provide(DatabaseLiveLayer))
     )
   ),
   Layer.provide(Layer.mergeAll(GitHubConfigLive, FetchHttpClient.layer))
 );
-
-const DatabaseLiveLayer = DatabaseLive.pipe(Layer.provide(DatabaseConfigLive));
 const AuthLiveLayer = AuthLive.pipe(
   Layer.provideMerge(Layer.mergeAll(AuthConfigLive, DatabaseLiveLayer))
 );
