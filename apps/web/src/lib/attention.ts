@@ -235,6 +235,7 @@ export function railBranches(
 }
 
 export function buildBranchQueue(flow: RepoFlow): BranchQueue {
+  const stageSet = new Set(flow.stages);
   const heads = new Map<string, QueuePull>();
   for (const pull of flow.openPulls) {
     heads.set(pull.headRefName, pull);
@@ -242,8 +243,19 @@ export function buildBranchQueue(flow: RepoFlow): BranchQueue {
   const roots: QueuePull[] = [];
   const childrenByBase = new Map<string, QueuePull[]>();
   for (const pull of flow.openPulls) {
+    /**
+     * A pull stacks onto a parent only when its base is that parent's head AND
+     * the base is not a flow stage. Stage branches (dev, main, production) are
+     * the trunk: a PR targeting `dev` groups under `dev`, even though `dev` is
+     * also the head of the `dev -> main` promotion — otherwise it would be
+     * nested under that promotion and the `dev` group would read as empty.
+     */
     const parent = heads.get(pull.baseRefName);
-    if (parent && parent.number !== pull.number) {
+    if (
+      parent &&
+      parent.number !== pull.number &&
+      !stageSet.has(pull.baseRefName)
+    ) {
       const siblings = childrenByBase.get(pull.baseRefName) ?? [];
       siblings.push(pull);
       childrenByBase.set(pull.baseRefName, siblings);
@@ -259,7 +271,6 @@ export function buildBranchQueue(flow: RepoFlow): BranchQueue {
     rootsByBase.set(pull.baseRefName, list);
   }
 
-  const stageSet = new Set(flow.stages);
   const branches = [
     ...flow.stages.filter((stage) => rootsByBase.has(stage)),
     ...[...rootsByBase.keys()]

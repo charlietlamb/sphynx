@@ -120,6 +120,27 @@ describe("buildBranchQueue", () => {
     expect(queue.order).toEqual(["acme/widgets#1", "acme/widgets#2"]);
   });
 
+  test("groups a pull targeting a stage under that stage, not the promotion", () => {
+    const promotion = pull({
+      number: 1,
+      headRefName: "dev",
+      baseRefName: "main",
+    });
+    const targetingDev = pull({
+      number: 2,
+      headRefName: "feat/x",
+      baseRefName: "dev",
+    });
+    const queue = buildBranchQueue(flow([promotion, targetingDev]));
+    const dev = queue.groups.find((group) => group.branch === "dev");
+    const main = queue.groups.find((group) => group.branch === "main");
+    expect(dev?.total).toBe(1);
+    expect(dev?.nodes[0]?.pull.number).toBe(2);
+    expect(main?.total).toBe(1);
+    expect(main?.nodes[0]?.pull.number).toBe(1);
+    expect(main?.nodes[0]?.children).toHaveLength(0);
+  });
+
   test("ranks contested before ready before drafts within a branch", () => {
     const draft = pull({ number: 1, headRefName: "a", isDraft: true });
     const ready = pull({ number: 2, headRefName: "b", decision: "ready" });
