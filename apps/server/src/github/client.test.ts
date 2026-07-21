@@ -241,6 +241,75 @@ describe("GitHubClient", () => {
     expect(result.symbols.PaymentGateway?.path).toBe("src/second.ts");
   });
 
+  test("fetches later file pages in parallel when rel=last is present", async () => {
+    const pages = [
+      [
+        {
+          sha: "a",
+          filename: "src/p1.ts",
+          status: "modified",
+          additions: 1,
+          deletions: 0,
+          changes: 1,
+          blob_url: "https://github.com/a",
+          patch: "@@ -1 +1 @@\n+one",
+        },
+      ],
+      [
+        {
+          sha: "b",
+          filename: "src/p2.ts",
+          status: "modified",
+          additions: 1,
+          deletions: 0,
+          changes: 1,
+          blob_url: "https://github.com/b",
+          patch: "@@ -1 +1 @@\n+two",
+        },
+      ],
+      [
+        {
+          sha: "c",
+          filename: "src/p3.ts",
+          status: "modified",
+          additions: 1,
+          deletions: 0,
+          changes: 1,
+          blob_url: "https://github.com/c",
+          patch: "@@ -1 +1 @@\n+three",
+        },
+      ],
+    ];
+    const requested: number[] = [];
+    const result = await runWith(
+      (request) => {
+        const page = Number(new URL(request.url).searchParams.get("page"));
+        requested.push(page);
+        return Effect.succeed(
+          json(
+            request,
+            pages[page - 1],
+            page === 1
+              ? {
+                  headers: {
+                    link: '<https://api.github.test/files?page=3>; rel="last"',
+                  },
+                }
+              : undefined
+          )
+        );
+      },
+      (client) => client.listAllPatches(TOKEN, ref)
+    );
+
+    expect(requested.sort((a, b) => a - b)).toEqual([1, 2, 3]);
+    expect(result.files.map((file) => file.path)).toEqual([
+      "src/p1.ts",
+      "src/p2.ts",
+      "src/p3.ts",
+    ]);
+  });
+
   test("returns typed GitHub failures", async () => {
     const notFound = await runWith(
       (request) =>

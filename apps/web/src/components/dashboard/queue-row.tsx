@@ -5,12 +5,14 @@ import {
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
 import { cn } from "@sphynx/ui/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { CiSlot } from "@/components/dashboard/ci-slot";
 import { ReviewerStack } from "@/components/dashboard/reviewer-stack";
 import { ScoreSlot } from "@/components/dashboard/score-slot";
 import { SignalTip } from "@/components/dashboard/signal-tip";
 import { SizeTicks } from "@/components/dashboard/size-ticks";
+import { prefetchPullRequest } from "@/components/pull-request/pull-request-queries";
 import { fullDate, shortAge } from "@/lib/age";
 
 const INDENT_STEP = 16;
@@ -36,6 +38,13 @@ export function QueueRow({
   pull,
 }: QueueRowProps) {
   const ref = useRef<HTMLButtonElement>(null);
+  const queryClient = useQueryClient();
+  const prefetch = () =>
+    prefetchPullRequest(queryClient, {
+      owner: pull.owner,
+      repo: pull.repo,
+      number: pull.number,
+    });
 
   useEffect(() => {
     if (!focused) {
@@ -72,6 +81,8 @@ export function QueueRow({
       )}
       onClick={onFocus}
       onDoubleClick={onOpen}
+      onFocus={prefetch}
+      onMouseEnter={prefetch}
       ref={ref}
       style={{ paddingLeft: BASE_INDENT + depth * INDENT_STEP }}
       type="button"

@@ -59,17 +59,20 @@ const linkUrlPattern = /<([^>]+)>/;
 const encodeFilePath = (path: string) =>
   path.split("/").map(encodeURIComponent).join("/");
 
-const nextPageFrom = (link: string | undefined) => {
-  const next = link
+const pageFrom = (link: string | undefined, rel: string) => {
+  const target = link
     ?.split(",")
-    .find((part) => part.includes('rel="next"'))
+    .find((part) => part.includes(`rel="${rel}"`))
     ?.match(linkUrlPattern)?.[1];
-  if (!next) {
+  if (!target) {
     return null;
   }
-  const page = Number(new URL(next).searchParams.get("page"));
+  const page = Number(new URL(target).searchParams.get("page"));
   return Number.isInteger(page) ? page : null;
 };
+
+const nextPageFrom = (link: string | undefined) => pageFrom(link, "next");
+const lastPageFrom = (link: string | undefined) => pageFrom(link, "last");
 
 const pullRequestState = (
   pull: RawPullRequest
@@ -301,30 +304,85 @@ const makeClient = Effect.gen(function* () {
       Effect.annotateLogs({ ...refAnnotations(ref), "github.page": page })
     );
 
-  const collectPatches = (token: string, ref: PullRequestRef) =>
+  type FilesPage = typeof RawPullRequestFilesSchema.Type;
+
+  const filesPage = (token: string, ref: PullRequestRef, page: number) =>
+    request(
+      token,
+      pullPath(ref, `/files?per_page=100&page=${page}`),
+      RawPullRequestFilesSchema
+    );
+
+  /** Pages 2..last fetched concurrently, once page 1 reveals the total. */
+  const parallelRest = (token: string, ref: PullRequestRef, last: number) =>
+    Effect.forEach(
+      Array.from(
+        { length: Math.min(last, MAX_FILE_PAGES) - 1 },
+        (_, i) => i + 2
+      ),
+      (page) => filesPage(token, ref, page),
+      { concurrency: 6 }
+    ).pipe(
+      Effect.map((results) =>
+        results.flatMap((r) => (r._tag === "Modified" ? [r.value] : []))
+      )
+    );
+
+  /** Serial `rel="next"` walk, for when GitHub omits `rel="last"`. */
+  const serialRest = (
+    token: string,
+    ref: PullRequestRef,
+    from: number | null
+  ) =>
     Effect.gen(function* () {
-      const patches = new Map<string, string>();
-      const files: PullRequestFile[] = [];
-      let page: number | null = 1;
-      while (page !== null && page <= MAX_FILE_PAGES) {
-        const result: GitHubResult<typeof RawPullRequestFilesSchema.Type> =
-          yield* request(
-            token,
-            pullPath(ref, `/files?per_page=100&page=${page}`),
-            RawPullRequestFilesSchema
-          );
+      const pages: FilesPage[] = [];
+      let next = from;
+      while (next !== null && next <= MAX_FILE_PAGES) {
+        const result = yield* filesPage(token, ref, next);
         if (result._tag === "NotModified") {
           break;
         }
-        for (const file of result.value) {
-          if (file.patch) {
-            patches.set(file.filename, file.patch);
-          }
-          files.push(toFile(ref, file));
-        }
-        page = nextPageFrom(result.link ?? undefined);
+        pages.push(result.value);
+        next = nextPageFrom(result.link ?? undefined);
       }
-      return { files, patches };
+      return pages;
+    });
+
+  const assemblePatches = (
+    ref: PullRequestRef,
+    pages: readonly FilesPage[]
+  ) => {
+    const patches = new Map<string, string>();
+    const files: PullRequestFile[] = [];
+    for (const page of pages) {
+      for (const file of page) {
+        if (file.patch) {
+          patches.set(file.filename, file.patch);
+        }
+        files.push(toFile(ref, file));
+      }
+    }
+    return { files, patches };
+  };
+
+  /**
+   * Fetch every file page. Page 1 reveals the total via its `rel="last"` link,
+   * so the remaining pages are fetched concurrently rather than walked one at a
+   * time — a large PR that used to cost N serial round-trips now costs roughly
+   * one. Falls back to a serial `rel="next"` walk when GitHub omits `rel="last"`.
+   */
+  const collectPatches = (token: string, ref: PullRequestRef) =>
+    Effect.gen(function* () {
+      const first = yield* filesPage(token, ref, 1);
+      if (first._tag === "NotModified") {
+        return assemblePatches(ref, []);
+      }
+      const last = lastPageFrom(first.link ?? undefined);
+      const rest =
+        last === null
+          ? yield* serialRest(token, ref, nextPageFrom(first.link ?? undefined))
+          : yield* parallelRest(token, ref, last);
+      return assemblePatches(ref, [first.value, ...rest]);
     });
 
   const listAllPatches = (token: string, ref: PullRequestRef) =>

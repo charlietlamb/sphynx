@@ -17,21 +17,25 @@ import {
   PullRequestFileContentsSchema,
   PullRequestPatchesSchema,
   type PullRequestRef,
+  type PullRequestSummary,
   PullRequestSummarySchema,
 } from "@sphynx/schema/pull-requests";
 import {
+  type QueryClient,
   queryOptions,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { Schema } from "effect";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { recordAccessBlock } from "@/components/pull-request/access-block-store";
+import { seededSummary } from "@/components/pull-request/summary-seed";
 import { usePullFreshnessStream } from "@/components/pull-request/use-pull-freshness-stream";
 import { usePullInstallation } from "@/components/pull-request/use-pull-installation";
 import { useSession } from "@/lib/auth-client";
+import { fetchWithEtag } from "@/lib/etag-cache";
 import { keys } from "@/lib/query/keys";
 
 interface ApiErrorBody {
@@ -56,6 +60,10 @@ async function ensureOk(response: Response) {
   if (response.ok) {
     return;
   }
+  throw await apiError(response);
+}
+
+async function apiError(response: Response): Promise<never> {
   const body: ApiErrorBody = await response.json().catch(() => ({}));
   throw new ApiError(response.status, body);
 }
@@ -111,10 +119,15 @@ function viewedFilesUrl({ owner, repo, number }: PullRequestRef) {
   return `/api/github/repos/${owner}/${repo}/pulls/${number}/viewed-files`;
 }
 
-function pullRequestQuery(ref: PullRequestRef) {
+function pullRequestQuery(
+  ref: PullRequestRef,
+  placeholder?: PullRequestSummary
+) {
   return queryOptions({
     queryKey: keys.pullSummary(ref),
-    queryFn: () => fetchDecoded(pullUrl(ref), PullRequestSummarySchema),
+    queryFn: () =>
+      fetchWithEtag(pullUrl(ref), PullRequestSummarySchema, apiError),
+    placeholderData: placeholder,
   });
 }
 
@@ -133,8 +146,25 @@ function pullRequestPatchesQuery(ref: PullRequestRef) {
   });
 }
 
+/**
+ * Warm the summary before navigation — called on hover/focus of a dashboard
+ * row so the live fetch is often in flight or done by the time the user opens
+ * the PR. Cheap: a single conditional GET that 304s when unchanged.
+ */
+export function prefetchPullRequest(
+  queryClient: QueryClient,
+  ref: PullRequestRef
+) {
+  return queryClient.prefetchQuery(pullRequestQuery(ref));
+}
+
 export function usePullRequest(ref: PullRequestRef) {
-  const pullRequest = useQuery(pullRequestQuery(ref));
+  const queryClient = useQueryClient();
+  const placeholder = useMemo(
+    () => seededSummary(queryClient, ref),
+    [queryClient, ref]
+  );
+  const pullRequest = useQuery(pullRequestQuery(ref, placeholder));
   const patches = useQuery(pullRequestPatchesQuery(ref));
   return { pullRequest, patches };
 }
@@ -185,7 +215,11 @@ export function usePullRequestFreshness(ref: PullRequestRef) {
   const authed = Boolean(session?.user);
   const installationId = usePullInstallation(ref.owner, authed);
 
-  const summary = useQuery(pullRequestQuery(ref));
+  const placeholder = useMemo(
+    () => seededSummary(queryClient, ref),
+    [queryClient, ref]
+  );
+  const summary = useQuery(pullRequestQuery(ref, placeholder));
 
   const head = summary.data?.head.sha ?? null;
   const [viewing, setViewing] = useState<string | null>(head);

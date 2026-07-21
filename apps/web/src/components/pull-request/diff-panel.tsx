@@ -18,9 +18,18 @@ const loadDiffWorkspace = () =>
 
 const DiffWorkspace = lazy(loadDiffWorkspace);
 
-/** Warmed eagerly so the diff is ready by the time the patches arrive. */
+/**
+ * Warm the heavy diff chunk during idle time, not at import — so fetching it
+ * never contends with the paint-gating summary request or the first render.
+ * `requestIdleCallback` falls back to a short timeout where unsupported.
+ */
 if (typeof window !== "undefined") {
-  loadDiffWorkspace().catch(() => undefined);
+  const warm = () => loadDiffWorkspace().catch(() => undefined);
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(warm);
+  } else {
+    setTimeout(warm, 200);
+  }
 }
 
 interface DiffPanelProps {
