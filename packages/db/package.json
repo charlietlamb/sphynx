@@ -6,6 +6,7 @@
   "exports": {
     "./client": "./src/client.ts",
     "./config": "./src/config.ts",
+    "./listen": "./src/listen.ts",
     "./schema": "./src/schema.ts"
   },
   "scripts": {

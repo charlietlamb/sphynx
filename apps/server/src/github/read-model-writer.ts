@@ -13,8 +13,9 @@ import type {
   QueuePull,
   RepoFlow,
 } from "@sphynx/schema/review-queue";
-import { and, eq, lt, notInArray } from "drizzle-orm";
+import { and, eq, lt, notInArray, sql } from "drizzle-orm";
 import { Clock, Context, Effect, Layer } from "effect";
+import { DIRTY_CHANNEL } from "./event-bus";
 import { gapRows, type PullRows, pullRows, repoRowId } from "./read-model-rows";
 
 type Tx = Parameters<Parameters<Database["Type"]["transaction"]>[0]>[0];
@@ -88,6 +89,22 @@ const upsertRepo = async (
 const makeReadModelWriter = Effect.gen(function* () {
   const db = yield* Database;
 
+  /**
+   * Wake any SSE subscribers for this installation. Best-effort: a failed
+   * notify only means a client waits for its next poll/reconnect, so it never
+   * fails the write.
+   */
+  const notifyDirty = (installationId: number) =>
+    Effect.tryPromise(() =>
+      db.execute(
+        sql`SELECT pg_notify(${DIRTY_CHANNEL}, ${String(installationId)})`
+      )
+    ).pipe(
+      Effect.catchAllCause((cause) =>
+        Effect.logWarning("read-model notify failed", cause)
+      )
+    );
+
   const writeRepo = async (
     tx: Tx,
     installationId: number,
@@ -144,6 +161,7 @@ const makeReadModelWriter = Effect.gen(function* () {
           }
         })
       ).pipe(Effect.orDie);
+      yield* notifyDirty(installationId);
     }).pipe(
       Effect.withSpan("ReadModelWriter.writePipeline"),
       Effect.annotateLogs({
@@ -183,6 +201,7 @@ const makeReadModelWriter = Effect.gen(function* () {
           await writePullRows(tx, installationId, repoId, pull, now);
         })
       ).pipe(Effect.orDie);
+      yield* notifyDirty(installationId);
     }).pipe(
       Effect.withSpan("ReadModelWriter.writePull"),
       Effect.annotateLogs({

@@ -3,7 +3,9 @@ import { SphynxApi } from "@sphynx/schema/api";
 import { INSTALLATION_HEADER } from "@sphynx/schema/review-queue";
 import { Effect } from "effect";
 import { GitHubAuth } from "../auth/github-auth";
+import { installationIdFromCredentialId } from "../github/credential";
 import { PipelineCache } from "../github/pipeline-cache";
+import { ReadModelReader } from "../github/read-model-reader";
 import { GitHubReviewQueue } from "../github/review-queue";
 import { SearchCache } from "../github/search-cache";
 
@@ -16,6 +18,7 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
     Effect.gen(function* () {
       const queue = yield* GitHubReviewQueue;
       const cache = yield* PipelineCache;
+      const reader = yield* ReadModelReader;
       const search = yield* SearchCache;
       const { listInstallations, readCredential, readToken, writeToken } =
         yield* GitHubAuth;
@@ -42,6 +45,54 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
         return Number.isInteger(parsed) ? parsed : null;
       };
 
+      /**
+       * Reads come from Neon, never GitHub — a materialized installation is a
+       * single indexed query. A cold installation with no rows yet falls back
+       * once to the live build, which also mirrors into Neon so the next read
+       * is instant. Backfill on install makes that fallback rare.
+       */
+      const pipelineFor = (cookie: string | undefined, want: number | null) =>
+        readCredential(cookie, want).pipe(
+          Effect.flatMap((credential) => {
+            const installationId = installationIdFromCredentialId(
+              credential.id
+            );
+            if (installationId === null) {
+              return cache.get(credential);
+            }
+            return reader
+              .readPipeline(installationId)
+              .pipe(
+                Effect.flatMap((pipeline) =>
+                  pipeline.repos.length > 0
+                    ? Effect.succeed(pipeline)
+                    : cache.get(credential)
+                )
+              );
+          })
+        );
+
+      const queueFor = (cookie: string | undefined, want: number | null) =>
+        readCredential(cookie, want).pipe(
+          Effect.flatMap((credential) => {
+            const installationId = installationIdFromCredentialId(
+              credential.id
+            );
+            if (installationId === null) {
+              return cache.queue(credential);
+            }
+            return reader
+              .readQueue(installationId)
+              .pipe(
+                Effect.flatMap((queueResult) =>
+                  queueResult.repos.length > 0
+                    ? Effect.succeed(queueResult)
+                    : cache.queue(credential)
+                )
+              );
+          })
+        );
+
       return handlers
         .handle("listInstallations", ({ headers }) =>
           listInstallations(headers.cookie).pipe(
@@ -57,14 +108,10 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
           )
         )
         .handle("getPipeline", ({ headers }) =>
-          readCredential(headers.cookie, requested(headers)).pipe(
-            Effect.flatMap(cache.get)
-          )
+          pipelineFor(headers.cookie, requested(headers))
         )
         .handle("getQueue", ({ headers }) =>
-          readCredential(headers.cookie, requested(headers)).pipe(
-            Effect.flatMap(cache.queue)
-          )
+          queueFor(headers.cookie, requested(headers))
         )
         .handle("getPullBody", ({ path, headers }) =>
           readToken(headers.cookie, requested(headers)).pipe(

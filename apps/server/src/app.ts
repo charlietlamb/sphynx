@@ -7,16 +7,19 @@ import { Auth, AuthLive } from "@sphynx/auth";
 import { AuthConfigLive } from "@sphynx/auth/config";
 import { DatabaseLive } from "@sphynx/db/client";
 import { DatabaseConfigLive } from "@sphynx/db/config";
+import { ListenerLive } from "@sphynx/db/listen";
 import { SphynxApi } from "@sphynx/schema/api";
 import { Context, Effect, Layer, Runtime } from "effect";
-import { GitHubAuthLive } from "./auth/github-auth";
+import { type GitHubAuth, GitHubAuthLive } from "./auth/github-auth";
 import { ServerConfig, ServerConfigLive } from "./config";
 import { GitHubAppAuthLive } from "./github/app-auth";
 import { GitHubClientLive } from "./github/client";
 import { GitHubConfigLive } from "./github/config";
 import { GitHubConversationLive } from "./github/conversation";
+import { type EventBus, EventBusLive } from "./github/event-bus";
 import { GitHubPipelineLive } from "./github/pipeline";
 import { PipelineCacheLive } from "./github/pipeline-cache";
+import { ReadModelReaderLive } from "./github/read-model-reader";
 import { ReadModelWriterLive } from "./github/read-model-writer";
 import { GitHubRepoEventsLive } from "./github/repo-events";
 import { GitHubReviewQueueLive } from "./github/review-queue";
@@ -30,6 +33,7 @@ import {
 } from "./github/webhook-projector";
 import { PullRequestCommentsApiLive } from "./routes/comments";
 import { PullRequestConversationApiLive } from "./routes/conversation";
+import { handleEvents, isEventsPath } from "./routes/events";
 import { PullRequestsApiLive } from "./routes/pulls";
 import { ReviewQueueApiLive } from "./routes/review-queue";
 import { PullRequestViewsApiLive } from "./routes/views";
@@ -50,18 +54,27 @@ const httpServerLive = (memoMap: Layer.MemoMap) =>
     Effect.gen(function* () {
       const config = yield* ServerConfig;
       const auth = yield* Auth;
-      const webhookRuntime = yield* Effect.runtime<
-        WebhookIngest | WebhookProjector
+      const streamRuntime = yield* Effect.runtime<
+        WebhookIngest | WebhookProjector | EventBus | GitHubAuth
       >();
       const api = yield* Effect.acquireRelease(
         Effect.sync(() => HttpApiBuilder.toWebHandler(ApiLive, { memoMap })),
         ({ dispose }) => Effect.promise(dispose)
       );
       const webhook = (request: Request) =>
-        Runtime.runPromise(webhookRuntime)(
+        Runtime.runPromise(streamRuntime)(
           handleWebhook(request).pipe(
             Effect.tapErrorCause((cause) =>
               Effect.logError("webhook handler failed", cause)
+            ),
+            Effect.orElseSucceed(() => new Response("error", { status: 500 }))
+          )
+        );
+      const events = (request: Request) =>
+        Runtime.runPromise(streamRuntime)(
+          handleEvents(request).pipe(
+            Effect.tapErrorCause((cause) =>
+              Effect.logError("events handler failed", cause)
             ),
             Effect.orElseSucceed(() => new Response("error", { status: 500 }))
           )
@@ -73,6 +86,9 @@ const httpServerLive = (memoMap: Layer.MemoMap) =>
               const { pathname } = new URL(request.url);
               if (isWebhookPath(pathname)) {
                 return webhook(request);
+              }
+              if (isEventsPath(pathname)) {
+                return events(request);
               }
               return isAuthPath(pathname)
                 ? auth.handler(request)
@@ -113,7 +129,8 @@ const GitHubLive = Layer.mergeAll(PipelineCacheLive, SearchCacheLive).pipe(
       GitHubRepoEventsLive,
       GitHubConversationLive,
       GitHubAppAuthLive,
-      ReadModelWriterLive.pipe(Layer.provide(DatabaseLiveLayer))
+      ReadModelWriterLive.pipe(Layer.provide(DatabaseLiveLayer)),
+      ReadModelReaderLive.pipe(Layer.provide(DatabaseLiveLayer))
     )
   ),
   Layer.provide(Layer.mergeAll(GitHubConfigLive, FetchHttpClient.layer))
@@ -166,6 +183,10 @@ const WebhookProjectorLiveLayer = WebhookProjectorLive.pipe(
   )
 );
 
+const EventBusLiveLayer = EventBusLive.pipe(
+  Layer.provide(ListenerLive.pipe(Layer.provide(DatabaseConfigLive)))
+);
+
 export const main = Effect.scoped(
   Effect.gen(function* () {
     const memoMap = yield* Layer.makeMemoMap;
@@ -175,7 +196,9 @@ export const main = Effect.scoped(
         ServerConfigLive,
         AuthLiveLayer,
         WebhookIngestLiveLayer,
-        WebhookProjectorLiveLayer
+        WebhookProjectorLiveLayer,
+        EventBusLiveLayer,
+        GitHubAuthLiveLayer
       ),
       memoMap,
       scope

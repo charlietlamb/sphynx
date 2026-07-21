@@ -10,6 +10,7 @@ import {
   useQueue,
 } from "@/components/dashboard/use-pipeline";
 import { usePullSearch } from "@/components/dashboard/use-pull-search";
+import { useReadModelStream } from "@/components/dashboard/use-read-model-stream";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useWorkbench } from "@/components/workbench/use-workbench";
 import {
@@ -47,6 +48,7 @@ export function useDashboardState() {
 
   const queue0 = useQueue(installationId, ready);
   const pipeline = usePipeline(installationId, ready);
+  useReadModelStream(installationId, ready);
   const dialogs = useDialog();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [branchFilter, setBranchFilter] = useState<string | null>(null);

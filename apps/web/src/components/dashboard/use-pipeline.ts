@@ -41,21 +41,17 @@ async function fetchQueue(installationId: number | null) {
   return Schema.decodeUnknownPromise(QueueSchema)(await response.json());
 }
 
-const REFRESH_MS = 45_000;
-
 /**
- * The key carries identity only. Freshness is the server's job: it revalidates
- * each repo's pulls with a conditional request, which costs no rate limit when
- * nothing changed, so refetching on an interval is cheap.
+ * The key carries identity only. Freshness is pushed: the server materializes
+ * the read model from webhooks and notifies over SSE, and `useReadModelStream`
+ * invalidates these queries on that signal. There is no wall-clock poll — a read
+ * is an instant Neon query, and it only refetches when the model actually moves.
  */
 export function usePipeline(installationId: number | null, enabled: boolean) {
   return useQuery({
     queryKey: keys.pipeline(installationId),
     queryFn: () => fetchPipeline(installationId),
     enabled,
-    staleTime: REFRESH_MS,
-    refetchInterval: REFRESH_MS,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -69,6 +65,5 @@ export function useQueue(installationId: number | null, enabled: boolean) {
     queryKey: keys.queue(installationId),
     queryFn: () => fetchQueue(installationId),
     enabled,
-    staleTime: REFRESH_MS,
   });
 }
