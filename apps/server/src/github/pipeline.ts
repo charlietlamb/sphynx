@@ -6,7 +6,6 @@ import {
 import {
   type PromotedPull,
   PromotedPullSchema,
-  type QueueFlow,
   type QueuePull,
   type RepoFlow,
   type StageGap,
@@ -440,29 +439,6 @@ query($owner: String!, $name: String!) {
       return { _tag: "Modified", etag: next, repos } as const;
     }).pipe(Effect.withSpan("GitHubPipeline.refresh"));
 
-  /**
-   * The queue alone: open pulls per repo, without the stage/gap rail.
-   *
-   * Skips the per-repo compare fan-out, which is roughly half of a cold
-   * build, so the queue can paint while the rail is still resolving.
-   */
-  const queueFrom = (
-    discovered: readonly { owner: string; repo: string }[],
-    token: string
-  ): Effect.Effect<QueueFlow[], GitHubAuthedError> =>
-    queue.openPullsForRepos(discovered, token).pipe(
-      Effect.map((pullsByRepo) =>
-        discovered
-          .map((entry) => ({
-            owner: entry.owner,
-            repo: entry.repo,
-            openPulls: pullsByRepo.get(repoKey(entry)) ?? [],
-          }))
-          .filter((flow) => flow.openPulls.length > 0)
-      ),
-      Effect.withSpan("GitHubPipeline.queueFrom")
-    );
-
   const buildFrom = (
     discovered: readonly { owner: string; repo: string }[],
     token: string
@@ -477,30 +453,7 @@ query($owner: String!, $name: String!) {
       return yield* flowsFor(entries, token);
     }).pipe(Effect.withSpan("GitHubPipeline.buildFrom"));
 
-  /**
-   * Open pulls for the installation, without the promotion rail. Discovery is
-   * unconditional here: the queue is the first paint, so it should not wait on
-   * a revalidation sweep that mostly exists to avoid rebuilds.
-   */
-  const currentQueue = (
-    token: string
-  ): Effect.Effect<QueueFlow[], GitHubAuthedError> =>
-    queue.discoverRepos(token).pipe(
-      /**
-       * Every discovered repo is queried, then trimmed by open-pull count.
-       * Trimming first would cut by recency of push, which is not the same
-       * ordering and silently drops active repos.
-       */
-      Effect.flatMap((discovered) => queueFrom(discovered, token)),
-      Effect.map((flows) =>
-        [...flows]
-          .sort((a, b) => b.openPulls.length - a.openPulls.length)
-          .slice(0, MAX_ACTIVE_REPOS)
-      ),
-      Effect.withSpan("GitHubPipeline.currentQueue")
-    );
-
-  return { refresh, currentQueue };
+  return { refresh };
 });
 
 export class GitHubPipeline extends Context.Tag(

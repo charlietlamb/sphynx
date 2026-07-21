@@ -4,7 +4,7 @@ import { INSTALLATION_HEADER } from "@sphynx/schema/review-queue";
 import { Effect } from "effect";
 import { GitHubAuth } from "../auth/github-auth";
 import { installationIdFromCredentialId } from "../github/credential";
-import { PipelineCache } from "../github/pipeline-cache";
+import { Materializer } from "../github/materializer";
 import { ReadModelReader } from "../github/read-model-reader";
 import { GitHubReviewQueue } from "../github/review-queue";
 import { SearchCache } from "../github/search-cache";
@@ -17,26 +17,22 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
   (handlers) =>
     Effect.gen(function* () {
       const queue = yield* GitHubReviewQueue;
-      const cache = yield* PipelineCache;
       const reader = yield* ReadModelReader;
+      const materializer = yield* Materializer;
       const search = yield* SearchCache;
       const { listInstallations, readCredential, readToken, writeToken } =
         yield* GitHubAuth;
 
       /**
-       * Writes act as the signed-in user so GitHub attributes them correctly,
-       * then invalidate the installation-scoped pipeline cache.
+       * Writes act as the signed-in user so GitHub attributes them correctly.
+       * The write triggers a GitHub webhook, which the projector materializes
+       * into the read model within ~1s — so there is no in-process cache to
+       * invalidate here.
        */
       const mutate = <A, E>(
         cookie: string | undefined,
         run: (token: string) => Effect.Effect<A, E>
-      ) =>
-        writeToken(cookie).pipe(
-          Effect.flatMap(run),
-          Effect.tap(() =>
-            readCredential(cookie).pipe(Effect.flatMap(cache.drop))
-          )
-        );
+      ) => writeToken(cookie).pipe(Effect.flatMap(run));
 
       /** The client names an installation; a bad value falls back server-side. */
       const requested = (headers: Record<string, string | undefined>) => {
@@ -46,51 +42,52 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
       };
 
       /**
-       * Reads come from Neon, never GitHub — a materialized installation is a
-       * single indexed query. A cold installation with no rows yet falls back
-       * once to the live build, which also mirrors into Neon so the next read
-       * is instant. Backfill on install makes that fallback rare.
+       * Resolve the installation for a read, materializing it once if it has
+       * never been seen. Steady state is a single indexed Neon query; a cold
+       * installation is backfilled from GitHub (also done eagerly on the install
+       * webhook, so this path is rare) and then read from rows like any other.
        */
-      const pipelineFor = (cookie: string | undefined, want: number | null) =>
+      const installationFor = (
+        cookie: string | undefined,
+        want: number | null
+      ) =>
         readCredential(cookie, want).pipe(
-          Effect.flatMap((credential) => {
-            const installationId = installationIdFromCredentialId(
-              credential.id
-            );
-            if (installationId === null) {
-              return cache.get(credential);
-            }
-            return reader
-              .readPipeline(installationId)
-              .pipe(
-                Effect.flatMap((pipeline) =>
-                  pipeline.repos.length > 0
-                    ? Effect.succeed(pipeline)
-                    : cache.get(credential)
+          Effect.map((credential) =>
+            installationIdFromCredentialId(credential.id)
+          )
+        );
+
+      const ensureMaterialized = (installationId: number) =>
+        reader
+          .readPipeline(installationId)
+          .pipe(
+            Effect.flatMap((pipeline) =>
+              pipeline.repos.length > 0
+                ? Effect.void
+                : materializer.materialize(installationId)
+            )
+          );
+
+      const pipelineFor = (cookie: string | undefined, want: number | null) =>
+        installationFor(cookie, want).pipe(
+          Effect.flatMap((installationId) =>
+            installationId === null
+              ? Effect.succeed({ repos: [] })
+              : ensureMaterialized(installationId).pipe(
+                  Effect.zipRight(reader.readPipeline(installationId))
                 )
-              );
-          })
+          )
         );
 
       const queueFor = (cookie: string | undefined, want: number | null) =>
-        readCredential(cookie, want).pipe(
-          Effect.flatMap((credential) => {
-            const installationId = installationIdFromCredentialId(
-              credential.id
-            );
-            if (installationId === null) {
-              return cache.queue(credential);
-            }
-            return reader
-              .readQueue(installationId)
-              .pipe(
-                Effect.flatMap((queueResult) =>
-                  queueResult.repos.length > 0
-                    ? Effect.succeed(queueResult)
-                    : cache.queue(credential)
+        installationFor(cookie, want).pipe(
+          Effect.flatMap((installationId) =>
+            installationId === null
+              ? Effect.succeed({ repos: [] })
+              : ensureMaterialized(installationId).pipe(
+                  Effect.zipRight(reader.readQueue(installationId))
                 )
-              );
-          })
+          )
         );
 
       return handlers

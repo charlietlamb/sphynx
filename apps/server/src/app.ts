@@ -19,7 +19,6 @@ import { GitHubConversationLive } from "./github/conversation";
 import { type EventBus, EventBusLive } from "./github/event-bus";
 import { Materializer, MaterializerLive } from "./github/materializer";
 import { GitHubPipelineLive } from "./github/pipeline";
-import { PipelineCacheLive } from "./github/pipeline-cache";
 import { ReadModelReaderLive } from "./github/read-model-reader";
 import { ReadModelWriterLive } from "./github/read-model-writer";
 import { GitHubRepoEventsLive } from "./github/repo-events";
@@ -122,7 +121,7 @@ const HealthApiLive = HttpApiBuilder.group(SphynxApi, "health", (handlers) =>
 
 const DatabaseLiveLayer = DatabaseLive.pipe(Layer.provide(DatabaseConfigLive));
 
-const GitHubLive = Layer.mergeAll(PipelineCacheLive, SearchCacheLive).pipe(
+const GitHubLive = SearchCacheLive.pipe(
   Layer.provideMerge(GitHubPipelineLive),
   Layer.provideMerge(
     Layer.mergeAll(
@@ -139,6 +138,17 @@ const GitHubLive = Layer.mergeAll(PipelineCacheLive, SearchCacheLive).pipe(
   ),
   Layer.provide(Layer.mergeAll(GitHubConfigLive, FetchHttpClient.layer))
 );
+
+const MaterializerLiveLayer = MaterializerLive.pipe(
+  Layer.provide(
+    Layer.mergeAll(
+      GitHubLive,
+      ReadModelWriterLive.pipe(Layer.provide(DatabaseLiveLayer)),
+      DatabaseLiveLayer
+    )
+  )
+);
+
 const AuthLiveLayer = AuthLive.pipe(
   Layer.provideMerge(Layer.mergeAll(AuthConfigLive, DatabaseLiveLayer))
 );
@@ -168,7 +178,8 @@ const ApiLive = Layer.mergeAll(
       GitHubLive,
       GitHubConfigLive,
       AuthLiveLayer,
-      GitHubAuthLiveLayer
+      GitHubAuthLiveLayer,
+      MaterializerLiveLayer
     )
   ),
   Layer.provide(TracingLive)
@@ -176,16 +187,6 @@ const ApiLive = Layer.mergeAll(
 
 const WebhookIngestLiveLayer = WebhookIngestLive.pipe(
   Layer.provide(Layer.mergeAll(DatabaseLiveLayer, GitHubConfigLive))
-);
-
-const MaterializerLiveLayer = MaterializerLive.pipe(
-  Layer.provide(
-    Layer.mergeAll(
-      GitHubLive,
-      ReadModelWriterLive.pipe(Layer.provide(DatabaseLiveLayer)),
-      DatabaseLiveLayer
-    )
-  )
 );
 
 const WebhookProjectorLiveLayer = WebhookProjectorLive.pipe(
