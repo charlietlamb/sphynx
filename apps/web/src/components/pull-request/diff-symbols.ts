@@ -17,24 +17,15 @@ export const DIFF_UNSAFE_CSS = `
 [data-diffs-header] [data-change-icon] {
   display: none;
 }
-[data-diffs-header] [data-header-content] {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-[data-diffs-header] [data-header-content] slot[name="header-prefix"] {
-  display: contents;
-}
-[data-diffs-header] [data-header-content] [data-title] {
-  order: 1;
+[data-diffs-header="default"] [data-header-content] {
   flex: 0 1 auto;
+}
+[data-diffs-header="default"] [data-metadata] {
+  flex: 1 1 auto;
   min-width: 0;
 }
-[data-diffs-header] [data-header-content] ::slotted([data-file-icon]) {
-  order: 0;
-}
-[data-diffs-header] [data-header-content] ::slotted([data-copy-path]) {
-  order: 2;
+[data-diffs-header="default"] [data-metadata] [data-deletions-count] {
+  margin-left: auto;
 }
 [data-diffs-header] {
   border-bottom: 1px solid var(--border);
