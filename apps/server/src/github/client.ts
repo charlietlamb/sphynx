@@ -16,7 +16,7 @@ import {
 } from "@sphynx/schema/pull-requests";
 import { Context, Effect, Layer, type Schema } from "effect";
 import { GitHubConfig } from "./config";
-import { RetryableGitHubError, retryPolicy } from "./errors";
+import { honorRateLimit, RetryableGitHubError, retryPolicy } from "./errors";
 import { refAnnotations } from "./graphql";
 import { isRateLimited, pullPath, resetAt, retryAfter } from "./http";
 import {
@@ -233,7 +233,7 @@ const makeClient = Effect.gen(function* () {
       };
     });
 
-    return attempt.pipe(
+    const bounded = attempt.pipe(
       Effect.retry({
         schedule: retryPolicy,
         times: 2,
@@ -250,6 +250,12 @@ const makeClient = Effect.gen(function* () {
           new GitHubTimeout({ message: "GitHub request timed out" }),
       })
     );
+    /**
+     * Rate-limit backoff wraps the timeout, not the reverse: the per-request
+     * timeout bounds each attempt, while the (up to 60s) rate-limit sleep sits
+     * between attempts and must not be cut short by it.
+     */
+    return honorRateLimit()(bounded);
   };
 
   const getPullRequest = (

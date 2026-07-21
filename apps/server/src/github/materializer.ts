@@ -299,8 +299,16 @@ const makeMaterializer = Effect.gen(function* () {
    * Cheap now (ETag 304 fast-path + webhook-active installs skipped), so it runs
    * in-process rather than as a cron — the container is already always-on for
    * LISTEN/SSE, and Vercel Hobby does not permit sub-daily crons anyway.
+   *
+   * Each tick is isolated: a defect (e.g. a transient DB error surfacing through
+   * an `orDie` query) is logged and swallowed so the schedule keeps running. A
+   * bare tick would let that defect kill the daemon fiber permanently — the
+   * backstop would then stop silently until the next redeploy.
    */
   const startReconcile = reconcileOnce.pipe(
+    Effect.catchAllCause((cause) =>
+      Effect.logError("reconcile tick failed", cause)
+    ),
     Effect.schedule(Schedule.spaced(RECONCILE_INTERVAL)),
     Effect.forkDaemon,
     Effect.asVoid

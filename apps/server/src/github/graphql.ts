@@ -4,6 +4,7 @@ import {
   HttpClientResponse,
 } from "@effect/platform";
 import {
+  GitHubRateLimited,
   GitHubTimeout,
   GitHubUnavailable,
   type PullRequestRef,
@@ -13,10 +14,12 @@ import { Effect, Schema } from "effect";
 import type { GitHubConfig } from "./config";
 import {
   type GitHubAuthedError,
+  honorRateLimit,
   pullRequestNotFound,
   RetryableGitHubError,
   retryPolicy,
 } from "./errors";
+import { isRateLimited, resetAt, retryAfter } from "./http";
 
 export const refAnnotations = (ref: PullRequestRef) => ({
   "github.owner": ref.owner,
@@ -52,11 +55,21 @@ const PullRequestIdSchema = Schema.Struct({ id: Schema.String });
 type GitHubConfigService = typeof GitHubConfig.Service;
 
 const rejectFailedStatus = (
-  status: number
+  response: HttpClientResponse.HttpClientResponse
 ): Effect.Effect<
   void,
-  Unauthorized | RetryableGitHubError | GitHubUnavailable
+  Unauthorized | RetryableGitHubError | GitHubUnavailable | GitHubRateLimited
 > => {
+  const status = response.status;
+  if (isRateLimited(response)) {
+    return Effect.fail(
+      new GitHubRateLimited({
+        message: "GitHub GraphQL rate limit exceeded",
+        retryAfterSeconds: retryAfter(response),
+        resetAt: resetAt(response),
+      })
+    );
+  }
   if (status === 401 || status === 403) {
     return Effect.fail(
       new Unauthorized({ message: "GitHub rejected the request" })
@@ -99,7 +112,7 @@ export const makeGraphql = (
             () => new GitHubUnavailable({ message: "GitHub is unreachable" })
           )
         );
-      yield* rejectFailedStatus(response.status);
+      yield* rejectFailedStatus(response);
       const envelope = yield* HttpClientResponse.schemaBodyJson(
         Schema.Struct({
           data: Schema.NullishOr(dataSchema),
@@ -138,7 +151,8 @@ export const makeGraphql = (
         duration: config.timeout,
         onTimeout: () =>
           new GitHubTimeout({ message: "GitHub request timed out" }),
-      })
+      }),
+      honorRateLimit()
     );
 
   const pullRequestQuery = <A, I>(

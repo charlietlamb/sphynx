@@ -4,7 +4,15 @@ import {
   GitHubRateLimited,
   PullRequestNotFound,
 } from "@sphynx/schema/pull-requests";
-import { Duration, Effect, Layer, Redacted } from "effect";
+import {
+  Duration,
+  Effect,
+  Fiber,
+  Layer,
+  Redacted,
+  TestClock,
+  TestContext,
+} from "effect";
 import { GitHubClient, GitHubClientLive } from "./client";
 import { GitHubConfig } from "./config";
 
@@ -323,26 +331,59 @@ describe("GitHubClient", () => {
     );
     expect(notFound).toBeInstanceOf(PullRequestNotFound);
 
-    const limited = await runWith(
-      (request) =>
-        Effect.succeed(
-          HttpClientResponse.fromWeb(
-            request,
-            new Response(null, {
-              status: 403,
-              headers: {
-                "retry-after": "30",
-                "x-ratelimit-remaining": "0",
-                "x-ratelimit-reset": "1800000000",
-              },
-            })
+    let attempts = 0;
+    const rateLimitedResponse = (
+      request: Parameters<Parameters<typeof HttpClient.make>[0]>[0]
+    ) => {
+      attempts += 1;
+      return Effect.succeed(
+        HttpClientResponse.fromWeb(
+          request,
+          new Response(null, {
+            status: 403,
+            headers: {
+              "retry-after": "30",
+              "x-ratelimit-remaining": "0",
+              "x-ratelimit-reset": "1800000000",
+            },
+          })
+        )
+      );
+    };
+    /**
+     * Under TestClock the rate-limit backoff sleeps virtual time: fork the call,
+     * fast-forward past the (clamped 60s) waits, and read the surfaced error —
+     * so the retry path is exercised without real seconds of delay.
+     */
+    const limited = await Effect.gen(function* () {
+      const client = yield* GitHubClient;
+      const fiber = yield* client
+        .getPullRequest(TOKEN, ref)
+        .pipe(Effect.flip, Effect.fork);
+      yield* TestClock.adjust(Duration.minutes(5));
+      return yield* Fiber.join(fiber);
+    }).pipe(
+      Effect.provide(
+        GitHubClientLive.pipe(
+          Layer.provide(
+            Layer.mergeAll(
+              config,
+              Layer.succeed(
+                HttpClient.HttpClient,
+                HttpClient.make(rateLimitedResponse)
+              )
+            )
           )
-        ),
-      (client) => client.getPullRequest(TOKEN, ref).pipe(Effect.flip)
+        )
+      ),
+      Effect.provide(TestContext.TestContext),
+      Effect.runPromise
     );
     expect(limited).toBeInstanceOf(GitHubRateLimited);
     if (limited._tag === "GitHubRateLimited") {
       expect(limited.retryAfterSeconds).toBe(30);
     }
+    // The rate-limit is retried (honoring Retry-After) before it surfaces.
+    expect(attempts).toBeGreaterThan(1);
   });
 });
