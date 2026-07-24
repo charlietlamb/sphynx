@@ -16,7 +16,7 @@ export function useResync(installationId: number | null, label: string) {
       if (installationId === null) {
         return Promise.reject(new Error("No organization selected"));
       }
-      return postJson(`/installations/${installationId}/resync`);
+      return postJson(`/api/github/installations/${installationId}/resync`);
     },
     onSuccess: () => {
       toast.success(`Resyncing ${label}…`, {

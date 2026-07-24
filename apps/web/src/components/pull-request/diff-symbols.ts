@@ -92,6 +92,17 @@ export const DIFF_UNSAFE_CSS = `
 
 const QUOTE_ENDING = /["'`]$/;
 const DESTRUCTURE_ROW = /^\s*(?:export\s+)?(?:const|let|var)\s*[{[]/;
+/**
+ * A single trailing dot is member access (`foo.bar` — don't link `bar`), but a
+ * trailing `...` is the spread operator (`...foo`), which precedes a real
+ * reference and must stay linkable. Matches a `.` preceded by a non-dot (or the
+ * start), so `foo.` matches but `...` does not.
+ */
+const MEMBER_ACCESS_ENDING = /(?:^|[^.])\.$/;
+
+/** Exposed for tests: is the text before a symbol a member access (not a spread)? */
+export const endsWithMemberAccess = (before: string) =>
+  MEMBER_ACCESS_ENDING.test(before);
 
 function walkText(
   token: Element,
@@ -133,7 +144,7 @@ function referenceLike(definition: Definition, token: Element, row: Element) {
   if (followingRawText(token).startsWith(":")) {
     return false;
   }
-  if (definition.kind === "top" && before.endsWith(".")) {
+  if (definition.kind === "top" && endsWithMemberAccess(before)) {
     return false;
   }
   return !DESTRUCTURE_ROW.test(row.textContent ?? "");
