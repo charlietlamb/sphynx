@@ -42,6 +42,7 @@
         "@phosphor-icons/react": "catalog:",
         "@pierre/diffs": "catalog:",
         "@shikijs/themes": "catalog:",
+        "@sphynx/auth": "workspace:*",
         "@sphynx/schema": "workspace:*",
         "@sphynx/ui": "workspace:*",
         "@tanstack/react-form": "catalog:",

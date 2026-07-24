@@ -6,6 +6,7 @@ import { organization } from "better-auth/plugins";
 import { asc, eq } from "drizzle-orm";
 import { Context, Effect, Layer, Redacted } from "effect";
 import { AuthConfig } from "./config";
+import { COOKIE_PREFIX } from "./cookies";
 
 const makeAuth = Effect.gen(function* () {
   const config = yield* AuthConfig;
@@ -37,7 +38,7 @@ const makeAuth = Effect.gen(function* () {
     baseURL: config.url,
     trustedOrigins: [...config.trustedOrigins],
     advanced: {
-      cookiePrefix: "sphynx",
+      cookiePrefix: COOKIE_PREFIX,
     },
     session: {
       /**
