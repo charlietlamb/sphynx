@@ -19,12 +19,11 @@ import type {
 import { toGitPatch } from "@/components/pull-request/pull-request-queries";
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
 import { usePullRequestSearch } from "@/components/pull-request/pull-request-search";
-import { renderFileTypePrefix } from "@/components/pull-request/render-file-type-prefix";
 import { useActiveDiffContainer } from "@/components/pull-request/use-active-diff-container";
+import { useDiffHeader } from "@/components/pull-request/use-diff-header";
 import { useDiffSymbolOptions } from "@/components/pull-request/use-diff-symbol-options";
 import { useExpandedFiles } from "@/components/pull-request/use-expanded-files";
 import type { ReviewCommenting } from "@/components/pull-request/use-review-comments";
-import { useViewedHeader } from "@/components/pull-request/use-viewed-header";
 
 const CARD_LAYOUT = { paddingTop: 0, paddingBottom: 8, gap: 16 };
 
@@ -267,7 +266,7 @@ export function DiffCardList({
     ]
   );
 
-  const renderHeaderMetadata = useViewedHeader(viewedFiles, onSetViewed);
+  const renderCustomHeader = useDiffHeader(files, viewedFiles, onSetViewed);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-col" ref={rootRef}>
@@ -280,8 +279,7 @@ export function DiffCardList({
         options={options}
         ref={handleRef}
         renderAnnotation={renderAnnotation}
-        renderHeaderMetadata={renderHeaderMetadata}
-        renderHeaderPrefix={renderFileTypePrefix}
+        renderCustomHeader={renderCustomHeader}
         selectedLines={selectedLines}
       />
     </div>
