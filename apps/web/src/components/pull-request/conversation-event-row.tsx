@@ -15,7 +15,7 @@ import type {
 import type { ReactNode } from "react";
 import { fullDate, shortAge } from "@/lib/age";
 
-const EVENT_ICONS: Record<
+export const EVENT_ICONS: Record<
   Exclude<ConversationEventKind, "commit">,
   ReactNode
 > = {
@@ -55,6 +55,28 @@ const EVENT_ICONS: Record<
 
 function eventPhrase(event: ConversationEvent): ReactNode {
   switch (event.kind) {
+    case "commit":
+      return (
+        <span className="flex min-w-0 items-center gap-2">
+          {event.url ? (
+            <a
+              className="shrink-0 font-mono text-[11px] text-muted-foreground/70 hover:text-foreground hover:underline"
+              href={event.url}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {event.ref}
+            </a>
+          ) : (
+            <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70">
+              {event.ref}
+            </span>
+          )}
+          <span className="min-w-0 truncate text-foreground/90">
+            {event.detail}
+          </span>
+        </span>
+      );
     case "force-push":
       return (
         <>
@@ -132,16 +154,15 @@ export function ConversationEventRow({
   event,
   now,
 }: ConversationEventRowProps) {
-  if (event.kind === "commit") {
-    return null;
-  }
+  const isCommit = event.kind === "commit";
   return (
-    <div className="flex items-center gap-2 px-3.5 text-[11px] text-muted-foreground">
-      {EVENT_ICONS[event.kind]}
-      {event.actor ? (
+    <div className="flex w-full min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+      {!isCommit && event.actor ? (
         <span className="font-medium text-foreground">{event.actor.login}</span>
       ) : null}
-      <span className="min-w-0 truncate">{eventPhrase(event)}</span>
+      <span className="flex min-w-0 flex-1 items-center gap-2 truncate">
+        {eventPhrase(event)}
+      </span>
       <span
         className="ml-auto shrink-0 text-muted-foreground/60 tabular-nums"
         title={fullDate(event.at)}

@@ -1,7 +1,6 @@
 import type { ReviewThread } from "@sphynx/schema/pull-request-comments";
 import type { ThreadCommenting } from "@/components/pull-request/comment-thread";
 import { ConversationCommentCard } from "@/components/pull-request/conversation-comment-card";
-import { ConversationCommitGroup } from "@/components/pull-request/conversation-commit-group";
 import { ConversationEventRow } from "@/components/pull-request/conversation-event-row";
 import {
   type FeedItem,
@@ -48,8 +47,6 @@ export function ConversationFeedItem({
         />
       );
     }
-    case "commits":
-      return <ConversationCommitGroup commits={item.commits} now={now} />;
     case "event":
       return <ConversationEventRow event={item.event} now={now} />;
     default:

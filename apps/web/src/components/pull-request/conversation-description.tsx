@@ -21,6 +21,7 @@ export function ConversationDescription({
         author={summary.author}
         githubUrl={summary.githubUrl}
         now={now}
+        showAvatar={false}
         verb="opened this pull request"
       />
       {hasBody ? (

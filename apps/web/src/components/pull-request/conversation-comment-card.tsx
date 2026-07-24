@@ -18,6 +18,7 @@ export function ConversationCommentCard({
         author={comment.author}
         githubUrl={comment.githubUrl}
         now={now}
+        showAvatar={false}
         verb="commented"
       />
       <ConversationBody body={comment.body} bodyHTML={comment.bodyHTML} />

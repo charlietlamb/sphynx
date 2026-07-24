@@ -29,6 +29,11 @@ import {
   useResolveThread,
 } from "@/components/pull-request/pull-request-queries";
 import type { PullRequestSearchSetter } from "@/components/pull-request/pull-request-search";
+import {
+  avatarNode,
+  timelineNode,
+} from "@/components/pull-request/timeline-node";
+import { TimelineRow } from "@/components/pull-request/timeline-row";
 
 interface ConversationPanelProps {
   files: readonly PullRequestFile[];
@@ -150,31 +155,43 @@ export default function ConversationPanel({
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="flex w-full max-w-3xl flex-col gap-3 px-4 py-4">
-          <ConversationDescription
-            descriptionHTML={conversation.data.descriptionHTML}
-            now={now}
-            summary={summary}
-          />
-          {feed.map((item) => (
-            <div
-              className="w-full"
-              data-thread-key={
-                item.kind === "thread" ? feedKey(item) : undefined
-              }
-              key={feedKey(item)}
-            >
-              <ConversationFeedItem
-                commenting={commenting}
-                focusedThreadKey={focusedThreadKey}
-                item={item}
-                now={now}
-                onToggleFocus={toggleFocus}
-                patches={patches}
-              />
-            </div>
-          ))}
-          <ConversationComposer busy={adding} onSubmit={addComment} />
+        <div className="mx-auto flex w-full max-w-3xl flex-col px-4 py-6">
+          <TimelineRow node={avatarNode(summary.author)} variant="card">
+            <ConversationDescription
+              descriptionHTML={conversation.data.descriptionHTML}
+              now={now}
+              summary={summary}
+            />
+          </TimelineRow>
+          {feed.map((item, index) => {
+            const { node, variant } = timelineNode(item);
+            return (
+              <div
+                data-thread-key={
+                  item.kind === "thread" ? feedKey(item) : undefined
+                }
+                key={feedKey(item)}
+              >
+                <TimelineRow
+                  last={index === feed.length - 1}
+                  node={node}
+                  variant={variant}
+                >
+                  <ConversationFeedItem
+                    commenting={commenting}
+                    focusedThreadKey={focusedThreadKey}
+                    item={item}
+                    now={now}
+                    onToggleFocus={toggleFocus}
+                    patches={patches}
+                  />
+                </TimelineRow>
+              </div>
+            );
+          })}
+          <div className="pt-2 pl-10">
+            <ConversationComposer busy={adding} onSubmit={addComment} />
+          </div>
         </div>
       </div>
       <aside className="hidden min-h-0 w-[26rem] shrink-0 flex-col border-border border-l lg:flex">

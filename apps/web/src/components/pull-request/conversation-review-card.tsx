@@ -31,6 +31,7 @@ export function ConversationReviewCard({
         author={review.author}
         githubUrl={review.githubUrl}
         now={now}
+        showAvatar={false}
         verb={
           <span className="flex items-center gap-1.5">
             <VerdictIcon verdict={review.verdict} />

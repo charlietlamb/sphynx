@@ -1,4 +1,3 @@
-import { GitMergeIcon, XCircleIcon } from "@phosphor-icons/react";
 import { fullDate, shortAge } from "@/lib/age";
 
 interface ConversationStateRowProps {
@@ -13,16 +12,8 @@ export function ConversationStateRow({
   state,
 }: ConversationStateRowProps) {
   return (
-    <div className="flex items-center gap-2 px-3.5 text-[11px] text-muted-foreground">
-      {state === "merged" ? (
-        <GitMergeIcon
-          className="size-3.5 text-muted-foreground"
-          weight="fill"
-        />
-      ) : (
-        <XCircleIcon className="size-3.5 text-deletion" weight="fill" />
-      )}
-      <span>
+    <div className="flex w-full items-center gap-2 text-[11px] text-muted-foreground">
+      <span className="font-medium text-foreground">
         This pull request was {state === "merged" ? "merged" : "closed"}
       </span>
       <span
