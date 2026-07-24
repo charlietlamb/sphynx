@@ -27,6 +27,11 @@ import type { ReviewCommenting } from "@/components/pull-request/use-review-comm
 
 const CARD_LAYOUT = { paddingTop: 0, paddingBottom: 8, gap: 16 };
 
+const COLLAPSED_HEADER_HEIGHT = 47;
+const COLLAPSED_ITEM_METRICS = {
+  diffHeaderHeight: COLLAPSED_HEADER_HEIGHT,
+} as const;
+
 function threadKey(path: string, line: number, side: string) {
   return `${path}|${line}|${side}`;
 }
@@ -169,7 +174,12 @@ export function DiffCardList({
   );
 
   const options = useMemo(
-    () => ({ ...symbolOptions, stickyHeaders: true, layout: CARD_LAYOUT }),
+    () => ({
+      ...symbolOptions,
+      stickyHeaders: true,
+      layout: CARD_LAYOUT,
+      itemMetrics: COLLAPSED_ITEM_METRICS,
+    }),
     [symbolOptions]
   );
 
