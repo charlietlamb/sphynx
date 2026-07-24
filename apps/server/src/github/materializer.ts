@@ -106,24 +106,12 @@ const makeMaterializer = Effect.gen(function* () {
       { concurrency: 3, discard: true }
     );
 
-  /** The stored composite ETag for an installation, or null before first build. */
-  const storedEtag = (installationId: number) =>
-    Effect.tryPromise(() =>
-      db
-        .select({ etag: githubInstallation.pipelineEtag })
-        .from(githubInstallation)
-        .where(eq(githubInstallation.installationId, installationId))
-        .limit(1)
-    ).pipe(
-      Effect.orDie,
-      Effect.map((rows) => rows[0]?.etag ?? null)
-    );
-
-  const rememberEtag = (installationId: number, etag: string, now: Date) =>
+  /** Record that a reconcile write landed, for observability of the backstop. */
+  const rememberReconciled = (installationId: number, now: Date) =>
     Effect.tryPromise(() =>
       db
         .update(githubInstallation)
-        .set({ pipelineEtag: etag, reconciledAt: now })
+        .set({ reconciledAt: now })
         .where(eq(githubInstallation.installationId, installationId))
     ).pipe(Effect.orDie);
 
@@ -144,19 +132,21 @@ const makeMaterializer = Effect.gen(function* () {
        */
       const snapshotAt = new Date(yield* Clock.currentTimeMillis);
       /**
-       * Reuse the last composite ETag so an unchanged installation revalidates
-       * as `NotModified` — cheap authorized 304s that skip the whole per-repo
-       * compare fan-out — instead of a full refetch every sweep.
+       * Always do a real refresh — never reuse a persisted cross-run ETag. That
+       * optimization wedged the read model in production: once a composite ETag
+       * was stored, `refresh` kept returning `NotModified` and skipped the write
+       * for days even as GitHub gained dozens of PRs, so the dashboard froze. A
+       * correctness backstop must never be able to short-circuit itself into a
+       * no-op; the per-15-min cost of refreshing a handful of repos is cheap.
        */
-      const previousEtag = yield* storedEtag(installationId);
-      const refreshed = yield* pipeline.refresh(token, previousEtag);
+      const refreshed = yield* pipeline.refresh(token, null);
       if (refreshed._tag === "Modified") {
         yield* writer.writePipeline(
           installationId,
           { repos: refreshed.repos },
           snapshotAt
         );
-        yield* rememberEtag(installationId, refreshed.etag, snapshotAt);
+        yield* rememberReconciled(installationId, snapshotAt);
       }
       if (seed) {
         const discovered = yield* queue.discoverRepos(token);

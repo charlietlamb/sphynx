@@ -1,0 +1,27 @@
+name: reconcile
+
+# The read-model reconcile backstop. The in-container 15-min loop does not run
+# reliably in the Vercel container model, and Vercel Hobby does not allow
+# sub-daily crons, so an external scheduler drives the already-auth-gated
+# /api/github/reconcile endpoint. Without this the read model only reflects what
+# webhooks deliver, and freezes if webhook delivery is misconfigured.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: reconcile
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reconcile
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://sphynx.sh/api/github/reconcile)
+          echo "reconcile responded $code"
+          test "$code" = "202"
