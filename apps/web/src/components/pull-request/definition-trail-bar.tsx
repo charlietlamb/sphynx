@@ -1,6 +1,6 @@
 import { ArrowUUpLeftIcon, CaretRightIcon, XIcon } from "@phosphor-icons/react";
 import { Button } from "@sphynx/ui/components/ui/button";
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import {
   type DefinitionRef,
   trailKeyAt,
@@ -14,6 +14,55 @@ function visibleIndexes(length: number) {
     return Array.from({ length }, (_, index) => index);
   }
   return [0, length - 2, length - 1];
+}
+
+function TrailSeparator({ hidden }: { hidden: number }) {
+  return (
+    <>
+      {hidden > 0 ? (
+        <>
+          <CaretRightIcon className="size-3 shrink-0 text-muted-foreground/50" />
+          <span
+            className="shrink-0 px-1 text-muted-foreground/60 text-xs"
+            title={`${hidden} more`}
+          >
+            …
+          </span>
+        </>
+      ) : null}
+      <CaretRightIcon className="size-3 shrink-0 text-muted-foreground/50" />
+    </>
+  );
+}
+
+function TrailCrumb({
+  children,
+  isLast,
+  onSelect,
+}: {
+  children: ReactNode;
+  isLast: boolean;
+  onSelect: () => void;
+}) {
+  if (isLast) {
+    return (
+      <span
+        aria-current="page"
+        className="flex h-6 shrink-0 items-center gap-1 px-1 font-mono text-foreground text-xs"
+      >
+        {children}
+      </span>
+    );
+  }
+  return (
+    <button
+      className="flex h-6 shrink-0 items-center gap-1 px-1 font-mono text-muted-foreground text-xs transition-colors hover:text-foreground"
+      onClick={onSelect}
+      type="button"
+    >
+      {children}
+    </button>
+  );
 }
 
 interface DefinitionTrailBarProps {
@@ -39,47 +88,18 @@ export function DefinitionTrailBar({
       >
         {indexes.map((index, order) => {
           const entry = trail[index];
-          const isLast = index === trail.length - 1;
-          const label = (
-            <>
-              {baseName(entry.path)}
-              <span className="text-muted-foreground/60">:{entry.line}</span>
-            </>
-          );
           return (
             <Fragment key={trailKeyAt(trail, index)}>
               {order > 0 ? (
-                <>
-                  {hidden > 0 && order === 1 ? (
-                    <>
-                      <CaretRightIcon className="size-3 shrink-0 text-muted-foreground/50" />
-                      <span
-                        className="shrink-0 px-1 text-muted-foreground/60 text-xs"
-                        title={`${hidden} more`}
-                      >
-                        …
-                      </span>
-                    </>
-                  ) : null}
-                  <CaretRightIcon className="size-3 shrink-0 text-muted-foreground/50" />
-                </>
+                <TrailSeparator hidden={order === 1 ? hidden : 0} />
               ) : null}
-              {isLast ? (
-                <span
-                  aria-current="page"
-                  className="flex h-6 shrink-0 items-center gap-1 px-1 font-mono text-foreground text-xs"
-                >
-                  {label}
-                </span>
-              ) : (
-                <button
-                  className="flex h-6 shrink-0 items-center gap-1 px-1 font-mono text-muted-foreground text-xs transition-colors hover:text-foreground"
-                  onClick={() => onTruncate(index)}
-                  type="button"
-                >
-                  {label}
-                </button>
-              )}
+              <TrailCrumb
+                isLast={index === trail.length - 1}
+                onSelect={() => onTruncate(index)}
+              >
+                {baseName(entry.path)}
+                <span className="text-muted-foreground/60">:{entry.line}</span>
+              </TrailCrumb>
             </Fragment>
           );
         })}
