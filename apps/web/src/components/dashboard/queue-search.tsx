@@ -14,7 +14,7 @@ export function QueueSearch({ inputRef, onChange, query }: QueueSearchProps) {
     <div className="input-bevel-shadow group flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md border border-border bg-background px-2.5 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20 dark:bg-input/30">
       <MagnifyingGlassIcon className="size-3.5 shrink-0 text-muted-foreground transition-colors group-focus-within:text-foreground" />
       <input
-        className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/40"
+        className="h-full min-w-0 flex-1 bg-transparent text-xs leading-none outline-none placeholder:text-muted-foreground/40"
         onChange={(event) => onChange(event.target.value)}
         placeholder="Search pulls…"
         ref={inputRef}

@@ -1,6 +1,12 @@
-import { GitPullRequestIcon } from "@phosphor-icons/react";
+import {
+  GitPullRequestIcon,
+  MagnifyingGlassIcon,
+  WarningCircleIcon,
+} from "@phosphor-icons/react";
 import type { QueuePull } from "@sphynx/schema/review-queue";
-import type { ReactNode, RefObject } from "react";
+import { EmptyState } from "@sphynx/ui/components/empty-state";
+import { Button } from "@sphynx/ui/components/ui/button";
+import type { RefObject } from "react";
 import { BranchGroup } from "@/components/dashboard/branch-group";
 import { QueueFilterMenu } from "@/components/dashboard/queue-filter-menu";
 import { QueueRow } from "@/components/dashboard/queue-row";
@@ -10,11 +16,7 @@ import { SearchScopes } from "@/components/dashboard/search-scopes";
 import { SectionHeader } from "@/components/layout/section-header";
 import { type BranchQueue, pullKey, type QueueFilter } from "@/lib/attention";
 
-function QueueMessage({ children }: { children: ReactNode }) {
-  return (
-    <p className="px-[10px] py-7 text-muted-foreground text-sm">{children}</p>
-  );
-}
+const EMPTY_CLASS = "min-h-[16rem] flex-1";
 
 const SEARCH_SKELETON_WIDTHS = [
   "52%",
@@ -67,7 +69,7 @@ export function QueuePane({
 }: QueuePaneProps) {
   const total = queue.groups.reduce((sum, group) => sum + group.total, 0);
   return (
-    <div className="flex flex-col px-4 pb-3">
+    <div className="flex min-h-full flex-col px-4 pb-3">
       <SectionHeader
         action={
           <span className="text-[11px] text-muted-foreground/60 tabular-nums">
@@ -135,7 +137,15 @@ function SearchResults({
   search: SearchState;
 }) {
   if (search.isError) {
-    return <QueueMessage>Couldn't reach GitHub search.</QueueMessage>;
+    return (
+      <EmptyState
+        bordered={false}
+        className={EMPTY_CLASS}
+        description="Couldn't reach GitHub search. Try again in a moment."
+        icon={<WarningCircleIcon weight="fill" />}
+        title="Search unavailable"
+      />
+    );
   }
   if (search.isPending && search.pulls.length === 0) {
     return (
@@ -147,7 +157,15 @@ function SearchResults({
     );
   }
   if (search.pulls.length === 0) {
-    return <QueueMessage>No pulls match that query.</QueueMessage>;
+    return (
+      <EmptyState
+        bordered={false}
+        className={EMPTY_CLASS}
+        description="No pull requests match that query."
+        icon={<MagnifyingGlassIcon weight="bold" />}
+        title="No matches"
+      />
+    );
   }
   return (
     <div className="fade-in flex animate-in flex-col duration-150">
@@ -186,23 +204,30 @@ function OpenQueue({
   queue: BranchQueue;
 }) {
   if (queue.groups.length === 0) {
+    if (filter === "all") {
+      return (
+        <EmptyState
+          bordered={false}
+          className={EMPTY_CLASS}
+          description="This repository has no open pull requests to review."
+          icon={<GitPullRequestIcon weight="fill" />}
+          title="No open pull requests"
+        />
+      );
+    }
     return (
-      <QueueMessage>
-        {filter === "all" ? (
-          "No open pull requests."
-        ) : (
-          <>
-            Nothing here.{" "}
-            <button
-              className="text-primary underline-offset-2 hover:underline"
-              onClick={() => onFilter("all")}
-              type="button"
-            >
-              Show all
-            </button>
-          </>
-        )}
-      </QueueMessage>
+      <EmptyState
+        action={
+          <Button onClick={() => onFilter("all")} size="sm" variant="outline">
+            Show all
+          </Button>
+        }
+        bordered={false}
+        className={EMPTY_CLASS}
+        description="No pull requests match this filter."
+        icon={<GitPullRequestIcon weight="fill" />}
+        title="Nothing here"
+      />
     );
   }
   return (
