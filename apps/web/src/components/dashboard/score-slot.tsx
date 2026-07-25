@@ -1,10 +1,8 @@
 import type { QueuePull } from "@sphynx/schema/review-queue";
-import { cn } from "@sphynx/ui/lib/utils";
-import { ScoreArc } from "@/components/dashboard/score-arc";
+import { ScoreBadge } from "@/components/dashboard/score-badge";
 import { SignalTip } from "@/components/dashboard/signal-tip";
 import { pullScores, type ScoreSummary } from "@/lib/attention";
 import { stripBotSuffix } from "@/lib/claims";
-import { scoreClass } from "@/lib/score";
 
 function scoresLabel(scores: ScoreSummary[]) {
   if (scores.length === 1) {
@@ -28,15 +26,7 @@ export function ScoreSlot({ pull }: { pull: QueuePull }) {
           className="flex items-center gap-1"
           label={scoresLabel(scores)}
         >
-          <ScoreArc ratio={latest.ratio} />
-          <span
-            className={cn(
-              "font-semibold text-[12px] tabular-nums leading-none",
-              scoreClass(latest.ratio)
-            )}
-          >
-            {value}
-          </span>
+          <ScoreBadge label={value ?? ""} ratio={latest.ratio} />
         </SignalTip>
       ) : null}
     </span>

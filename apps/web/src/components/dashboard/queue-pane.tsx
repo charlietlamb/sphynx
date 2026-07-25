@@ -1,13 +1,20 @@
 import { GitPullRequestIcon } from "@phosphor-icons/react";
 import type { QueuePull } from "@sphynx/schema/review-queue";
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import { BranchGroup } from "@/components/dashboard/branch-group";
 import { QueueFilterMenu } from "@/components/dashboard/queue-filter-menu";
 import { QueueRow } from "@/components/dashboard/queue-row";
 import { QueueRowSkeleton } from "@/components/dashboard/queue-row-skeleton";
-import { QueueSearch, SearchScopes } from "@/components/dashboard/queue-search";
+import { QueueSearch } from "@/components/dashboard/queue-search";
+import { SearchScopes } from "@/components/dashboard/search-scopes";
 import { SectionHeader } from "@/components/layout/section-header";
 import { type BranchQueue, pullKey, type QueueFilter } from "@/lib/attention";
+
+function QueueMessage({ children }: { children: ReactNode }) {
+  return (
+    <p className="px-[10px] py-7 text-muted-foreground text-sm">{children}</p>
+  );
+}
 
 const SEARCH_SKELETON_WIDTHS = [
   "52%",
@@ -128,11 +135,7 @@ function SearchResults({
   search: SearchState;
 }) {
   if (search.isError) {
-    return (
-      <p className="px-[10px] py-7 text-muted-foreground text-sm">
-        Couldn't reach GitHub search.
-      </p>
-    );
+    return <QueueMessage>Couldn't reach GitHub search.</QueueMessage>;
   }
   if (search.isPending && search.pulls.length === 0) {
     return (
@@ -144,11 +147,7 @@ function SearchResults({
     );
   }
   if (search.pulls.length === 0) {
-    return (
-      <p className="px-[10px] py-7 text-muted-foreground text-sm">
-        No pulls match that query.
-      </p>
-    );
+    return <QueueMessage>No pulls match that query.</QueueMessage>;
   }
   return (
     <div className="fade-in flex animate-in flex-col duration-150">
@@ -188,7 +187,7 @@ function OpenQueue({
 }) {
   if (queue.groups.length === 0) {
     return (
-      <p className="px-[10px] py-7 text-muted-foreground text-sm">
+      <QueueMessage>
         {filter === "all" ? (
           "No open pull requests."
         ) : (
@@ -203,7 +202,7 @@ function OpenQueue({
             </button>
           </>
         )}
-      </p>
+      </QueueMessage>
     );
   }
   return (

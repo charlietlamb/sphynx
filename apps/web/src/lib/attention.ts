@@ -1,4 +1,5 @@
 import type { QueuePull, RepoFlow } from "@sphynx/schema/review-queue";
+import { parseScoreRatio } from "@/lib/score";
 
 export type SizeClass = "xs" | "s" | "m" | "l" | "xl";
 
@@ -47,15 +48,15 @@ export function pullScores(pull: QueuePull): ScoreSummary[] {
     if (!reviewer.score) {
       continue;
     }
-    const [value, scale] = reviewer.score.split("/").map(Number);
-    if (!(value !== undefined && scale)) {
+    const ratio = parseScoreRatio(reviewer.score);
+    if (ratio === null) {
       continue;
     }
     scored.push({
       at: reviewer.submittedAt,
       summary: {
         label: reviewer.score,
-        ratio: value / scale,
+        ratio,
         reviewer: reviewer.name,
       },
     });
