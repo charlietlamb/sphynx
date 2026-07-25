@@ -1,3 +1,4 @@
+import { CheckCircleIcon, HourglassMediumIcon } from "@phosphor-icons/react";
 import type { StageGap } from "@sphynx/schema/review-queue";
 import { cn } from "@sphynx/ui/lib/utils";
 import { RailPromotion } from "@/components/dashboard/rail-promotion";
@@ -26,13 +27,17 @@ export function RailGapQueue({
 }: RailGapQueueProps) {
   if (gap.aheadBy === 0) {
     return (
-      <div className="relative flex h-6 items-center pl-7">
+      <div className="relative flex h-7 items-center gap-1.5 pl-7">
         <span
           aria-hidden
           className="absolute left-[14px] h-px w-[10px] bg-border"
         />
-        <p className="text-[10px] text-muted-foreground/40">
-          in sync with {gap.to}
+        <CheckCircleIcon
+          className="size-3.5 shrink-0 text-addition"
+          weight="fill"
+        />
+        <p className="text-[11px] text-muted-foreground">
+          in sync with <span className="font-mono">{gap.to}</span>
         </p>
       </div>
     );
@@ -47,9 +52,13 @@ export function RailGapQueue({
         aria-hidden
         className="absolute top-0 bottom-0 left-[13px] w-[2px] bg-amber-500/70"
       />
-      <p className="flex items-baseline gap-2 py-0.5 text-[11px] text-muted-foreground">
-        waiting for {gap.to}
-        <span className="text-muted-foreground/60 tabular-nums">
+      <p className="flex items-center gap-1.5 py-0.5 font-medium text-[11px] text-foreground">
+        <HourglassMediumIcon
+          className="size-3.5 shrink-0 text-amber-500"
+          weight="fill"
+        />
+        waiting for <span className="font-mono">{gap.to}</span>
+        <span className="text-muted-foreground/70 tabular-nums">
           {gap.pulls.length > 0 ? gap.pulls.length : gap.aheadBy}
         </span>
       </p>

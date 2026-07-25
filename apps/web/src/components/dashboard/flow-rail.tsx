@@ -92,16 +92,6 @@ export function FlowRail({
             </div>
           );
         })}
-        <div className="relative flex h-[26px] items-center gap-2 pr-2 pl-7">
-          <span
-            aria-hidden
-            className="absolute left-[10.5px] size-[7px] rounded-full bg-muted-foreground/50 ring-2 ring-background"
-          />
-          <span className="text-[10px] text-muted-foreground/40">
-            production
-          </span>
-          <span aria-hidden className="h-px flex-1 bg-border/40" />
-        </div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { cn } from "@sphynx/ui/lib/utils";
 import { QueueCounts } from "@/components/dashboard/queue-counts";
+import { RailCi } from "@/components/dashboard/rail-ci";
 import { SignalTip } from "@/components/dashboard/signal-tip";
 import type { RailBranchItem } from "@/lib/attention";
 
@@ -61,6 +62,7 @@ export function RailBranch({ active, hint, item, onSelect }: RailBranchProps) {
       >
         {item.isStage ? item.branch : leafName(item.branch)}
       </SignalTip>
+      <RailCi ci={item.ci} />
       <QueueCounts
         contested={item.contested}
         mergeable={item.mergeable}
