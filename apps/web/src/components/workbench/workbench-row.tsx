@@ -60,6 +60,14 @@ function RowShell({
   );
 }
 
+function DetailText({ detail }: { detail: string | null }) {
+  return (
+    <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
+      {detail}
+    </span>
+  );
+}
+
 export function WorkbenchRow(props: WorkbenchRowProps) {
   const { event, now } = props;
   return (
@@ -101,15 +109,11 @@ export function WorkbenchRow(props: WorkbenchRowProps) {
               {event.pull.title}
             </span>
           ) : (
-            <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
-              {event.detail}
-            </span>
+            <DetailText detail={event.detail} />
           )}
         </>
       ) : (
-        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
-          {event.detail}
-        </span>
+        <DetailText detail={event.detail} />
       )}
       {event.pull?.title && event.detail ? (
         <span className="hidden max-w-56 shrink-0 truncate font-mono text-[11px] text-muted-foreground/50 lg:inline">

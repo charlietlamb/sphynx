@@ -2,19 +2,11 @@ import { useSyncExternalStore } from "react";
 import {
   clearSettledMerges,
   markMerged,
+  type OpenShape,
   type PendingMerges,
+  type PullRef,
   unmarkMerged,
 } from "./pending-merges";
-
-interface PullRef {
-  readonly number: number;
-  readonly owner: string;
-  readonly repo: string;
-}
-
-interface OpenShape {
-  readonly openPulls: readonly PullRef[];
-}
 
 interface PipelineShape {
   readonly repos: readonly OpenShape[];
