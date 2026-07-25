@@ -34,6 +34,7 @@ import { recordAccessBlock } from "@/components/pull-request/access-block-store"
 import { seededSummary } from "@/components/pull-request/summary-seed";
 import { usePullFreshnessStream } from "@/components/pull-request/use-pull-freshness-stream";
 import { usePullInstallation } from "@/components/pull-request/use-pull-installation";
+import { trackEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/auth-client";
 import { fetchWithEtag } from "@/lib/etag-cache";
 import { keys } from "@/lib/query/keys";
@@ -329,6 +330,13 @@ export function useAddConversationComment(ref: PullRequestRef) {
       );
       reportMutationError(ref, "Couldn't post comment", error);
     },
+    onSuccess: () => {
+      trackEvent("comment_added", {
+        owner: ref.owner,
+        repo: ref.repo,
+        number: ref.number,
+      });
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
   return { addComment: mutation.mutate, adding: mutation.isPending };
@@ -477,6 +485,15 @@ export function useResolveThread(ref: PullRequestRef) {
         queryClient.setQueryData(queryKey, context.previous);
       }
       reportMutationError(ref, "Couldn't update thread", error);
+    },
+    onSuccess: (_data, payload) => {
+      if (payload.resolved) {
+        trackEvent("thread_resolved", {
+          owner: ref.owner,
+          repo: ref.repo,
+          number: ref.number,
+        });
+      }
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });

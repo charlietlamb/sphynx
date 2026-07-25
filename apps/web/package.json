@@ -11,6 +11,7 @@
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
+    "@databuddy/sdk": "^2.6.0",
     "@fontsource-variable/funnel-display": "^5.2.8",
     "@fontsource-variable/geist": "catalog:",
     "@fontsource-variable/geist-mono": "catalog:",

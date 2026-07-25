@@ -1,8 +1,10 @@
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/analytics";
 import { signIn } from "@/lib/auth-client";
 
 export async function signInWithGithub(callbackURL: string) {
   try {
+    trackEvent("sign_in_started", { provider: "github" });
     const { error } = await signIn.social({ provider: "github", callbackURL });
     if (!error) {
       return;

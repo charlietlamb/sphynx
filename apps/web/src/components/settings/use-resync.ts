@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/analytics";
 import { postJson } from "@/lib/api";
 
 /**
@@ -19,6 +20,9 @@ export function useResync(installationId: number | null, label: string) {
       return postJson(`/api/github/installations/${installationId}/resync`);
     },
     onSuccess: () => {
+      if (installationId !== null) {
+        trackEvent("installation_resynced", { installationId });
+      }
       toast.success(`Resyncing ${label}…`, {
         description: "The dashboard updates as data lands.",
       });

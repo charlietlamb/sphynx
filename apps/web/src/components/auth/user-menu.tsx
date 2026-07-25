@@ -17,6 +17,7 @@ import {
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { cn } from "@sphynx/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
+import { trackEvent } from "@/lib/analytics";
 import { signOut, useSession } from "@/lib/auth-client";
 
 export function UserMenu() {
@@ -30,6 +31,7 @@ export function UserMenu() {
   }
   const { user } = session;
   const onSignOut = async () => {
+    trackEvent("signed_out", {});
     await signOut();
     navigate({ to: "/login" });
   };
