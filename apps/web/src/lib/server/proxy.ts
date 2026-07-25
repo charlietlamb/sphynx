@@ -4,11 +4,12 @@ import { serverUrl } from "@/lib/server/server-url";
  * Dev-only bridge from the web server to the API server (in production Vercel
  * rewrites `/api/*` straight to the server service, so this never runs).
  *
- * The forwarded request drops `accept-encoding`: the API server would otherwise
- * gzip the body, but undici decodes it here while leaving the stale
- * `content-encoding` header in place, so the browser tries to decode an
- * already-decoded body (`ERR_CONTENT_DECODING_FAILED`). Over localhost the
- * compression buys nothing anyway.
+ * The forwarded request asks for `identity`: Bun's fetch re-adds a gzip
+ * `accept-encoding` if the header is merely deleted, so the API server would
+ * compress the body, Bun would decode it here, and the stale `content-encoding`
+ * header would make the browser decode an already-decoded body
+ * (`ERR_CONTENT_DECODING_FAILED`). `identity` is honored, so the server sends
+ * plain bytes — and over localhost the compression buys nothing anyway.
  */
 export function proxyToServer({ request }: { request: Request }) {
   const baseUrl = serverUrl();
@@ -23,12 +24,12 @@ export function proxyToServer({ request }: { request: Request }) {
 
   const incoming = new URL(request.url);
   const target = new URL(incoming.pathname + incoming.search, baseUrl);
-  const headers = new Headers(request.headers);
-  headers.delete("accept-encoding");
+  const forwarded = new Headers(request.headers);
+  forwarded.set("accept-encoding", "identity");
 
   return fetch(target, {
     body: request.body,
-    headers,
+    headers: forwarded,
     method: request.method,
     redirect: "manual",
     // @ts-expect-error duplex is required by Node/undici for streamed bodies
