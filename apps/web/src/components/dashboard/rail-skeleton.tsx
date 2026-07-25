@@ -19,15 +19,26 @@ export function RailSkeleton() {
         <RailBranchSkeleton nameWidth="7rem" />
         <RailBranchSkeleton nameWidth="6rem" />
         <RailBranchSkeleton isStage nameWidth="2.5rem" />
-        <div className="relative flex h-6 items-center pl-7">
+        <div className="relative flex h-7 items-center gap-1.5 pl-7">
           <Skeleton className="absolute left-[14px] h-px w-[10px]" />
+          <Skeleton className="size-3.5 shrink-0 rounded-full" />
           <Skeleton className="h-2.5 w-24" />
         </div>
         <RailBranchSkeleton isStage nameWidth="3rem" />
-        <div className="relative flex h-[26px] items-center gap-2 pr-2 pl-7">
-          <Skeleton className="absolute left-[10.5px] size-[7px] rounded-full" />
-          <Skeleton className="h-3 w-16" />
-          <span className="h-px min-w-0 flex-1 bg-border" />
+        <div className="relative flex flex-col py-0.5 pl-7">
+          <span
+            aria-hidden
+            className="absolute top-0 bottom-0 left-[13px] w-[2px] bg-border"
+          />
+          <div className="flex items-center gap-1.5 py-0.5">
+            <Skeleton className="size-3.5 shrink-0 rounded-full" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <div className="flex h-6 items-center gap-2">
+            <Skeleton className="h-2.5 w-6 shrink-0" />
+            <Skeleton className="h-2.5 w-28" />
+          </div>
+          <Skeleton className="mt-1 h-7 w-full rounded-md" />
         </div>
       </div>
     </div>

@@ -11,8 +11,12 @@ export function VerdictRowSkeleton({ nameWidth }: VerdictRowSkeletonProps) {
       <span className="min-w-0 flex-1">
         <Skeleton className="h-3.5" style={{ width: nameWidth }} />
       </span>
-      <Skeleton className="h-3.5 w-16 shrink-0" />
+      <span className="flex shrink-0 items-center gap-1">
+        <Skeleton className="size-3.5 shrink-0 rounded-full" />
+        <Skeleton className="h-3 w-3" />
+      </span>
       <Skeleton className="h-3 w-7 shrink-0" />
+      <Skeleton className="size-3.5 shrink-0 rounded-full" />
     </div>
   );
 }

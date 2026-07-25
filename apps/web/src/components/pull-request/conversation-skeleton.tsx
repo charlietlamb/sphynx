@@ -44,6 +44,9 @@ export function ConversationSkeleton() {
               <Skeleton className="h-3 w-2/3" />
             </div>
           </TimelineRow>
+          <div className="pt-2 pl-10">
+            <Skeleton className="h-20 w-full rounded-md" />
+          </div>
         </div>
       </div>
       <aside className="hidden min-h-0 w-[26rem] shrink-0 flex-col border-border border-l lg:flex">
@@ -60,15 +63,34 @@ export function ConversationSkeleton() {
           </div>
           <Skeleton className="h-[3px] w-full rounded-full" />
         </div>
-        <div className="flex flex-col gap-2 px-4 pb-2">
+        <div className="flex flex-col border-border border-b px-4">
           <SectionHeader icon={headerIcon} label="Reviewers" />
-          {REVIEWER_KEYS.map((key) => (
-            <div className="flex items-center gap-2" key={key}>
-              <Skeleton className="size-4 rounded-full" />
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="ml-auto size-3.5 rounded-full" />
+          <div className="flex flex-col divide-y divide-border/40">
+            {REVIEWER_KEYS.map((key) => (
+              <div
+                className="-mx-4 flex items-center gap-2 px-4 py-2"
+                key={key}
+              >
+                <Skeleton className="size-4 shrink-0 rounded-full" />
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="ml-auto h-3 w-8" />
+                <Skeleton className="size-3.5 shrink-0 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 border-border border-b px-4 pb-2">
+          <SectionHeader icon={headerIcon} label="Participants" />
+          <div className="flex items-center">
+            <div className="flex -space-x-1.5">
+              {REVIEWER_KEYS.map((key) => (
+                <Skeleton
+                  className="size-5 rounded-full ring-2 ring-background"
+                  key={key}
+                />
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </aside>
     </div>

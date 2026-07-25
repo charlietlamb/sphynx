@@ -1,13 +1,15 @@
 import { SealCheckIcon } from "@phosphor-icons/react";
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
+import { cn } from "@sphynx/ui/lib/utils";
 import { VerdictRowSkeleton } from "@/components/dashboard/verdict-row-skeleton";
+import { HAIRLINE_DIVIDE } from "@/components/layout/dividers";
 import { SectionHeader } from "@/components/layout/section-header";
 
 const REVIEWER_WIDTHS = ["5.5rem", "7rem", "4.5rem"];
 
 export function DossierSkeleton() {
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="flex flex-col gap-2 px-4 pt-4 pb-2">
         <div className="flex flex-col">
           <span className="flex h-[27.5px] items-center">
@@ -20,7 +22,7 @@ export function DossierSkeleton() {
         <span className="flex h-[16.5px] items-center">
           <Skeleton className="h-3 w-3/5" />
         </span>
-        <div className="flex h-[16.5px] items-center gap-2">
+        <div className="flex h-4 items-center gap-2">
           <Skeleton className="size-4 shrink-0 rounded-full" />
           <Skeleton className="h-3 w-36" />
           <span className="ml-auto flex items-center gap-3">
@@ -34,17 +36,16 @@ export function DossierSkeleton() {
         <Skeleton className="h-8 w-[4.5rem] rounded-md" />
         <Skeleton className="h-8 w-20 rounded-md" />
       </div>
-      <div className="flex flex-col gap-1 border-border border-b px-4 pb-4">
+      <div className="flex flex-col border-border border-b px-4">
         <SectionHeader
           icon={<SealCheckIcon weight="fill" />}
           label="Verdicts"
         />
-        {REVIEWER_WIDTHS.map((width) => (
-          <VerdictRowSkeleton key={width} nameWidth={width} />
-        ))}
-        <span className="flex h-[18px] items-center pt-1">
-          <Skeleton className="h-3 w-24" />
-        </span>
+        <div className={cn("flex flex-col", HAIRLINE_DIVIDE)}>
+          {REVIEWER_WIDTHS.map((width) => (
+            <VerdictRowSkeleton key={width} nameWidth={width} />
+          ))}
+        </div>
       </div>
       <div className="mt-auto flex items-center justify-end gap-2 border-border border-t px-4 py-3">
         <Skeleton className="h-7 w-16 rounded-md" />
