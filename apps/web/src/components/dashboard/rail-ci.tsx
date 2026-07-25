@@ -1,46 +1,15 @@
-import {
-  CheckCircleIcon,
-  CircleNotchIcon,
-  type Icon,
-  XCircleIcon,
-} from "@phosphor-icons/react";
 import { cn } from "@sphynx/ui/lib/utils";
 import { SignalTip } from "@/components/dashboard/signal-tip";
 import type { CiRollup } from "@/lib/attention";
 
-interface CiDisplay {
-  count: number;
-  glyph: Icon;
-  spin: boolean;
-  tone: string;
-}
-
-function ciDisplay({ failing, passing, running }: CiRollup): CiDisplay | null {
+function dotClass({ failing, running }: CiRollup) {
   if (failing > 0) {
-    return {
-      count: failing,
-      glyph: XCircleIcon,
-      spin: false,
-      tone: "text-deletion",
-    };
+    return "bg-deletion group-hover:shadow-[0_0_7px_1px_var(--deletion)]";
   }
   if (running > 0) {
-    return {
-      count: running,
-      glyph: CircleNotchIcon,
-      spin: true,
-      tone: "text-amber-500",
-    };
+    return "animate-pulse bg-amber-500 group-hover:shadow-[0_0_7px_1px_var(--color-amber-500)]";
   }
-  if (passing > 0) {
-    return {
-      count: passing,
-      glyph: CheckCircleIcon,
-      spin: false,
-      tone: "text-addition",
-    };
-  }
-  return null;
+  return "bg-addition group-hover:shadow-[0_0_7px_1px_var(--addition)]";
 }
 
 function ciLabel({ failing, passing, running }: CiRollup) {
@@ -58,20 +27,20 @@ function ciLabel({ failing, passing, running }: CiRollup) {
 }
 
 export function RailCi({ ci }: { ci: CiRollup }) {
-  const display = ciDisplay(ci);
-  if (!display) {
+  if (ci.failing + ci.running + ci.passing === 0) {
     return null;
   }
-  const Glyph = display.glyph;
   return (
-    <SignalTip className="flex shrink-0 items-center gap-1" label={ciLabel(ci)}>
-      <Glyph
-        className={cn("size-3.5", display.tone, display.spin && "animate-spin")}
-        weight="fill"
+    <SignalTip
+      className="inline-flex size-4 shrink-0 items-center justify-center"
+      label={ciLabel(ci)}
+    >
+      <span
+        className={cn(
+          "size-[5px] rounded-full transition-shadow group-hover:animate-pulse",
+          dotClass(ci)
+        )}
       />
-      <span className="text-[11px] text-muted-foreground/70 tabular-nums">
-        {display.count}
-      </span>
     </SignalTip>
   );
 }
