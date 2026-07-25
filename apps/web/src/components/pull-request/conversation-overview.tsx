@@ -28,6 +28,7 @@ import { FileTypeIcon } from "@/components/pull-request/file-type-icon";
 import { VerdictIcon } from "@/components/pull-request/verdict-icon";
 import { fullDate, shortAge } from "@/lib/age";
 import { plural } from "@/lib/claims";
+import { baseName } from "@/lib/paths";
 
 interface OverviewThreadItem {
   key: string;
@@ -130,7 +131,7 @@ export function ConversationOverview({
                       path={item.thread.path}
                     />
                     <span className="min-w-0 truncate font-mono text-[11px] text-foreground/80">
-                      {basename(item.thread.path)}
+                      {baseName(item.thread.path)}
                       <span className="text-muted-foreground/50">
                         :{item.thread.line}
                       </span>
@@ -226,10 +227,6 @@ export function ConversationOverview({
       ) : null}
     </div>
   );
-}
-
-function basename(path: string) {
-  return path.split("/").at(-1) ?? path;
 }
 
 function StatGlyph({

@@ -10,7 +10,7 @@ export function ThemePicker() {
       {APP_THEMES.map((option) => (
         <button
           className={cn(
-            "rounded-[5px] px-2.5 py-1 text-xs capitalize transition-colors",
+            "rounded-[5px] px-2.5 py-1 text-xs transition-colors",
             theme === option
               ? "bg-background text-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground"

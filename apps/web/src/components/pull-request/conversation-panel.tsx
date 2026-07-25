@@ -146,7 +146,7 @@ export default function ConversationPanel({
     setFocusedThreadKey(key === focusedThreadKey ? null : key);
 
   const focusThreadFromOverview = (key: string) => {
-    setFocusedThreadKey(`${key}`);
+    setFocusedThreadKey(String(key));
     document
       .querySelector(`[data-thread-key="${CSS.escape(key)}"]`)
       ?.scrollIntoView({ behavior: "smooth", block: "center" });

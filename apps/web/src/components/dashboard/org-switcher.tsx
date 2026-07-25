@@ -31,7 +31,6 @@ export function OrgSwitcher({
   onSelect,
   selected,
 }: OrgSwitcherProps) {
-  // A switcher with one option is noise — most users have exactly one org.
   if (!selected || installations.length < 2) {
     return null;
   }

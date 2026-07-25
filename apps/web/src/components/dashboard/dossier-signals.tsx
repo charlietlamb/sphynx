@@ -1,3 +1,4 @@
+import { XCircleIcon } from "@phosphor-icons/react";
 import type { QueuePull } from "@sphynx/schema/review-queue";
 import { SignalTip } from "@/components/dashboard/signal-tip";
 import { plural } from "@/lib/claims";
@@ -13,7 +14,7 @@ function CheckSignal({ pull }: { pull: QueuePull }) {
             : "Checks failing"
         }
       >
-        <span className="font-medium text-[11px] text-deletion">✕</span>
+        <XCircleIcon className="size-3.5 text-deletion" weight="fill" />
         {pull.ciFailures.length > 0 ? (
           <span className="text-[11px] text-deletion tabular-nums">
             {pull.ciFailures.length}
