@@ -48,7 +48,7 @@ const makeGitHubAuth = Effect.gen(function* () {
         userId: session.user.id,
         organizationId: session.session.activeOrganizationId ?? null,
       } satisfies SessionUser;
-    });
+    }).pipe(Effect.withSpan("GitHubAuth.requireSession"));
 
   /**
    * The signed-in user's GitHub token, refreshed if it has expired.
@@ -233,10 +233,17 @@ const makeGitHubAuth = Effect.gen(function* () {
   const readToken = (
     cookie: string | undefined,
     requested: number | null = null
-  ) => readCredential(cookie, requested).pipe(Effect.flatMap((it) => it.token));
+  ) =>
+    readCredential(cookie, requested).pipe(
+      Effect.flatMap((it) => it.token),
+      Effect.withSpan("GitHubAuth.readToken")
+    );
 
   const writeToken = (cookie: string | undefined) =>
-    writeCredential(cookie).pipe(Effect.flatMap((it) => it.token));
+    writeCredential(cookie).pipe(
+      Effect.flatMap((it) => it.token),
+      Effect.withSpan("GitHubAuth.writeToken")
+    );
 
   return {
     listInstallations,

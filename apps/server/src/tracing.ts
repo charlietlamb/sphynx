@@ -31,10 +31,10 @@ const makeTracer = () =>
           attributes.set(key, value);
         },
         event() {
-          // events are not surfaced by this tracer
+          return;
         },
         addLinks() {
-          // links are not surfaced by this tracer
+          return;
         },
         end(endTime, exit) {
           const ms = Number(endTime - startTime) / 1_000_000;
