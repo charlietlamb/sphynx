@@ -189,7 +189,7 @@ function DossierOverview({
                   className="size-2.5 shrink-0 text-deletion"
                   weight="bold"
                 />
-                <span className="min-w-0 truncate font-mono text-[11px] text-foreground/80 underline-offset-2 transition-colors group-hover:text-foreground group-hover:underline">
+                <span className="min-w-0 truncate text-[12px] text-foreground/80 underline-offset-2 transition-colors group-hover:text-foreground group-hover:underline">
                   {check.name}
                 </span>
               </a>
