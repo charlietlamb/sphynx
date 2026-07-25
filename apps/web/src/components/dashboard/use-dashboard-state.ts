@@ -10,9 +10,12 @@ import {
 import { useDashboardKeys } from "@/components/dashboard/use-dashboard-keys";
 import { useInstallations } from "@/components/dashboard/use-installations";
 import {
+  toDiscoveredRepoOption,
   toRepoOption,
   usePipeline,
   useQueue,
+  useRepoFlow,
+  useRepos,
 } from "@/components/dashboard/use-pipeline";
 import { usePullSearch } from "@/components/dashboard/use-pull-search";
 import { useReadModelStream } from "@/components/dashboard/use-read-model-stream";
@@ -62,6 +65,7 @@ export function useDashboardState() {
 
   const queue0 = useQueue(installationId, ready);
   const pipeline = usePipeline(installationId, ready);
+  const reposQuery = useRepos(installationId, ready);
   useReadModelStream(installationId, ready);
   const pendingMerges = usePendingMerges();
 
@@ -108,15 +112,55 @@ export function useDashboardState() {
     return [...active].sort((a, b) => b.openPulls.length - a.openPulls.length);
   }, [pipeline.data, queue0.data, pendingMerges]);
 
-  const repos = useMemo(() => flows.map(toRepoOption), [flows]);
+  /**
+   * The switcher lists every accessible repo, not just pull-bearing ones. Flows
+   * supply live counts; the discovered list fills in the quiet repos the
+   * pipeline omits. Flow order (busiest first) is preserved, quiet repos follow.
+   */
+  const repos = useMemo(() => {
+    const fromFlows = flows.map(toRepoOption);
+    const seen = new Set(fromFlows.map((option) => option.key));
+    const quiet = (reposQuery.data?.repos ?? [])
+      .map(toDiscoveredRepoOption)
+      .filter((option) => !seen.has(option.key))
+      .sort((a, b) => a.repo.localeCompare(b.repo));
+    return [...fromFlows, ...quiet];
+  }, [flows, reposQuery.data]);
 
-  const flow = useMemo(
-    () =>
-      flows.find((candidate) => repoKeyOf(candidate) === repoKey) ??
-      flows[0] ??
-      null,
+  const pipelineFlow = useMemo(
+    () => flows.find((candidate) => repoKeyOf(candidate) === repoKey) ?? null,
     [flows, repoKey]
   );
+
+  /**
+   * A quiet repo the user picked has no flow in the installation pipeline yet.
+   * Fetch just that repo on demand so it renders immediately instead of showing
+   * an empty pipeline until the next reconcile. Only quiet selections that name
+   * an accessible repo trigger this — an unknown key falls back to the busiest.
+   */
+  const quietRepo = useMemo(() => {
+    if (pipelineFlow) {
+      return null;
+    }
+    return repos.find((option) => option.key === repoKey) ?? null;
+  }, [pipelineFlow, repos, repoKey]);
+
+  const repoFlowQuery = useRepoFlow(
+    installationId,
+    quietRepo?.owner ?? null,
+    quietRepo?.repo ?? null,
+    ready
+  );
+
+  const flow = useMemo(() => {
+    if (pipelineFlow) {
+      return pipelineFlow;
+    }
+    if (quietRepo) {
+      return repoFlowQuery.data ?? null;
+    }
+    return flows[0] ?? null;
+  }, [pipelineFlow, quietRepo, repoFlowQuery.data, flows]);
 
   const fullQueue = useMemo(
     () => (flow ? buildBranchQueue(flow) : null),
@@ -280,9 +324,11 @@ export function useDashboardState() {
     onWorkbench: () => workbench.toggle(),
   });
 
-  const selectedRepo = flow
-    ? (repos.find((option) => option.key === repoKeyOf(flow)) ?? null)
-    : null;
+  const selectedRepo =
+    repos.find((option) => option.key === repoKey) ??
+    (flow
+      ? (repos.find((option) => option.key === repoKeyOf(flow)) ?? null)
+      : null);
 
   return {
     allRepos,

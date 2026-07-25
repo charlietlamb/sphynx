@@ -277,6 +277,33 @@ const makeReadModelWriter = Effect.gen(function* () {
     );
 
   /**
+   * Write one repo's flow, scoped to that repo's rows only — the on-demand
+   * counterpart to `writePipeline` when a single selected repo is built ahead of
+   * the installation-wide refresh. Reuses `writeRepo` so the pull upsert, departed
+   * close, and gap rewrite stay identical to the full build.
+   */
+  const writeRepoFlow = (
+    installationId: number,
+    flow: RepoFlow,
+    snapshotAt: Date
+  ) =>
+    Effect.gen(function* () {
+      const now = new Date(yield* Clock.currentTimeMillis);
+      yield* Effect.tryPromise(() =>
+        db.transaction((tx) =>
+          writeRepo(tx, installationId, flow, now, snapshotAt)
+        )
+      ).pipe(Effect.orDie);
+      yield* notifyDirty(installationId);
+    }).pipe(
+      Effect.withSpan("ReadModelWriter.writeRepoFlow"),
+      Effect.annotateLogs({
+        "github.installation": installationId,
+        "github.repo": `${flow.owner}/${flow.repo}`,
+      })
+    );
+
+  /**
    * The projector's per-PR write: upsert one pull's rows without touching the
    * repo's stages (a webhook does not carry them). The repo row is ensured to
    * exist for the FK but its stages are left to the backfill/rail recompute.
@@ -466,6 +493,7 @@ const makeReadModelWriter = Effect.gen(function* () {
 
   return {
     writePipeline,
+    writeRepoFlow,
     writePull,
     writePullHead,
     writeWorkbenchEvents,

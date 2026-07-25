@@ -453,7 +453,26 @@ query($owner: String!, $name: String!) {
       return yield* flowsFor(entries, token);
     }).pipe(Effect.withSpan("GitHubPipeline.buildFrom"));
 
-  return { refresh };
+  /**
+   * One repo's flow, built the same way the installation build does but scoped
+   * to a single repo — so it renders without waiting on the whole-installation
+   * fan-out. `flowsFor` yields no flow when the ref probe fails, so this returns
+   * an empty flow rather than null to keep the read-model write uniform.
+   */
+  const refreshRepo = (
+    owner: string,
+    repo: string,
+    token: string
+  ): Effect.Effect<RepoFlow, GitHubAuthedError> =>
+    buildFrom([{ owner, repo }], token).pipe(
+      Effect.map(
+        (flows) =>
+          flows[0] ?? { owner, repo, stages: [], openPulls: [], gaps: [] }
+      ),
+      Effect.withSpan("GitHubPipeline.refreshRepo")
+    );
+
+  return { refresh, refreshRepo };
 });
 
 export class GitHubPipeline extends Context.Tag(

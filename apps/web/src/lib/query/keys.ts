@@ -23,6 +23,9 @@ export const keys = {
   pipeline: (id: number | null) =>
     [...keys.installation(id), "pipeline"] as const,
   queue: (id: number | null) => [...keys.installation(id), "queue"] as const,
+  repos: (id: number | null) => [...keys.installation(id), "repos"] as const,
+  repoFlow: (id: number | null, owner: string | null, repo: string | null) =>
+    [...keys.installation(id), "repo-flow", owner, repo] as const,
   search: (id: number | null, query: string) =>
     [...keys.installation(id), "search", query] as const,
 
