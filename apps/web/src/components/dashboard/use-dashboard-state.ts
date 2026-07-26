@@ -7,6 +7,7 @@ import {
   reconcilePendingMerges,
   usePendingMerges,
 } from "@/components/dashboard/pending-merges-store";
+import type { RepoOption } from "@/components/dashboard/repo-switcher";
 import { useDashboardKeys } from "@/components/dashboard/use-dashboard-keys";
 import { useInstallations } from "@/components/dashboard/use-installations";
 import {
@@ -120,10 +121,14 @@ export function useDashboardState() {
   const repos = useMemo(() => {
     const fromFlows = flows.map(toRepoOption);
     const seen = new Set(fromFlows.map((option) => option.key));
-    const quiet = (reposQuery.data?.repos ?? [])
-      .map(toDiscoveredRepoOption)
-      .filter((option) => !seen.has(option.key))
-      .sort((a, b) => a.repo.localeCompare(b.repo));
+    const quiet: RepoOption[] = [];
+    for (const repo of reposQuery.data?.repos ?? []) {
+      const option = toDiscoveredRepoOption(repo);
+      if (!seen.has(option.key)) {
+        quiet.push(option);
+      }
+    }
+    quiet.sort((a, b) => a.repo.localeCompare(b.repo));
     return [...fromFlows, ...quiet];
   }, [flows, reposQuery.data]);
 
