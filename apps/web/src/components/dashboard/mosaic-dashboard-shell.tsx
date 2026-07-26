@@ -40,6 +40,17 @@ function GrabHandle() {
   );
 }
 
+function renderPanePreview(title: string) {
+  return (
+    <div className="mosaic-pane-preview flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-lg">
+      <DotsSixIcon className="size-4 text-muted-foreground/50" weight="bold" />
+      <span className="font-heading font-medium text-foreground text-sm tracking-tight">
+        {title}
+      </span>
+    </div>
+  );
+}
+
 export function MosaicDashboardShell({
   dossier,
   githubUrl,
@@ -49,7 +60,7 @@ export function MosaicDashboardShell({
   switcher,
 }: MosaicDashboardShellProps) {
   const isClient = useIsClient();
-  const { layout, onChange, onRelease } = useMosaicLayout();
+  const { layout, onChange, onRelease, resizing } = useMosaicLayout();
 
   const bodies: Record<PaneId, ReactNode> = {
     rail: (
@@ -78,6 +89,7 @@ export function MosaicDashboardShell({
     <MosaicWindow<PaneId>
       className="group/tile relative"
       path={path}
+      renderPreview={() => renderPanePreview(PANE_TITLES[id])}
       renderToolbar={() => (
         <div
           className="absolute inset-x-0 top-0 h-6 cursor-grab active:cursor-grabbing"
@@ -116,7 +128,10 @@ export function MosaicDashboardShell({
             <AppHeader githubUrl={githubUrl} switcher={switcher} />
           </div>
         </div>
-        <div className="relative min-h-0 flex-1">
+        <div
+          className="relative min-h-0 flex-1"
+          data-resizing={resizing ? "" : undefined}
+        >
           {isClient ? (
             <Mosaic<PaneId>
               className="sphynx-mosaic"

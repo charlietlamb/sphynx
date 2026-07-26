@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { MosaicNode } from "react-mosaic-component";
 
 export type PaneId = "rail" | "queue" | "dossier";
@@ -63,22 +63,43 @@ function readStoredLayout(): MosaicNode<PaneId> {
   }
 }
 
+const RESIZE_IDLE_MS = 120;
+
 export function useMosaicLayout() {
   const [layout, setLayout] = useState<MosaicNode<PaneId>>(readStoredLayout);
+  const [resizing, setResizing] = useState(false);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const onChange = useCallback((next: MosaicNode<PaneId> | null) => {
-    if (!isCompleteLayout(next)) {
-      return;
+  const clearIdleTimer = useCallback(() => {
+    if (idleTimer.current !== null) {
+      clearTimeout(idleTimer.current);
+      idleTimer.current = null;
     }
-    setLayout(next as MosaicNode<PaneId>);
   }, []);
 
-  const onRelease = useCallback((next: MosaicNode<PaneId> | null) => {
-    if (!isCompleteLayout(next) || typeof window === "undefined") {
-      return;
-    }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  }, []);
+  const onChange = useCallback(
+    (next: MosaicNode<PaneId> | null) => {
+      if (!isCompleteLayout(next)) {
+        return;
+      }
+      setLayout(next as MosaicNode<PaneId>);
+      setResizing(true);
+      clearIdleTimer();
+      idleTimer.current = setTimeout(() => setResizing(false), RESIZE_IDLE_MS);
+    },
+    [clearIdleTimer]
+  );
+
+  const onRelease = useCallback(
+    (next: MosaicNode<PaneId> | null) => {
+      clearIdleTimer();
+      setResizing(false);
+      if (isCompleteLayout(next) && typeof window !== "undefined") {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      }
+    },
+    [clearIdleTimer]
+  );
 
   const reset = useCallback(() => {
     setLayout(DEFAULT_LAYOUT);
@@ -87,5 +108,5 @@ export function useMosaicLayout() {
     }
   }, []);
 
-  return { layout, onChange, onRelease, reset };
+  return { layout, onChange, onRelease, reset, resizing };
 }
