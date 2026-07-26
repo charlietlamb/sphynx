@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import { AppHeader } from "@/components/layout/app-header";
 import { BranchChip } from "@/components/layout/branch-chip";
 import { DiffStat } from "@/components/pull-request/diff-stat";
+import { PullRequestMergeButton } from "@/components/pull-request/pull-request-merge-button";
 import { PullRequestSwitcher } from "@/components/pull-request/pull-request-switcher";
 import { plural } from "@/lib/claims";
 
@@ -29,6 +30,7 @@ function mergeVerb(pullRequest: PullRequestSummary) {
 }
 
 interface PullRequestHeaderProps {
+  canAct?: boolean;
   progress?: ReactNode;
   pullRequest: PullRequestSummary;
   refresh?: ReactNode;
@@ -36,6 +38,7 @@ interface PullRequestHeaderProps {
 }
 
 export function PullRequestHeader({
+  canAct = false,
   progress,
   pullRequest,
   refresh,
@@ -66,9 +69,10 @@ export function PullRequestHeader({
             #{pullRequest.number}
           </span>
         </h1>
-        {refresh ? (
-          <div className="flex shrink-0 items-center gap-2">{refresh}</div>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {refresh}
+          <PullRequestMergeButton canAct={canAct} pullRequest={pullRequest} />
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-muted-foreground text-sm">
         <StatusPill label={label} tone={tone} />

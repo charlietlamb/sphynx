@@ -555,6 +555,24 @@ export function useReviewSubmission(ref: PullRequestRef) {
   };
 }
 
+export function useMergePullRequest(ref: PullRequestRef) {
+  const queryClient = useQueryClient();
+  const merge = useMutation({
+    mutationFn: () => postJson(`${pullUrl(ref)}/merge`, {}),
+    onSuccess: () => {
+      trackEvent("pull_merged", {
+        owner: ref.owner,
+        repo: ref.repo,
+        number: ref.number,
+      });
+      toast.success(`Merged #${ref.number}`);
+      queryClient.invalidateQueries({ queryKey: keys.pull(ref) });
+    },
+    onError: (error) => reportMutationError(ref, "Couldn't merge", error),
+  });
+  return { merge: merge.mutate, merging: merge.isPending };
+}
+
 function viewedFilesQuery(ref: PullRequestRef) {
   return queryOptions({
     queryKey: keys.pullViewedFiles(ref),
