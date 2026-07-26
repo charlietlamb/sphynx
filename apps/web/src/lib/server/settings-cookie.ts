@@ -1,5 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getCookie, setCookie } from "@tanstack/react-start/server";
+import {
+  getCookie,
+  setCookie,
+} from "@tanstack/start-server-core/request-response";
 import {
   COOKIE_MAX_AGE,
   parseSettings,
