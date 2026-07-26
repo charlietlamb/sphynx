@@ -154,7 +154,7 @@ export default function ConversationPanel({
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-3xl flex-col px-4 py-6">
           <TimelineRow node={avatarNode(summary.author)} variant="card">
             <ConversationDescription

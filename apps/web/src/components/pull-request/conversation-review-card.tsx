@@ -25,7 +25,7 @@ export function ConversationReviewCard({
 }: ConversationReviewCardProps) {
   const hasBody = review.body.trim() !== "";
   return (
-    <div className="flex flex-col gap-2.5 rounded-md border border-border bg-background p-3.5">
+    <div className="flex min-w-0 flex-col gap-2.5 rounded-md border border-border bg-background p-3.5">
       <ConversationCardHeader
         at={review.submittedAt}
         author={review.author}
