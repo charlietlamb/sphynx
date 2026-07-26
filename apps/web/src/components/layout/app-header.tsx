@@ -29,7 +29,7 @@ export function AppHeader({ githubUrl, switcher }: AppHeaderProps) {
         </Link>
         <span
           aria-hidden
-          className="-my-2 w-px shrink-0 self-stretch bg-border"
+          className="-my-2.5 w-px shrink-0 self-stretch bg-border"
         />
         {switcher}
       </div>
