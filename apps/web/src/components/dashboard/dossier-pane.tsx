@@ -1,4 +1,9 @@
-import { SealCheckIcon, XCircleIcon, XIcon } from "@phosphor-icons/react";
+import {
+  GitPullRequestIcon,
+  SealCheckIcon,
+  XCircleIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 import type { QueuePull } from "@sphynx/schema/review-queue";
 import { EmptyState } from "@sphynx/ui/components/empty-state";
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
@@ -70,31 +75,35 @@ export function DossierPane({
   const activeTab = hasDescription ? tab : "overview";
   return (
     <div className="fade-in flex h-full min-h-0 animate-in flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs duration-150">
-      <div className="flex flex-col px-4 pt-5 pb-4">
-        <div className="flex items-start justify-between gap-3">
-          <p className="font-heading font-semibold text-2xl text-foreground tabular-nums tracking-tight">
-            #{pull.number}
-          </p>
-          <DossierActions
-            canAct={canAct}
-            onOpen={() => onOpen(pull)}
-            pull={pull}
-          />
-        </div>
-        <h2 className="mt-1.5 text-balance font-heading text-[15px] text-muted-foreground leading-snug tracking-tight">
-          {pull.title}
-        </h2>
-        <div className="mt-3">
-          <ClaimLine now={now} pull={pull} />
-        </div>
-        <div className="mt-3.5 flex items-center gap-2">
-          <GithubProfile
-            avatarUrl={pull.author?.avatarUrl}
-            labelClassName="text-muted-foreground"
-            login={pull.author?.login ?? null}
-            size="sm"
-          />
-          <DossierSignals pull={pull} />
+      <div className="flex flex-col px-4">
+        <SectionHeader
+          action={
+            <DossierActions
+              canAct={canAct}
+              onOpen={() => onOpen(pull)}
+              pull={pull}
+            />
+          }
+          className="-mx-4 px-4"
+          icon={<GitPullRequestIcon className="size-3" weight="fill" />}
+          label={`#${pull.number}`}
+        />
+        <div className="flex flex-col pt-3 pb-4">
+          <h2 className="text-balance font-heading text-[15px] leading-snug tracking-tight">
+            {pull.title}
+          </h2>
+          <div className="mt-2.5">
+            <ClaimLine now={now} pull={pull} />
+          </div>
+          <div className="mt-3.5 flex items-center gap-2">
+            <GithubProfile
+              avatarUrl={pull.author?.avatarUrl}
+              labelClassName="text-muted-foreground"
+              login={pull.author?.login ?? null}
+              size="sm"
+            />
+            <DossierSignals pull={pull} />
+          </div>
         </div>
       </div>
       {hasDescription ? (
