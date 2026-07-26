@@ -81,11 +81,9 @@ export function MosaicDashboardShell({
       </div>
     ),
     queue: (
-      <div className={CARD}>
-        <section className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
-          {queue}
-        </section>
-      </div>
+      <section className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-card shadow-xs [clip-path:inset(0_round_var(--radius))]">
+        {queue}
+      </section>
     ),
     dossier,
   };
