@@ -11,8 +11,8 @@ import {
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
 import type { ReactNode } from "react";
-import { EVENT_ICONS } from "@/components/pull-request/conversation-event-row";
 import type { FeedItem } from "@/components/pull-request/conversation-feed";
+import { EVENT_ICONS } from "@/components/pull-request/event-icons";
 
 interface TimelineNode {
   node: ReactNode;

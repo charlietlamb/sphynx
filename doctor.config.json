@@ -6,6 +6,12 @@
       "**/.nitro/**",
       "**/.tanstack/**",
       "**/dist/**"
+    ],
+    "overrides": [
+      {
+        "files": ["**/components/settings/use-resync.ts"],
+        "rules": ["react-doctor/query-mutation-missing-invalidation"]
+      }
     ]
   }
 }
