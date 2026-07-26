@@ -1,0 +1,104 @@
+/*
+ * Cards-on-canvas theme for react-mosaic. Scoped under `.sphynx-mosaic` so it
+ * fully replaces the default `mosaic-blueprint-theme` chrome. We keep the split
+ * mechanics but strip the window borders/toolbar and turn the split handle into a
+ * transparent gutter that reveals a subtle line on hover — matching the existing
+ * cards-on-canvas seam.
+ */
+
+.sphynx-mosaic.mosaic {
+  height: 100%;
+  background: transparent;
+}
+
+.sphynx-mosaic .mosaic-root {
+  position: absolute;
+  inset: 6px;
+}
+
+/* Each tile is our card; strip mosaic's own window chrome. */
+.sphynx-mosaic .mosaic-tile {
+  margin: 0;
+}
+
+.sphynx-mosaic .mosaic-window,
+.sphynx-mosaic .mosaic-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+
+/* The tile body fills the window; card chrome comes from our own markup. */
+.sphynx-mosaic .mosaic-window-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  background: transparent;
+  border: none;
+}
+
+/* Kill the default toolbar frame — our custom renderToolbar is the card header. */
+.sphynx-mosaic .mosaic-window-toolbar {
+  height: auto;
+  cursor: grab;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sphynx-mosaic .mosaic-window-toolbar:active {
+  cursor: grabbing;
+}
+
+.sphynx-mosaic .mosaic-window-title {
+  display: none;
+}
+
+/* The gutter between tiles: transparent, ~13px, subtle line on hover/drag. */
+.sphynx-mosaic .mosaic-split {
+  background: transparent;
+  opacity: 1;
+  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.sphynx-mosaic .mosaic-split:hover,
+.sphynx-mosaic .mosaic-split.-active {
+  background: transparent;
+}
+
+.sphynx-mosaic .mosaic-split .mosaic-split-line {
+  background: transparent;
+  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.sphynx-mosaic .mosaic-split:hover .mosaic-split-line,
+.sphynx-mosaic .mosaic-split.-active .mosaic-split-line {
+  background: var(--border);
+}
+
+.sphynx-mosaic .mosaic-split.-row {
+  width: 13px;
+  margin-left: -6px;
+}
+
+.sphynx-mosaic .mosaic-split.-column {
+  height: 13px;
+  margin-top: -6px;
+}
+
+/* Drop targets: match the row-focus blue accent, rounded, soft. */
+.sphynx-mosaic .drop-target-container .drop-target {
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--primary) 40%, transparent);
+  border-radius: var(--radius);
+  transition:
+    opacity 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.sphynx-mosaic .drop-target-container .drop-target.drop-target-hover {
+  background: color-mix(in oklab, var(--primary) 18%, transparent);
+}

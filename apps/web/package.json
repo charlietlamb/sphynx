@@ -35,6 +35,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-markdown": "^10.1.0",
+    "react-mosaic-component": "7",
     "remark-gfm": "^4.0.1",
     "shadcn": "catalog:",
     "simple-icons": "catalog:",
