@@ -25,6 +25,7 @@
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
+    "@tanstack/start-server-core": "1.169.14",
     "better-auth": "catalog:",
     "dompurify": "catalog:",
     "effect": "catalog:",
