@@ -169,7 +169,7 @@ function DossierOverview({
           <div className={cn("flex flex-col", HAIRLINE_DIVIDE)}>
             {pull.ciFailures.map((check) => (
               <a
-                className="group -mx-4 flex items-center gap-2 px-4 py-2.5"
+                className="group -mx-4 flex items-center gap-2.5 px-4 py-3"
                 href={
                   check.url ??
                   `https://github.com/${pull.owner}/${pull.repo}/pull/${pull.number}/checks`
@@ -178,11 +178,9 @@ function DossierOverview({
                 rel="noreferrer"
                 target="_blank"
               >
-                <XIcon
-                  aria-hidden
-                  className="size-3 shrink-0 text-deletion"
-                  weight="bold"
-                />
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-deletion/10 text-deletion">
+                  <XIcon aria-hidden className="size-3" weight="bold" />
+                </span>
                 <span className="min-w-0 truncate text-[13px] text-foreground/80 underline-offset-2 transition-colors group-hover:text-foreground group-hover:underline">
                   {check.name}
                 </span>

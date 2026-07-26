@@ -42,12 +42,14 @@ export function VerdictMatrix({ now, pull }: VerdictMatrixProps) {
         label="Verdicts"
       />
       {sorted.length === 0 ? (
-        <Empty className="gap-2 py-6">
+        <Empty className="flex-none gap-2.5 py-8">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <SealCheckIcon weight="fill" />
             </EmptyMedia>
-            <EmptyDescription>No reviews yet</EmptyDescription>
+            <EmptyDescription className="text-[13px]">
+              No reviews yet
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
