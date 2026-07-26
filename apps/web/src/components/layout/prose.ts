@@ -1,6 +1,6 @@
 export const PROSE_CLASSES = [
-  "text-[12px] text-muted-foreground leading-snug",
-  "[&_a]:text-primary [&_a]:underline-offset-2 hover:[&_a]:underline",
+  "min-w-0 text-[12px] text-muted-foreground leading-snug [overflow-wrap:anywhere]",
+  "[&_a]:text-primary [&_a]:underline-offset-2 [&_a]:[overflow-wrap:anywhere] hover:[&_a]:underline",
   "[&_p]:mb-1.5",
   "[&_h1]:mb-1 [&_h1]:font-medium [&_h1]:text-[13px] [&_h1]:text-foreground",
   "[&_h2]:mb-1 [&_h2]:font-medium [&_h2]:text-[13px] [&_h2]:text-foreground",

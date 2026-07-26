@@ -63,6 +63,16 @@ export const DIFF_UNSAFE_CSS = `
   border-radius: calc(var(--radius) * 0.6);
   overflow: hidden;
 }
+[data-annotation-content],
+[data-annotation-content] * {
+  white-space: normal;
+  text-wrap: wrap;
+}
+[data-annotation-slot],
+[data-annotation-slot] * {
+  white-space: normal;
+  text-wrap: wrap;
+}
 [data-separator="line-info"] [data-expand-button],
 [data-separator="line-info"] [data-separator-content] {
   background-color: transparent;
