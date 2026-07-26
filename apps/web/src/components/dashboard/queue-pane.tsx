@@ -8,12 +8,10 @@ import { EmptyState } from "@sphynx/ui/components/empty-state";
 import { Button } from "@sphynx/ui/components/ui/button";
 import type { RefObject } from "react";
 import { BranchGroup } from "@/components/dashboard/branch-group";
-import { QueueFilterMenu } from "@/components/dashboard/queue-filter-menu";
 import { QueueRow } from "@/components/dashboard/queue-row";
 import { QueueRowSkeleton } from "@/components/dashboard/queue-row-skeleton";
 import { QueueSearch } from "@/components/dashboard/queue-search";
 import { SearchScopes } from "@/components/dashboard/search-scopes";
-import { SectionHeader } from "@/components/layout/section-header";
 import { type BranchQueue, pullKey, type QueueFilter } from "@/lib/attention";
 
 const EMPTY_CLASS = "min-h-[16rem] flex-1";
@@ -70,25 +68,23 @@ export function QueuePane({
   const total = queue.groups.reduce((sum, group) => sum + group.total, 0);
   return (
     <div className="flex min-h-full flex-col px-4 pb-3">
-      <SectionHeader
-        action={
+      <div className="sticky top-0 z-10 -mx-4 flex h-9 shrink-0 items-center gap-3 border-border border-b bg-card px-4">
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="flex size-4 shrink-0 items-center justify-center rounded-[4px] bg-muted/60 text-muted-foreground [&_svg]:size-2.5">
+            <GitPullRequestIcon weight="fill" />
+          </span>
+          <p className="font-heading font-medium text-[13px] text-foreground tracking-tight">
+            Pull requests
+          </p>
           <span className="text-[11px] text-muted-foreground/60 tabular-nums">
             {search.active ? search.totalCount : total}
           </span>
-        }
-        className="-mx-4 px-4"
-        icon={<GitPullRequestIcon className="size-3" weight="fill" />}
-        label="Pull requests"
-      />
-      <div className="-mx-4 flex items-center gap-2 border-border border-b px-4 py-2">
+        </span>
         <QueueSearch
           inputRef={searchInput}
           onChange={onSearch}
           query={searchQuery}
         />
-        {search.active ? null : (
-          <QueueFilterMenu onSelect={onFilter} selected={filter} />
-        )}
       </div>
       {search.active ? (
         <>
