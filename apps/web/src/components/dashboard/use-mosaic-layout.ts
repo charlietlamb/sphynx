@@ -39,10 +39,32 @@ function collectLeaves(node: MosaicNode<PaneId> | null, into: Set<PaneId>) {
   }
 }
 
-function isCompleteLayout(node: MosaicNode<PaneId> | null): boolean {
-  const leaves = new Set<PaneId>();
-  collectLeaves(node, leaves);
-  return leaves.size === PANES.length && PANES.every((p) => leaves.has(p));
+/**
+ * react-mosaic is controlled here: whatever it emits from a drop/resize is the
+ * next value, and rejecting an update desyncs the library from our state (a pane
+ * that was visually moved but not committed just disappears). So we never reject.
+ * We accept the emitted tree, but guarantee it stays valid and complete: any pane
+ * dropped out of the tree is re-appended to the root split, and a wholly empty
+ * tree falls back to the default. This makes "lose a pane on drop" impossible.
+ */
+function repairLayout(node: MosaicNode<PaneId> | null): MosaicNode<PaneId> {
+  if (node === null) {
+    return DEFAULT_LAYOUT;
+  }
+  const present = new Set<PaneId>();
+  collectLeaves(node, present);
+  const missing = PANES.filter((p) => !present.has(p));
+  if (missing.length === 0) {
+    return node;
+  }
+  if (present.size === 0) {
+    return DEFAULT_LAYOUT;
+  }
+  return {
+    type: "split",
+    direction: "row",
+    children: [node, ...missing],
+  };
 }
 
 function readStoredLayout(): MosaicNode<PaneId> {
@@ -55,9 +77,7 @@ function readStoredLayout(): MosaicNode<PaneId> {
   }
   try {
     const parsed = JSON.parse(raw) as MosaicNode<PaneId> | null;
-    return isCompleteLayout(parsed)
-      ? (parsed as MosaicNode<PaneId>)
-      : DEFAULT_LAYOUT;
+    return repairLayout(parsed);
   } catch {
     return DEFAULT_LAYOUT;
   }
@@ -68,6 +88,7 @@ const RESIZE_IDLE_MS = 120;
 export function useMosaicLayout() {
   const [layout, setLayout] = useState<MosaicNode<PaneId>>(readStoredLayout);
   const [resizing, setResizing] = useState(false);
+  const [arranging, setArranging] = useState(false);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearIdleTimer = useCallback(() => {
@@ -79,10 +100,7 @@ export function useMosaicLayout() {
 
   const onChange = useCallback(
     (next: MosaicNode<PaneId> | null) => {
-      if (!isCompleteLayout(next)) {
-        return;
-      }
-      setLayout(next as MosaicNode<PaneId>);
+      setLayout(repairLayout(next));
       setResizing(true);
       clearIdleTimer();
       idleTimer.current = setTimeout(() => setResizing(false), RESIZE_IDLE_MS);
@@ -94,8 +112,10 @@ export function useMosaicLayout() {
     (next: MosaicNode<PaneId> | null) => {
       clearIdleTimer();
       setResizing(false);
-      if (isCompleteLayout(next) && typeof window !== "undefined") {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      const repaired = repairLayout(next);
+      setLayout(repaired);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(repaired));
       }
     },
     [clearIdleTimer]
@@ -108,5 +128,15 @@ export function useMosaicLayout() {
     }
   }, []);
 
-  return { layout, onChange, onRelease, reset, resizing };
+  const toggleArranging = useCallback(() => setArranging((on) => !on), []);
+
+  return {
+    arranging,
+    layout,
+    onChange,
+    onRelease,
+    reset,
+    resizing,
+    toggleArranging,
+  };
 }

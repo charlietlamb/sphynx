@@ -2,6 +2,7 @@ import { DotsSixIcon } from "@phosphor-icons/react";
 import { cn } from "@sphynx/ui/lib/utils";
 import type { ReactNode } from "react";
 import { Mosaic, type MosaicPath, MosaicWindow } from "react-mosaic-component";
+import { ArrangeToggle } from "@/components/dashboard/arrange-toggle";
 import { useIsClient } from "@/components/dashboard/use-is-client";
 import {
   DEFAULT_SPLITS,
@@ -34,8 +35,8 @@ const PANE_TITLES: Record<PaneId, string> = {
 
 function GrabHandle() {
   return (
-    <div className="mosaic-grab pointer-events-none absolute inset-x-0 top-0 z-20 flex h-6 items-center justify-center opacity-0 transition-opacity duration-150 group-hover/tile:opacity-100">
-      <DotsSixIcon className="size-4 text-muted-foreground/40" weight="bold" />
+    <div className="mosaic-grab pointer-events-none absolute inset-x-0 top-0 z-20 flex h-6 items-center justify-center text-muted-foreground/40 transition-opacity duration-150 group-hover/tile:text-muted-foreground/70">
+      <DotsSixIcon className="size-4" weight="bold" />
     </div>
   );
 }
@@ -60,7 +61,15 @@ export function MosaicDashboardShell({
   switcher,
 }: MosaicDashboardShellProps) {
   const isClient = useIsClient();
-  const { layout, onChange, onRelease, resizing } = useMosaicLayout();
+  const {
+    arranging,
+    layout,
+    onChange,
+    onRelease,
+    reset,
+    resizing,
+    toggleArranging,
+  } = useMosaicLayout();
 
   const bodies: Record<PaneId, ReactNode> = {
     rail: (
@@ -88,17 +97,21 @@ export function MosaicDashboardShell({
   const renderTile = (id: PaneId, path: MosaicPath) => (
     <MosaicWindow<PaneId>
       className="group/tile relative"
+      draggable={arranging}
       path={path}
       renderPreview={() => renderPanePreview(PANE_TITLES[id])}
       renderToolbar={() => (
         <div
-          className="absolute inset-x-0 top-0 h-6 cursor-grab active:cursor-grabbing"
-          title={`Drag to rearrange ${PANE_TITLES[id]}`}
+          className={cn(
+            "absolute inset-x-0 top-0 h-6",
+            arranging && "cursor-grab active:cursor-grabbing"
+          )}
+          title={arranging ? `Drag to rearrange ${PANE_TITLES[id]}` : undefined}
         />
       )}
       title={PANE_TITLES[id]}
     >
-      <GrabHandle />
+      {arranging ? <GrabHandle /> : null}
       {bodies[id]}
     </MosaicWindow>
   );
@@ -125,11 +138,22 @@ export function MosaicDashboardShell({
       <div className="hidden min-h-0 flex-1 flex-col md:flex">
         <div className="px-2.5 pt-2.5">
           <div className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
-            <AppHeader githubUrl={githubUrl} switcher={switcher} />
+            <AppHeader
+              githubUrl={githubUrl}
+              leftActions={
+                <ArrangeToggle
+                  arranging={arranging}
+                  onReset={reset}
+                  onToggle={toggleArranging}
+                />
+              }
+              switcher={switcher}
+            />
           </div>
         </div>
         <div
           className="relative min-h-0 flex-1"
+          data-arranging={arranging ? "" : undefined}
           data-resizing={resizing ? "" : undefined}
         >
           {isClient ? (
