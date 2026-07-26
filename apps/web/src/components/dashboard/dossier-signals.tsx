@@ -14,9 +14,9 @@ function CheckSignal({ pull }: { pull: QueuePull }) {
             : "Checks failing"
         }
       >
-        <XCircleIcon className="size-3.5 text-deletion" weight="fill" />
+        <XCircleIcon className="size-4 text-deletion" weight="fill" />
         {pull.ciFailures.length > 0 ? (
-          <span className="text-[11px] text-deletion tabular-nums">
+          <span className="text-deletion text-xs tabular-nums">
             {pull.ciFailures.length}
           </span>
         ) : null}
@@ -65,7 +65,7 @@ export function DossierSignals({ pull }: { pull: QueuePull }) {
             ) : null}
           </span>
         ) : null}
-        <span className="text-[11px] text-muted-foreground/70 tabular-nums">
+        <span className="text-muted-foreground/70 text-xs tabular-nums">
           {plural(pull.changedFiles, "file")}
         </span>
       </SignalTip>

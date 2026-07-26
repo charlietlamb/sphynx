@@ -70,13 +70,15 @@ export function DossierPane({
   const activeTab = hasDescription ? tab : "overview";
   return (
     <div className="fade-in flex h-full min-h-0 flex-1 animate-in flex-col duration-150">
-      <div className="flex flex-col gap-2.5 bg-background px-4 pt-5 pb-3">
-        <h2 className="text-balance font-heading text-xl leading-snug tracking-tight">
+      <div className="flex flex-col bg-background px-4 pt-5 pb-4">
+        <h2 className="text-balance font-heading text-xl leading-tight tracking-tight">
           {pull.title}{" "}
-          <span className="text-muted-foreground/60">#{pull.number}</span>
+          <span className="text-muted-foreground/50">#{pull.number}</span>
         </h2>
-        <ClaimLine now={now} pull={pull} />
-        <div className="flex items-center gap-2">
+        <div className="mt-2">
+          <ClaimLine now={now} pull={pull} />
+        </div>
+        <div className="mt-3.5 flex items-center gap-2">
           <GithubProfile
             avatarUrl={pull.author?.avatarUrl}
             labelClassName="text-muted-foreground"
