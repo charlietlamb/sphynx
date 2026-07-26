@@ -159,7 +159,7 @@ function ThreadPreviewRow({
       </div>
       <p
         className={cn(
-          "text-pretty text-[12px] text-muted-foreground leading-snug",
+          "text-pretty text-[13px] text-muted-foreground leading-relaxed",
           !expanded && "line-clamp-2"
         )}
       >

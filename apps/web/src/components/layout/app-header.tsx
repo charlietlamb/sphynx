@@ -18,18 +18,18 @@ interface AppHeaderProps {
 export function AppHeader({ githubUrl, switcher }: AppHeaderProps) {
   const palette = useCommandPalette();
   return (
-    <header className="flex items-center justify-between gap-2 border-border border-b px-4 py-2.5">
+    <header className="flex items-center justify-between gap-2 border-border border-b px-4 py-3">
       <div className="flex min-w-0 items-center gap-4">
         <Link
           aria-label="Sphynx home"
           className="shrink-0 transition-opacity hover:opacity-70"
           to="/"
         >
-          <SphynxMark className="size-4" />
+          <SphynxMark className="size-5" />
         </Link>
         <span
           aria-hidden
-          className="-my-2.5 w-px shrink-0 self-stretch bg-border"
+          className="-my-3 w-px shrink-0 self-stretch bg-border"
         />
         {switcher}
       </div>
@@ -38,7 +38,7 @@ export function AppHeader({ githubUrl, switcher }: AppHeaderProps) {
           aria-label="Open command palette"
           className={cn(
             buttonVariants({ variant: "outline", size: "icon" }),
-            "w-52 justify-start gap-2 px-2.5 font-normal text-muted-foreground/70 text-xs"
+            "w-56 justify-start gap-2 px-2.5 font-normal text-[13px] text-muted-foreground/70"
           )}
           onClick={() => palette.setOpen(true)}
           type="button"

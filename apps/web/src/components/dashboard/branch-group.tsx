@@ -24,7 +24,7 @@ export function BranchGroup({
     <div className="flex flex-col">
       <p
         className={cn(
-          "sticky top-9 z-[9] -mx-4 flex h-9 items-center gap-2 border-border border-b bg-card px-[26px]",
+          "sticky top-11 z-[9] -mx-4 flex h-9 items-center gap-2 border-border border-b bg-card px-[26px]",
           !first && "border-t"
         )}
       >
@@ -36,7 +36,7 @@ export function BranchGroup({
         >
           {group.branch}
         </span>
-        <span className="text-[11px] text-muted-foreground/60 tabular-nums">
+        <span className="text-muted-foreground/60 text-xs tabular-nums">
           {group.total}
         </span>
       </p>

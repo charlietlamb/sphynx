@@ -22,11 +22,11 @@ export function VerdictRow({ now, reviewer }: VerdictRowProps) {
   const name = stripBotSuffix(reviewer.name);
   const ratio = reviewer.score ? parseScoreRatio(reviewer.score) : null;
   return (
-    <div className="-mx-4 flex h-10 items-center gap-2.5 px-4">
+    <div className="-mx-4 flex h-11 items-center gap-2.5 px-4">
       <GithubProfile
         avatarUrl={reviewer.avatarUrl}
         className="min-w-0 flex-1"
-        labelClassName="text-[13px]"
+        labelClassName="text-sm"
         link={false}
         login={name}
         shape="square"
@@ -45,7 +45,7 @@ export function VerdictRow({ now, reviewer }: VerdictRowProps) {
         </SignalTip>
       ) : null}
       <span
-        className="w-7 shrink-0 text-right text-[11px] text-muted-foreground/60 tabular-nums"
+        className="w-8 shrink-0 text-right text-muted-foreground/60 text-xs tabular-nums"
         title={
           reviewer.submittedAt ? fullDate(reviewer.submittedAt) : undefined
         }

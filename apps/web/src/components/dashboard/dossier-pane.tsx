@@ -36,7 +36,7 @@ interface DossierPaneProps {
 function ClaimLine({ now, pull }: { now: number; pull: QueuePull }) {
   const claim = claimFor(pull, now);
   return (
-    <p className="text-[12px] leading-snug">
+    <p className="text-[13px] leading-snug">
       <span className={cn("font-semibold", TONE_CLASSES[claim.tone])}>
         {claim.status}
       </span>
@@ -70,7 +70,7 @@ export function DossierPane({
   const activeTab = hasDescription ? tab : "overview";
   return (
     <div className="fade-in flex h-full min-h-0 flex-1 animate-in flex-col duration-150">
-      <div className="flex flex-col gap-2 bg-background px-4 pt-4 pb-2">
+      <div className="flex flex-col gap-2.5 bg-background px-4 pt-5 pb-3">
         <h2 className="text-balance font-heading text-xl leading-snug tracking-tight">
           {pull.title}{" "}
           <span className="text-muted-foreground/60">#{pull.number}</span>
@@ -81,7 +81,7 @@ export function DossierPane({
             avatarUrl={pull.author?.avatarUrl}
             labelClassName="text-muted-foreground"
             login={pull.author?.login ?? null}
-            size="xs"
+            size="sm"
           />
           <DossierSignals pull={pull} />
         </div>
@@ -93,10 +93,10 @@ export function DossierPane({
             value={activeTab}
           >
             <TabsList variant="line">
-              <TabsTrigger className="text-[12px]" value="overview">
+              <TabsTrigger className="text-[13px]" value="overview">
                 Overview
               </TabsTrigger>
-              <TabsTrigger className="text-[12px]" value="description">
+              <TabsTrigger className="text-[13px]" value="description">
                 Description
               </TabsTrigger>
             </TabsList>
@@ -169,7 +169,7 @@ function DossierOverview({
           <div className={cn("flex flex-col", HAIRLINE_DIVIDE)}>
             {pull.ciFailures.map((check) => (
               <a
-                className="group -mx-4 flex items-center gap-2 px-4 py-2"
+                className="group -mx-4 flex items-center gap-2 px-4 py-2.5"
                 href={
                   check.url ??
                   `https://github.com/${pull.owner}/${pull.repo}/pull/${pull.number}/checks`
@@ -180,10 +180,10 @@ function DossierOverview({
               >
                 <XIcon
                   aria-hidden
-                  className="size-2.5 shrink-0 text-deletion"
+                  className="size-3 shrink-0 text-deletion"
                   weight="bold"
                 />
-                <span className="min-w-0 truncate text-[12px] text-foreground/80 underline-offset-2 transition-colors group-hover:text-foreground group-hover:underline">
+                <span className="min-w-0 truncate text-[13px] text-foreground/80 underline-offset-2 transition-colors group-hover:text-foreground group-hover:underline">
                   {check.name}
                 </span>
               </a>

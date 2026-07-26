@@ -39,7 +39,7 @@ export function FlowRail({
         action={
           selected ? (
             <button
-              className="text-[11px] text-muted-foreground/60 underline-offset-2 transition-colors hover:text-foreground hover:underline"
+              className="text-muted-foreground/60 text-xs underline-offset-2 transition-colors hover:text-foreground hover:underline"
               onClick={() => onSelect(null)}
               type="button"
             >

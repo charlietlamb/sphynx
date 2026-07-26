@@ -13,7 +13,7 @@ import { fullDate, shortAge } from "@/lib/age";
 
 const INDENT_STEP = 16;
 const BASE_INDENT = 26;
-const STICKY_HEADER_OFFSET = 78;
+const STICKY_HEADER_OFFSET = 90;
 const SCROLL_MARGIN = 8;
 
 interface QueueRowProps {
@@ -70,7 +70,7 @@ export function QueueRow({
   return (
     <button
       className={cn(
-        "group relative -mx-4 flex h-10 w-[calc(100%+2rem)] items-center gap-2.5 border-border/40 border-b pr-[26px] text-left",
+        "group relative -mx-4 flex h-11 w-[calc(100%+2rem)] items-center gap-2.5 border-border/40 border-b pr-[26px] text-left",
         focused
           ? "z-[1] -mt-px border-border border-t bg-primary/10"
           : "transition-colors hover:bg-alpha-4"
@@ -90,24 +90,22 @@ export function QueueRow({
         size="sm"
         variant="avatar"
       />
-      <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70 tabular-nums">
+      <span className="shrink-0 font-mono text-muted-foreground/70 text-xs tabular-nums">
         #{pull.number}
       </span>
       <span
         className={cn(
-          "min-w-0 flex-1 truncate text-[13px]",
+          "min-w-0 flex-1 truncate text-sm",
           pull.isDraft && "text-muted-foreground"
         )}
       >
         {pull.title}
       </span>
       {pull.isDraft ? (
-        <span className="shrink-0 text-[11px] text-muted-foreground/60">
-          draft
-        </span>
+        <span className="shrink-0 text-muted-foreground/60 text-xs">draft</span>
       ) : null}
       {pull.state === "open" ? null : (
-        <span className="shrink-0 text-[11px] text-muted-foreground/60">
+        <span className="shrink-0 text-muted-foreground/60 text-xs">
           {pull.state}
         </span>
       )}
@@ -116,7 +114,7 @@ export function QueueRow({
       <CiSlot pull={pull} />
       <SizeTicks pull={pull} />
       <SignalTip
-        className="w-7 shrink-0 text-right text-[11px] text-muted-foreground/60 tabular-nums"
+        className="w-8 shrink-0 text-right text-muted-foreground/60 text-xs tabular-nums"
         label={`Updated ${fullDate(pull.updatedAt)}`}
       >
         {shortAge(pull.updatedAt, now)}
