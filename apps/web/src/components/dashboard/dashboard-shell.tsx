@@ -33,29 +33,41 @@ export function DashboardShell({
         />
       </div>
       <div className="hidden min-h-0 flex-1 flex-col md:flex">
-        <AppHeader githubUrl={githubUrl} switcher={switcher} />
+        <div className="px-2.5 pt-2.5">
+          <div className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
+            <AppHeader githubUrl={githubUrl} switcher={switcher} />
+          </div>
+        </div>
         <ResizablePanelGroup
           autoSaveId="sphynx-dashboard"
           className="min-h-0 flex-1"
           direction="horizontal"
         >
           <ResizablePanel defaultSize={17} minSize={12}>
-            <aside className="flex h-full min-h-0 flex-col">
-              <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3">
-                {rail}
+            <aside className="flex h-full min-h-0 flex-col p-2.5 pt-[13px] pr-1.5">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs">
+                <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
+                  {rail}
+                </div>
+                {railFooter}
               </div>
-              {railFooter}
             </aside>
           </ResizablePanel>
-          <ResizableHandle className="bg-border" />
+          <ResizableHandle className="bg-transparent" />
           <ResizablePanel defaultSize={53} minSize={30}>
-            <section className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto">
-              {queue}
+            <section className="flex h-full min-h-0 flex-col p-2.5 px-1.5 pt-[13px]">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs">
+                <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
+                  {queue}
+                </div>
+              </div>
             </section>
           </ResizablePanel>
-          <ResizableHandle className="bg-border" />
+          <ResizableHandle className="bg-transparent" />
           <ResizablePanel defaultSize={30} minSize={20}>
-            <aside className="flex h-full min-h-0 flex-col">{dossier}</aside>
+            <aside className="flex h-full min-h-0 flex-col p-2.5 pt-[13px] pl-1.5">
+              {dossier}
+            </aside>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>

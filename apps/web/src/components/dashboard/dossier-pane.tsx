@@ -69,8 +69,8 @@ export function DossierPane({
   const hasDescription = pull.hasBody;
   const activeTab = hasDescription ? tab : "overview";
   return (
-    <div className="fade-in flex h-full min-h-0 flex-1 animate-in flex-col duration-150">
-      <div className="flex flex-col bg-background px-4 pt-5 pb-4">
+    <div className="fade-in flex h-full min-h-0 animate-in flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs duration-150">
+      <div className="flex flex-col px-4 pt-5 pb-4">
         <h2 className="text-balance font-heading text-xl leading-tight tracking-tight">
           {pull.title}{" "}
           <span className="text-muted-foreground/50">#{pull.number}</span>
@@ -158,12 +158,10 @@ function DossierOverview({
   pull: QueuePull;
 }) {
   return (
-    <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="border-border border-b px-4">
-        <VerdictMatrix now={now} pull={pull} />
-      </div>
+    <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+      <VerdictMatrix now={now} pull={pull} />
       {pull.ciFailures.length > 0 ? (
-        <div className="flex flex-col border-border border-b px-4">
+        <div className="flex flex-col">
           <SectionHeader
             icon={<XCircleIcon className="size-3" weight="fill" />}
             label="Failing checks"

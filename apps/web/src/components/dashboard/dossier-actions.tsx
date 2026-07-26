@@ -24,7 +24,7 @@ export function DossierActions({ canAct, onOpen, pull }: DossierActionsProps) {
     blockedReason ?? (canAct ? undefined : "sign in to act on pulls");
 
   return (
-    <div className="mt-auto flex flex-col gap-2 border-border border-t bg-background px-4 py-3">
+    <div className="mt-auto flex flex-col gap-2 border-border border-t px-4 py-3">
       <div className="flex items-center justify-end gap-2">
         <ShortcutButton
           disabled={!canDecide || block.isPending}

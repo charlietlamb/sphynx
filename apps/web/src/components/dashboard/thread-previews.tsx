@@ -93,7 +93,7 @@ function ThreadPreviewRow({
   };
 
   return (
-    <div className="group/thread relative -mx-4 flex flex-col gap-1 px-4 py-2.5 transition-colors hover:bg-alpha-2">
+    <div className="group/thread relative -mx-4 flex flex-col gap-1.5 px-4 py-3 transition-colors hover:bg-alpha-2">
       <button
         aria-expanded={expanded}
         aria-label="Expand the thread"
@@ -101,34 +101,34 @@ function ThreadPreviewRow({
         onClick={() => setExpanded(!expanded)}
         type="button"
       />
-      <div className="flex h-5 items-center gap-1.5">
+      <div className="flex h-6 items-center gap-2">
         {preview.path ? (
-          <FileTypeIcon className="size-3.5 shrink-0" path={preview.path} />
+          <FileTypeIcon className="size-4 shrink-0" path={preview.path} />
         ) : (
           <ChatCircleIcon
-            className="size-3.5 shrink-0 text-muted-foreground/40"
+            className="size-4 shrink-0 text-muted-foreground/40"
             weight="fill"
           />
         )}
         {preview.path ? (
           <span
-            className="min-w-0 truncate font-mono text-[11px] text-foreground/80"
+            className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground/80"
             title={preview.path}
           >
             {baseName(preview.path)}
           </span>
         ) : null}
-        <Avatar className="size-3.5 shrink-0 rounded-full">
+        <Avatar className="size-4 shrink-0 rounded-full">
           <AvatarImage
             alt={login ?? "unknown"}
             className="rounded-full"
             src={preview.author?.avatarUrl}
           />
-          <AvatarFallback className="rounded-full text-[7px]">
+          <AvatarFallback className="rounded-full text-[8px]">
             {login?.[0] ?? "?"}
           </AvatarFallback>
         </Avatar>
-        <span className="min-w-0 shrink-0 truncate text-[11px] text-muted-foreground">
+        <span className="shrink-0 truncate text-muted-foreground text-xs">
           {login ?? "unknown"}
         </span>
         <span className="relative z-10 ml-auto flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/thread:opacity-100">
@@ -243,7 +243,7 @@ export function ThreadPreviews({
         ))}
       </div>
       {hidden > 0 ? (
-        <p className="py-1.5 text-[11px] text-muted-foreground/50">
+        <p className="py-2 text-muted-foreground/50 text-xs">
           +{plural(hidden, "more open thread")}
         </p>
       ) : null}

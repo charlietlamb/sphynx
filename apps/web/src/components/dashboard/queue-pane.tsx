@@ -67,7 +67,7 @@ export function QueuePane({
 }: QueuePaneProps) {
   const total = queue.groups.reduce((sum, group) => sum + group.total, 0);
   return (
-    <div className="flex min-h-full flex-col px-4 pb-3">
+    <div className="flex min-h-full flex-col px-4 pb-2">
       <div className="sticky top-0 z-10 -mx-4 flex h-11 shrink-0 items-center gap-3 border-border border-b bg-card px-4">
         <span className="flex shrink-0 items-center gap-2.5">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground [&_svg]:size-3">
