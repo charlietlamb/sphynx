@@ -36,6 +36,16 @@ const GraphQLErrors = Schema.optional(
   Schema.Array(Schema.Struct({ message: Schema.String }))
 );
 
+const RATE_LIMIT_MESSAGE = /rate limit/i;
+
+/**
+ * A secondary rate limit comes back as HTTP 200 with a body error rather than a
+ * 403, so status-based detection misses it. Classifying it as GitHubRateLimited
+ * lets `honorRateLimit` back off instead of the reconcile loop hammering GitHub.
+ */
+const isRateLimitMessage = (message: string) =>
+  RATE_LIMIT_MESSAGE.test(message);
+
 const pullRequestData = <A, I, R>(inner: Schema.Schema<A, I, R>) =>
   Schema.Struct({
     repository: Schema.NullishOr(
@@ -125,6 +135,15 @@ export const makeGraphql = (
       );
       const firstError = envelope.errors?.[0];
       if (envelope.data === null || envelope.data === undefined) {
+        if (firstError && isRateLimitMessage(firstError.message)) {
+          return yield* Effect.fail(
+            new GitHubRateLimited({
+              message: firstError.message,
+              retryAfterSeconds: retryAfter(response),
+              resetAt: resetAt(response),
+            })
+          );
+        }
         return yield* Effect.fail(
           new GitHubUnavailable({
             message: firstError ? firstError.message : "Empty GitHub response",
