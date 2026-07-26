@@ -87,11 +87,7 @@ export function MosaicDashboardShell({
         </section>
       </div>
     ),
-    dossier: (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        {dossier}
-      </div>
-    ),
+    dossier,
   };
 
   const renderTile = (id: PaneId, path: MosaicPath) => (

@@ -1,8 +1,7 @@
-import { GitPullRequestIcon } from "@phosphor-icons/react";
+import { GitPullRequestIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { cn } from "@sphynx/ui/lib/utils";
 import { QueueRowSkeleton } from "@/components/dashboard/queue-row-skeleton";
-import { SectionHeader } from "@/components/layout/section-header";
 
 const TITLE_WIDTHS = ["46%", "58%", "34%", "62%", "41%", "52%", "38%"];
 
@@ -28,16 +27,21 @@ function BranchHeaderSkeleton({
 
 export function QueueSkeleton() {
   return (
-    <div className="flex flex-col px-4 pb-3">
-      <SectionHeader
-        action={<Skeleton className="h-3 w-4" />}
-        className="-mx-4 px-4"
-        icon={<GitPullRequestIcon className="size-3" weight="fill" />}
-        label="Pull requests"
-      />
-      <div className="-mx-4 flex shrink-0 items-center gap-2 border-border border-b px-4 py-2">
-        <Skeleton className="h-7 min-w-0 flex-1 rounded-md" />
-        <Skeleton className="h-7 w-28 shrink-0 rounded-md" />
+    <div className="flex min-h-full flex-col px-4 pb-2">
+      <div className="-mx-4 flex h-11 shrink-0 items-center gap-3 border-border border-b px-4">
+        <span className="flex shrink-0 items-center gap-2.5">
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground [&_svg]:size-3">
+            <GitPullRequestIcon weight="fill" />
+          </span>
+          <p className="font-heading font-medium text-foreground text-sm tracking-tight">
+            Pull requests
+          </p>
+          <Skeleton className="h-3 w-3" />
+        </span>
+        <div className="flex h-8 min-w-0 flex-1 items-center gap-2 pr-1 pl-3">
+          <MagnifyingGlassIcon className="size-4 shrink-0 text-muted-foreground/40" />
+          <Skeleton className="h-3 w-24" />
+        </div>
       </div>
       <div className="flex flex-col">
         <div className="flex flex-col">
