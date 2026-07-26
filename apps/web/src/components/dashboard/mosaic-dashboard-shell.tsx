@@ -139,14 +139,14 @@ export function MosaicDashboardShell({
         <div className="px-2.5 pt-2.5">
           <div className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
             <AppHeader
-              githubUrl={githubUrl}
-              leftActions={
+              actions={
                 <ArrangeToggle
                   arranging={arranging}
                   onReset={reset}
                   onToggle={toggleArranging}
                 />
               }
+              githubUrl={githubUrl}
               switcher={switcher}
             />
           </div>

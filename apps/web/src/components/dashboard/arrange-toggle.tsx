@@ -19,34 +19,32 @@ export function ArrangeToggle({
 }: ArrangeToggleProps) {
   return (
     <div className="flex items-center gap-1.5">
-      <SignalTip label={arranging ? "Done arranging" : "Rearrange panes"}>
-        <Toggle
-          aria-label="Toggle arrange mode"
-          className="gap-1.5 px-2 font-medium text-muted-foreground text-xs aria-pressed:border-primary/30 aria-pressed:bg-primary/10 aria-pressed:text-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-          onPressedChange={onToggle}
-          pressed={arranging}
-          size="sm"
-          variant="outline"
-        >
-          <ArrowsOutCardinalIcon weight={arranging ? "fill" : "regular"} />
-          Arrange
-        </Toggle>
-      </SignalTip>
       {arranging ? (
         <SignalTip label="Reset to default layout">
           <Button
             aria-label="Reset layout"
-            className="h-6 gap-1.5 px-2 text-muted-foreground text-xs"
             onClick={onReset}
-            size="sm"
+            size="icon"
             type="button"
-            variant="ghost"
+            variant="outline"
           >
-            <ArrowCounterClockwiseIcon className="size-3.5" />
-            Reset
+            <ArrowCounterClockwiseIcon className="size-[1.125rem]" />
           </Button>
         </SignalTip>
       ) : null}
+      <SignalTip label={arranging ? "Done arranging" : "Rearrange panes"}>
+        <Toggle
+          aria-label="Toggle arrange mode"
+          className="size-[1.875rem] rounded-md border border-input bg-transparent hover:bg-muted aria-pressed:border-primary/30 aria-pressed:bg-primary/10 aria-pressed:text-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+          onPressedChange={onToggle}
+          pressed={arranging}
+        >
+          <ArrowsOutCardinalIcon
+            className="size-[1.125rem]"
+            weight={arranging ? "fill" : "regular"}
+          />
+        </Toggle>
+      </SignalTip>
     </div>
   );
 }
