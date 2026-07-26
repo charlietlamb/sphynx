@@ -21,6 +21,7 @@ import {
 import { cn } from "@sphynx/ui/lib/utils";
 import type { ReactNode } from "react";
 import { SignalTip } from "@/components/dashboard/signal-tip";
+import { GithubProfile } from "@/components/github/github-profile";
 import { HAIRLINE_DIVIDE } from "@/components/layout/dividers";
 import { SectionHeader } from "@/components/layout/section-header";
 import { DiffStat } from "@/components/pull-request/diff-stat";
@@ -171,18 +172,13 @@ export function ConversationOverview({
                 className="-mx-4 flex items-center gap-2 px-4 py-2"
                 key={review.id}
               >
-                <Avatar className="size-4 rounded-full">
-                  <AvatarImage
-                    alt={review.author?.login ?? "unknown"}
-                    src={review.author?.avatarUrl}
-                  />
-                  <AvatarFallback className="text-[8px]">
-                    {review.author?.login[0] ?? "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="min-w-0 truncate text-[12px] text-foreground">
-                  {review.author?.login ?? "unknown"}
-                </span>
+                <GithubProfile
+                  avatarUrl={review.author?.avatarUrl}
+                  className="min-w-0 flex-1"
+                  labelClassName="text-[12px] text-foreground"
+                  login={review.author?.login ?? null}
+                  size="xs"
+                />
                 <span
                   className="ml-auto text-[11px] text-muted-foreground/60 tabular-nums"
                   title={fullDate(review.submittedAt)}

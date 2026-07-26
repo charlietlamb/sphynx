@@ -1,11 +1,6 @@
 import { SealCheckIcon, XCircleIcon, XIcon } from "@phosphor-icons/react";
 import type { QueuePull } from "@sphynx/schema/review-queue";
 import { EmptyState } from "@sphynx/ui/components/empty-state";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@sphynx/ui/components/ui/avatar";
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@sphynx/ui/components/ui/tabs";
 import { cn } from "@sphynx/ui/lib/utils";
@@ -16,6 +11,7 @@ import { DossierSignals } from "@/components/dashboard/dossier-signals";
 import { ThreadPreviews } from "@/components/dashboard/thread-previews";
 import { usePullBody } from "@/components/dashboard/use-pull-body";
 import { VerdictMatrix } from "@/components/dashboard/verdict-matrix";
+import { GithubProfile } from "@/components/github/github-profile";
 import { HAIRLINE_DIVIDE } from "@/components/layout/dividers";
 import { SectionHeader } from "@/components/layout/section-header";
 import { type ClaimTone, claimFor } from "@/lib/claims";
@@ -81,19 +77,12 @@ export function DossierPane({
         </h2>
         <ClaimLine now={now} pull={pull} />
         <div className="flex items-center gap-2">
-          <Avatar className="size-4 rounded-full">
-            <AvatarImage
-              alt={pull.author?.login ?? "unknown"}
-              className="rounded-full"
-              src={pull.author?.avatarUrl}
-            />
-            <AvatarFallback className="rounded-full text-[8px]">
-              {pull.author?.login[0] ?? "?"}
-            </AvatarFallback>
-          </Avatar>
-          <span className="min-w-0 truncate text-[11px] text-muted-foreground">
-            {pull.author?.login ?? "unknown"}
-          </span>
+          <GithubProfile
+            avatarUrl={pull.author?.avatarUrl}
+            labelClassName="text-muted-foreground"
+            login={pull.author?.login ?? null}
+            size="xs"
+          />
           <DossierSignals pull={pull} />
         </div>
       </div>

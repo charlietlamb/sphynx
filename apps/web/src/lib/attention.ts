@@ -148,7 +148,7 @@ function collectOrder(groups: readonly BranchGroup[]): string[] {
   return order;
 }
 
-export const QUEUE_FILTERS = [
+const QUEUE_FILTERS = [
   { label: "All", value: "all" },
   { label: "Needs review", value: "needs-eyes" },
   { label: "Ready", value: "ready" },
