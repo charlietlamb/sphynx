@@ -25,16 +25,32 @@ import {
  * Installation tokens authenticate as the app on an org, so there is no
  * `viewer` to hang repositories off. REST lists what the installation can see.
  */
-const InstallationReposSchema = Schema.Struct({
-  repositories: Schema.Array(
-    Schema.Struct({
-      name: Schema.String,
-      archived: Schema.Boolean,
-      owner: Schema.Struct({ login: Schema.String }),
-      pushed_at: Schema.NullishOr(Schema.String),
-    })
-  ),
+const InstallationRepoSchema = Schema.Struct({
+  name: Schema.String,
+  archived: Schema.Boolean,
+  owner: Schema.Struct({ login: Schema.String }),
+  pushed_at: Schema.NullishOr(Schema.String),
 });
+
+type InstallationRepo = typeof InstallationRepoSchema.Type;
+
+const InstallationReposSchema = Schema.Struct({
+  repositories: Schema.Array(InstallationRepoSchema),
+});
+
+const LINK_URL = /<([^>]+)>/;
+
+const nextInstallationPage = (link: string | null) => {
+  const target = link
+    ?.split(",")
+    .find((part) => part.includes('rel="next"'))
+    ?.match(LINK_URL)?.[1];
+  if (!target) {
+    return null;
+  }
+  const page = Number(new URL(target).searchParams.get("page"));
+  return Number.isInteger(page) ? page : null;
+};
 
 /**
  * A conditional read of a repo's open pulls: either unchanged, or new data
@@ -50,6 +66,8 @@ type EtagCheck =
   | { readonly _tag: "NotModified" };
 /** Repos probed for open-PR counts before trimming to the discovery cap. */
 const MAX_COUNTED_REPOS = 40;
+/** Installation-repository pages walked; 100 per page bounds huge accounts. */
+const MAX_REPO_PAGES = 10;
 /**
  * Open pulls fetched per repo. GitHub caps a connection page at 100, and a
  * repo above that is past what the queue can usefully show. Previously 30,
@@ -238,15 +256,26 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
       Effect.annotateLogs({ "github.repo": repoKey(entry) })
     );
 
-  /** Repos the installation can see, most recently pushed first. */
-  const discoverRepos = (
-    token: string
-  ): Effect.Effect<{ owner: string; repo: string }[], GitHubAuthedError> =>
-    rest(token, "GET", "/installation/repositories?per_page=100").pipe(
+  const reposPage = (
+    token: string,
+    page: number
+  ): Effect.Effect<
+    { repositories: readonly InstallationRepo[]; nextPage: number | null },
+    GitHubAuthedError
+  > =>
+    rest(
+      token,
+      "GET",
+      `/installation/repositories?per_page=100&page=${page}`
+    ).pipe(
       Effect.flatMap((response) =>
         HttpClientResponse.schemaBodyJson(InstallationReposSchema)(
           response
         ).pipe(
+          Effect.map((body) => ({
+            repositories: body.repositories,
+            nextPage: nextInstallationPage(response.headers.link ?? null),
+          })),
           Effect.mapError(
             () =>
               new GitHubUnavailable({
@@ -254,16 +283,37 @@ const makeGitHubReviewQueue = Effect.gen(function* () {
               })
           )
         )
-      ),
-      Effect.map((page) =>
-        page.repositories
-          .filter((repo) => !repo.archived)
-          .sort((a, b) => (b.pushed_at ?? "").localeCompare(a.pushed_at ?? ""))
-          .map((repo) => ({ owner: repo.owner.login, repo: repo.name }))
-          .slice(0, MAX_COUNTED_REPOS)
-      ),
-      Effect.withSpan("GitHubReviewQueue.discoverRepos")
+      )
     );
+
+  /**
+   * Repos the installation can see, most recently pushed first. Installations
+   * with more than one page (>100 repos) must be walked in full: the endpoint
+   * orders by repo id, not push time, so a recently-pushed repo can sit on a
+   * later page and would otherwise never surface in the switcher.
+   */
+  const discoverRepos = (
+    token: string
+  ): Effect.Effect<{ owner: string; repo: string }[], GitHubAuthedError> =>
+    Effect.gen(function* () {
+      const repositories: InstallationRepo[] = [];
+      let page = 1;
+      let nextPage: number | null = 1;
+      while (nextPage !== null && page <= MAX_REPO_PAGES) {
+        const result: {
+          repositories: readonly InstallationRepo[];
+          nextPage: number | null;
+        } = yield* reposPage(token, page);
+        repositories.push(...result.repositories);
+        nextPage = result.nextPage;
+        page += 1;
+      }
+      return repositories
+        .filter((repo) => !repo.archived)
+        .sort((a, b) => (b.pushed_at ?? "").localeCompare(a.pushed_at ?? ""))
+        .map((repo) => ({ owner: repo.owner.login, repo: repo.name }))
+        .slice(0, MAX_COUNTED_REPOS);
+    }).pipe(Effect.withSpan("GitHubReviewQueue.discoverRepos"));
 
   /**
    * A repo's recent activity from the Events API — the one-time seed for the

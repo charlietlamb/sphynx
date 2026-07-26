@@ -138,12 +138,18 @@ export function DashboardView() {
         }
         switcher={
           selectedRepo ? (
-            <span className="flex min-w-0 items-center gap-1">
+            <span className="flex min-w-0 items-center">
               <OrgSwitcher
                 installations={installations}
                 onSelect={selectInstallation}
                 selected={activeInstallation}
               />
+              <span
+                aria-hidden
+                className="select-none text-[13px] text-muted-foreground/40"
+              >
+                /
+              </span>
               <RepoSwitcher
                 onSelect={selectRepo}
                 repos={repos}

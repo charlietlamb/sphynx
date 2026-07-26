@@ -6,6 +6,7 @@ import { organization } from "better-auth/plugins";
 import { asc, eq } from "drizzle-orm";
 import { Context, Effect, Layer, Redacted } from "effect";
 import { AuthConfig } from "./config";
+import { COOKIE_PREFIX } from "./cookies";
 
 const makeAuth = Effect.gen(function* () {
   const config = yield* AuthConfig;
@@ -19,8 +20,6 @@ const makeAuth = Effect.gen(function* () {
     socialProviders.github = {
       clientId: config.github.clientId,
       clientSecret: Redacted.value(config.github.clientSecret),
-      // A GitHub App derives repo access from its installation, not scopes.
-      // `read:user` and `user:email` are the provider defaults, so none are set.
     };
   }
   const findFirstOrganizationId = async (userId: string) => {
@@ -37,7 +36,7 @@ const makeAuth = Effect.gen(function* () {
     baseURL: config.url,
     trustedOrigins: [...config.trustedOrigins],
     advanced: {
-      cookiePrefix: "sphynx",
+      cookiePrefix: COOKIE_PREFIX,
     },
     session: {
       /**

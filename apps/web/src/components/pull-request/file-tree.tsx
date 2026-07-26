@@ -9,6 +9,7 @@ import { DiffStat } from "@/components/pull-request/diff-stat";
 import { FileTypeIcon } from "@/components/pull-request/file-type-icon";
 import type { FileTreeNode } from "@/lib/file-tree";
 import type { FileRelations } from "@/lib/import-graph";
+import { baseName } from "@/lib/paths";
 
 const STATUS_STYLES: Record<
   PullRequestFile["status"],
@@ -23,11 +24,6 @@ const STATUS_STYLES: Record<
 };
 
 const indent = (depth: number) => ({ paddingLeft: 10 + depth * 12 });
-
-function baseName(path: string) {
-  const index = path.lastIndexOf("/");
-  return index === -1 ? path : path.slice(index + 1);
-}
 
 function displayName(file: PullRequestFile) {
   const name = baseName(file.path);

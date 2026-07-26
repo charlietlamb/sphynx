@@ -47,7 +47,7 @@ export function PullRequestSwitcher({
     repos.find((option) => option.key === currentKey) ?? repos[0] ?? null;
 
   const selectRepo = (key: string) => {
-    update({ selectedRepo: `${key}` });
+    update({ selectedRepo: key });
     if (key !== currentKey) {
       navigate({ to: "/" });
     }

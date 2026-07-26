@@ -4,8 +4,9 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
-import { Button } from "@sphynx/ui/components/ui/button";
+import { Button, buttonVariants } from "@sphynx/ui/components/ui/button";
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
+import { cn } from "@sphynx/ui/lib/utils";
 import { useInstallations } from "@/components/dashboard/use-installations";
 import { SettingRow } from "@/components/settings/setting-row";
 import { useSettings } from "@/components/settings/settings-provider";
@@ -132,13 +133,16 @@ export function SettingsAccess() {
         </SettingRow>
       </div>
       <a
-        className="flex items-center gap-1.5 px-2 text-muted-foreground/70 text-xs transition-colors hover:text-foreground"
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "self-start"
+        )}
         href={INSTALL_URL}
         rel="noreferrer"
         target="_blank"
       >
         Manage access on GitHub
-        <ArrowSquareOutIcon aria-hidden className="size-3 shrink-0" />
+        <ArrowSquareOutIcon aria-hidden data-icon="inline-end" />
       </a>
     </div>
   );

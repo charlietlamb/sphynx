@@ -40,7 +40,7 @@ function readyDetail(pull: QueuePull, now: number) {
   const approvedBy =
     pull.approvals === 1 && approver
       ? `Approved by ${stripBotSuffix(approver.name)}`
-      : `${plural(pull.approvals, "approval")}`;
+      : plural(pull.approvals, "approval");
   return joinFragments([approvedBy, idle ?? "checks green"]);
 }
 

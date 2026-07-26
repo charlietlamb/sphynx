@@ -1,4 +1,4 @@
-import { CaretDownIcon, CheckCircleIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon } from "@phosphor-icons/react";
 import type { Installation } from "@sphynx/schema/review-queue";
 import {
   Avatar,
@@ -31,13 +31,12 @@ export function OrgSwitcher({
   onSelect,
   selected,
 }: OrgSwitcherProps) {
-  // A switcher with one option is noise — most users have exactly one org.
   if (!selected || installations.length < 2) {
     return null;
   }
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="group flex h-7 items-center gap-2 rounded-md border border-transparent px-2 outline-none transition-colors hover:border-border hover:bg-muted/30 focus-visible:border-border data-[state=open]:border-border data-[state=open]:bg-muted/30">
+      <DropdownMenuTrigger className="flex h-7 items-center gap-2 rounded-md px-1.5 outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 data-[state=open]:bg-muted/40">
         <Avatar className="size-4 rounded-[4px] after:rounded-[4px]">
           <AvatarImage
             alt={selected.accountLogin}
@@ -51,10 +50,6 @@ export function OrgSwitcher({
         <span className="text-[13px] text-muted-foreground leading-none">
           {selected.accountLogin}
         </span>
-        <CaretDownIcon
-          aria-hidden
-          className="size-3 shrink-0 text-muted-foreground/50 transition-[transform,color] duration-200 ease-out group-hover:text-foreground group-data-[state=open]:rotate-180"
-        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-72 p-0">
         <Command>

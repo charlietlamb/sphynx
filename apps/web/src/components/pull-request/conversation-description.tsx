@@ -15,12 +15,13 @@ export function ConversationDescription({
 }: ConversationDescriptionProps) {
   const hasBody = Boolean(descriptionHTML || summary.body);
   return (
-    <div className="flex flex-col gap-2.5 rounded-md border border-border bg-background p-3.5">
+    <div className="flex min-w-0 flex-col gap-2.5 rounded-md border border-border bg-background p-3.5">
       <ConversationCardHeader
         at={summary.createdAt}
         author={summary.author}
         githubUrl={summary.githubUrl}
         now={now}
+        showAvatar={false}
         verb="opened this pull request"
       />
       {hasBody ? (

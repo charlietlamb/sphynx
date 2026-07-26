@@ -1,5 +1,6 @@
-import { XCircleIcon, XIcon } from "@phosphor-icons/react";
+import { SealCheckIcon, XCircleIcon, XIcon } from "@phosphor-icons/react";
 import type { QueuePull } from "@sphynx/schema/review-queue";
+import { EmptyState } from "@sphynx/ui/components/empty-state";
 import {
   Avatar,
   AvatarFallback,
@@ -60,9 +61,13 @@ export function DossierPane({
   const [tab, setTab] = useState("overview");
   if (!pull) {
     return (
-      <p className="px-4 py-4 text-[13px] text-muted-foreground">
-        Queue clear, nothing to decide.
-      </p>
+      <EmptyState
+        bordered={false}
+        className="h-full"
+        description="Every open pull request has been reviewed."
+        icon={<SealCheckIcon weight="fill" />}
+        title="Queue clear"
+      />
     );
   }
   const hasDescription = pull.hasBody;
@@ -189,7 +194,7 @@ function DossierOverview({
                   className="size-2.5 shrink-0 text-deletion"
                   weight="bold"
                 />
-                <span className="min-w-0 truncate font-mono text-[11px] text-foreground/80 underline-offset-2 transition-colors group-hover:text-foreground group-hover:underline">
+                <span className="min-w-0 truncate text-[12px] text-foreground/80 underline-offset-2 transition-colors group-hover:text-foreground group-hover:underline">
                   {check.name}
                 </span>
               </a>

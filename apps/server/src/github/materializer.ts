@@ -302,7 +302,8 @@ const makeMaterializer = Effect.gen(function* () {
     ),
     Effect.schedule(Schedule.spaced(RECONCILE_INTERVAL)),
     Effect.forkDaemon,
-    Effect.asVoid
+    Effect.asVoid,
+    Effect.withSpan("Materializer.startReconcile")
   );
 
   return { materialize, reconcileOnce, startReconcile };

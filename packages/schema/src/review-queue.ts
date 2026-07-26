@@ -241,6 +241,36 @@ const getQueue = HttpApiEndpoint.get("getQueue", "/api/github/queue")
   .setHeaders(installationHeaders)
   .addSuccess(QueueSchema);
 
+/**
+ * One repo's flow, built on demand when the user selects a repo the
+ * installation-wide pipeline has not surfaced yet (a freshly added or quiet
+ * repo). Bounded to a single repo, so it renders without waiting on the full
+ * installation build, and the result is written through to the read model.
+ */
+const getRepoFlow = HttpApiEndpoint.get(
+  "getRepoFlow",
+  "/api/github/repos/:owner/:repo/flow"
+)
+  .setPath(Schema.Struct({ owner: Schema.String, repo: Schema.String }))
+  .setHeaders(installationHeaders)
+  .addSuccess(RepoFlowSchema);
+
+export const ReposSchema = Schema.Struct({
+  repos: Schema.Array(DiscoveredRepoSchema),
+});
+
+export type Repos = typeof ReposSchema.Type;
+
+/**
+ * Every repo the installation can see, including those with no open pulls.
+ * The pipeline only carries pull-bearing repos, so the switcher needs this to
+ * list quiet repos too. `openPulls` is best-effort here; the dashboard overlays
+ * live counts from the pipeline flows.
+ */
+const listRepos = HttpApiEndpoint.get("listRepos", "/api/github/repos")
+  .setHeaders(installationHeaders)
+  .addSuccess(ReposSchema);
+
 export const PullBodySchema = Schema.Struct({
   body: Schema.NullOr(Schema.String),
 });
@@ -308,6 +338,8 @@ export const ReviewQueueApi = HttpApiGroup.make("reviewQueue")
   .add(resolveInstallation)
   .add(getPipeline)
   .add(getQueue)
+  .add(getRepoFlow)
+  .add(listRepos)
   .add(getPullBody)
   .add(searchPulls)
   .add(mergePull)

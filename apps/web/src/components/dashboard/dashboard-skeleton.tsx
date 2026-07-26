@@ -1,3 +1,4 @@
+import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { DossierSkeleton } from "@/components/dashboard/dossier-skeleton";
 import { QueueSkeleton } from "@/components/dashboard/queue-skeleton";
@@ -16,6 +17,12 @@ export function DashboardSkeleton() {
       githubUrl={null}
       queue={<QueueSkeleton />}
       rail={<RailSkeleton />}
+      railFooter={
+        <div className="flex h-9 w-full shrink-0 items-center gap-2 border-border border-t px-3">
+          <Skeleton className="size-3.5 shrink-0 rounded" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+      }
       switcher={<SwitcherSkeleton />}
     />
   );

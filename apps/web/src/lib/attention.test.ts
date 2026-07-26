@@ -207,4 +207,38 @@ describe("railBranches", () => {
     expect(items[1]?.total).toBe(1);
     expect(items[2]?.isStage).toBe(false);
   });
+
+  test("rolls up ci state per branch, one vote per pull", () => {
+    const queue = buildBranchQueue(
+      flow([
+        pull({
+          number: 1,
+          headRefName: "a",
+          baseRefName: "main",
+          ciCounts: { failed: 0, passed: 3, pending: 0 },
+        }),
+        pull({
+          number: 2,
+          headRefName: "b",
+          baseRefName: "main",
+          ciCounts: { failed: 1, passed: 2, pending: 0 },
+        }),
+        pull({
+          number: 3,
+          headRefName: "c",
+          baseRefName: "main",
+          ciCounts: { failed: 0, passed: 1, pending: 2 },
+        }),
+      ])
+    );
+    const main = railBranches(flow([]), queue).find(
+      (item) => item.branch === "main"
+    );
+    expect(main?.ci).toEqual({ failing: 1, running: 1, passing: 1 });
+  });
+
+  test("reports an empty ci rollup for a stage with no open pulls", () => {
+    const items = railBranches(flow([]), buildBranchQueue(flow([])));
+    expect(items[0]?.ci).toEqual({ failing: 0, running: 0, passing: 0 });
+  });
 });

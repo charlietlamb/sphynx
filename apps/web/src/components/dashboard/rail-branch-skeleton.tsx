@@ -31,6 +31,9 @@ export function RailBranchSkeleton({
       <span className={cn("min-w-0 flex-1", !isStage && "pl-2")}>
         <Skeleton className="h-3" style={{ width: nameWidth }} />
       </span>
+      <span className="inline-flex size-4 shrink-0 items-center justify-center">
+        <Skeleton className="size-[5px] rounded-full" />
+      </span>
       <span className="flex shrink-0 items-center gap-1.5">
         <Skeleton className="h-[3px] w-[17px] rounded-full" />
         <Skeleton className="h-3 w-4" />

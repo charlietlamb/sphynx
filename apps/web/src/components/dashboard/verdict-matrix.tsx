@@ -1,5 +1,11 @@
 import { SealCheckIcon } from "@phosphor-icons/react";
 import type { QueuePull, ReviewerVerdict } from "@sphynx/schema/review-queue";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+} from "@sphynx/ui/components/ui/empty";
 import { cn } from "@sphynx/ui/lib/utils";
 import { VerdictRow } from "@/components/dashboard/verdict-row";
 import { HAIRLINE_DIVIDE } from "@/components/layout/dividers";
@@ -36,9 +42,14 @@ export function VerdictMatrix({ now, pull }: VerdictMatrixProps) {
         label="Verdicts"
       />
       {sorted.length === 0 ? (
-        <p className="py-1 text-[13px] text-muted-foreground">
-          Nobody has reviewed this yet.
-        </p>
+        <Empty className="gap-2 py-6">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <SealCheckIcon weight="fill" />
+            </EmptyMedia>
+            <EmptyDescription>No reviews yet</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className={cn("flex flex-col", HAIRLINE_DIVIDE)}>
           {sorted.map((reviewer) => (

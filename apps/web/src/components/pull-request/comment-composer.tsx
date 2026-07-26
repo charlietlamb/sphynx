@@ -67,7 +67,7 @@ export function CommentComposer({
         "flex flex-col gap-2.5 font-sans",
         variant === "card" &&
           "my-2.5 mr-4 ml-1 max-w-3xl rounded-md border border-border bg-background p-3.5 shadow-xs",
-        variant === "inline" && "border-border border-t px-3.5 py-3"
+        variant === "inline" && "border-border border-t px-4 py-3.5"
       )}
       onSubmit={(event) => {
         event.preventDefault();

@@ -12,6 +12,8 @@ interface ConversationCardHeaderProps {
   author: GitHubUser | null;
   githubUrl: string;
   now: number;
+  /** Hidden when the author avatar is drawn on the timeline rail instead. */
+  showAvatar?: boolean;
   verb: ReactNode;
 }
 
@@ -21,13 +23,19 @@ export function ConversationCardHeader({
   githubUrl,
   now,
   verb,
+  showAvatar = true,
 }: ConversationCardHeaderProps) {
   return (
     <div className="flex items-center gap-2 text-muted-foreground text-xs">
-      <Avatar size="sm">
-        <AvatarImage alt={author?.login ?? "unknown"} src={author?.avatarUrl} />
-        <AvatarFallback>{author?.login[0] ?? "?"}</AvatarFallback>
-      </Avatar>
+      {showAvatar ? (
+        <Avatar size="sm">
+          <AvatarImage
+            alt={author?.login ?? "unknown"}
+            src={author?.avatarUrl}
+          />
+          <AvatarFallback>{author?.login[0] ?? "?"}</AvatarFallback>
+        </Avatar>
+      ) : null}
       <span className="font-medium text-foreground">
         {author?.login ?? "unknown"}
       </span>

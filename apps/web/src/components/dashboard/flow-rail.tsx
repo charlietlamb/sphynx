@@ -15,9 +15,10 @@ interface FlowRailProps {
   selected: string | null;
 }
 
-function hintFor(items: readonly RailBranchItem[], item: RailBranchItem) {
-  const index = items.indexOf(item);
-  return index >= 0 && index < 9 ? index + 1 : null;
+function hintMap(items: readonly RailBranchItem[]) {
+  return new Map(
+    items.map((item, index) => [item.branch, index < 9 ? index + 1 : null])
+  );
 }
 
 export function FlowRail({
@@ -31,6 +32,7 @@ export function FlowRail({
 }: FlowRailProps) {
   const tributaries = items.filter((item) => !item.isStage);
   const stages = items.filter((item) => item.isStage);
+  const hints = hintMap(items);
   return (
     <div className="flex flex-col">
       <SectionHeader
@@ -57,7 +59,7 @@ export function FlowRail({
         {tributaries.map((item) => (
           <RailBranch
             active={selected === item.branch}
-            hint={hintFor(items, item)}
+            hint={hints.get(item.branch) ?? null}
             item={item}
             key={item.branch}
             onSelect={() =>
@@ -73,7 +75,7 @@ export function FlowRail({
             <div className="flex flex-col" key={item.branch}>
               <RailBranch
                 active={selected === item.branch}
-                hint={hintFor(items, item)}
+                hint={hints.get(item.branch) ?? null}
                 item={item}
                 onSelect={() =>
                   onSelect(selected === item.branch ? null : item.branch)
@@ -92,16 +94,6 @@ export function FlowRail({
             </div>
           );
         })}
-        <div className="relative flex h-[26px] items-center gap-2 pr-2 pl-7">
-          <span
-            aria-hidden
-            className="absolute left-[10.5px] size-[7px] rounded-full bg-muted-foreground/50 ring-2 ring-background"
-          />
-          <span className="text-[10px] text-muted-foreground/40">
-            production
-          </span>
-          <span aria-hidden className="h-px flex-1 bg-border/40" />
-        </div>
       </div>
     </div>
   );

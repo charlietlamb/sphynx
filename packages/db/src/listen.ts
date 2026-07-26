@@ -123,12 +123,12 @@ export const ListenerLive = Layer.scoped(
             )
           );
         }
-      });
+      }).pipe(Effect.withSpan("Listener.listen", { attributes: { channel } }));
 
     const onReconnect = (handler: () => void) =>
       Effect.sync(() => {
         reconnectHandlers.add(handler);
-      });
+      }).pipe(Effect.withSpan("Listener.onReconnect"));
 
     return { listen, onReconnect } satisfies ListenConnection;
   })

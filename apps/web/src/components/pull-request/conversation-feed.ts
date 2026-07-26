@@ -11,30 +11,8 @@ export type FeedItem =
   | { kind: "comment"; at: string; comment: ConversationComment }
   | { kind: "review"; at: string; review: ConversationReview }
   | { kind: "thread"; at: string; thread: ReviewThread }
-  | { kind: "commits"; at: string; commits: ConversationEvent[] }
   | { kind: "event"; at: string; event: ConversationEvent }
   | { kind: "state"; at: string; state: "merged" | "closed" };
-
-function mergeAdjacentCommits(items: FeedItem[]) {
-  const merged: FeedItem[] = [];
-  for (const item of items) {
-    const previous = merged.at(-1);
-    if (
-      item.kind === "event" &&
-      item.event.kind === "commit" &&
-      previous?.kind === "commits"
-    ) {
-      previous.commits.push(item.event);
-      continue;
-    }
-    if (item.kind === "event" && item.event.kind === "commit") {
-      merged.push({ kind: "commits", at: item.at, commits: [item.event] });
-      continue;
-    }
-    merged.push(item);
-  }
-  return merged;
-}
 
 export function feedKey(item: FeedItem) {
   switch (item.kind) {
@@ -46,8 +24,6 @@ export function feedKey(item: FeedItem) {
       return `thread-${
         item.thread.id ?? `${item.thread.path}:${item.thread.line}:${item.at}`
       }`;
-    case "commits":
-      return `commits-${item.commits[0]?.id ?? item.at}`;
     case "event":
       return `event-${item.event.id}`;
     default:
@@ -121,5 +97,5 @@ export function buildConversationFeed(
     })
     .sort((a, b) => (a.time === b.time ? a.index - b.index : a.time - b.time))
     .map((entry) => entry.item);
-  return mergeAdjacentCommits(ordered);
+  return ordered;
 }

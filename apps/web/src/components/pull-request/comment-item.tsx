@@ -1,19 +1,8 @@
 import type { ReviewComment } from "@sphynx/schema/pull-request-comments";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@sphynx/ui/components/ui/avatar";
 import { Badge } from "@sphynx/ui/components/ui/badge";
 import { cn } from "@sphynx/ui/lib/utils";
 import { CommentBody } from "@/components/pull-request/comment-body";
-
-function commentDate(createdAt: string) {
-  return new Date(createdAt).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
+import { ConversationCardHeader } from "@/components/pull-request/conversation-card-header";
 
 interface CommentItemProps {
   comment: ReviewComment;
@@ -29,31 +18,17 @@ export function CommentItem({
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col gap-2 px-3.5 py-3",
+        "flex min-w-0 flex-col gap-2.5 p-3.5",
         topBorder && "border-border border-t"
       )}
     >
-      <div className="flex items-center gap-2 text-muted-foreground text-xs">
-        <Avatar size="sm">
-          <AvatarImage
-            alt={comment.author?.login ?? "unknown"}
-            src={comment.author?.avatarUrl}
-          />
-          <AvatarFallback>{comment.author?.login[0] ?? "?"}</AvatarFallback>
-        </Avatar>
-        <span className="font-medium text-foreground">
-          {comment.author?.login ?? "unknown"}
-        </span>
-        <a
-          className="hover:text-foreground hover:underline"
-          href={comment.githubUrl}
-          rel="noreferrer"
-          target="_blank"
-        >
-          {commentDate(comment.createdAt)}
-        </a>
-        {comment.pending ? <Badge variant="outline">Pending</Badge> : null}
-      </div>
+      <ConversationCardHeader
+        at={comment.createdAt}
+        author={comment.author}
+        githubUrl={comment.githubUrl}
+        now={Date.now()}
+        verb={comment.pending ? <Badge variant="outline">Pending</Badge> : ""}
+      />
       <CommentBody body={comment.body} originalLines={originalLines} />
     </div>
   );

@@ -1,10 +1,10 @@
-interface PullRef {
+export interface PullRef {
   readonly number: number;
   readonly owner: string;
   readonly repo: string;
 }
 
-interface OpenShape {
+export interface OpenShape {
   readonly openPulls: readonly PullRef[];
 }
 

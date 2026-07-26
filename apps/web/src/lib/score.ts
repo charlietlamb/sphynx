@@ -1,6 +1,14 @@
 export const WEAK_SCORE = 0.5;
 export const STRONG_SCORE = 0.8;
 
+export function parseScoreRatio(score: string) {
+  const [value, scale] = score.split("/").map(Number);
+  if (value === undefined || !scale) {
+    return null;
+  }
+  return value / scale;
+}
+
 export function scoreClass(ratio: number) {
   if (ratio >= STRONG_SCORE) {
     return "text-addition";

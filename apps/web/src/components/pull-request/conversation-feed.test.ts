@@ -134,7 +134,7 @@ describe("buildConversationFeed", () => {
     expect(feed).toEqual([]);
   });
 
-  test("groups consecutive commits and splits on interruptions", () => {
+  test("keeps every commit as its own chronologically ordered event", () => {
     const feed = buildConversationFeed(
       summary(),
       conversation({
@@ -148,12 +148,11 @@ describe("buildConversationFeed", () => {
       []
     );
     expect(feed.map((item) => item.kind)).toEqual([
-      "commits",
+      "event",
+      "event",
       "comment",
-      "commits",
+      "event",
     ]);
-    const first = feed[0];
-    expect(first?.kind === "commits" && first.commits.length).toBe(2);
   });
 
   test("derives a merged state row only when no merged event exists", () => {

@@ -1,11 +1,13 @@
 import { HttpApiBuilder } from "@effect/platform";
 import { SphynxApi } from "@sphynx/schema/api";
 import { INSTALLATION_HEADER } from "@sphynx/schema/review-queue";
-import { Effect } from "effect";
+import { Clock, Effect } from "effect";
 import { GitHubAuth } from "../auth/github-auth";
 import { installationIdFromCredentialId } from "../github/credential";
 import { Materializer } from "../github/materializer";
+import { GitHubPipeline } from "../github/pipeline";
 import { ReadModelReader } from "../github/read-model-reader";
+import { ReadModelWriter } from "../github/read-model-writer";
 import { GitHubReviewQueue } from "../github/review-queue";
 import { SearchCache } from "../github/search-cache";
 
@@ -19,6 +21,8 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
       const queue = yield* GitHubReviewQueue;
       const reader = yield* ReadModelReader;
       const materializer = yield* Materializer;
+      const pipeline = yield* GitHubPipeline;
+      const writer = yield* ReadModelWriter;
       const search = yield* SearchCache;
       const {
         listInstallations,
@@ -105,6 +109,39 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
       const queueFor = (cookie: string | undefined, want: number | null) =>
         readOrMaterialize(cookie, want, reader.readQueue);
 
+      /**
+       * Build one repo's flow on demand and write it through to the read model,
+       * so a freshly added or quiet repo renders the instant it is selected
+       * rather than waiting on the next installation reconcile. `snapshotAt` is
+       * stamped before the GitHub read so a concurrent webhook is never clobbered.
+       */
+      const repoFlowFor = (
+        cookie: string | undefined,
+        want: number | null,
+        owner: string,
+        repo: string
+      ) =>
+        installationFor(cookie, want).pipe(
+          Effect.flatMap((installationId) =>
+            readToken(cookie, want).pipe(
+              Effect.flatMap((token) =>
+                Effect.gen(function* () {
+                  const snapshotAt = new Date(yield* Clock.currentTimeMillis);
+                  const flow = yield* pipeline.refreshRepo(owner, repo, token);
+                  if (installationId !== null) {
+                    yield* writer.writeRepoFlow(
+                      installationId,
+                      flow,
+                      snapshotAt
+                    );
+                  }
+                  return flow;
+                })
+              )
+            )
+          )
+        );
+
       return handlers
         .handle("listInstallations", ({ headers }) =>
           listInstallations(headers.cookie).pipe(
@@ -124,6 +161,17 @@ export const ReviewQueueApiLive = HttpApiBuilder.group(
         )
         .handle("getQueue", ({ headers }) =>
           queueFor(headers.cookie, requested(headers))
+        )
+        .handle("getRepoFlow", ({ path, headers }) =>
+          repoFlowFor(headers.cookie, requested(headers), path.owner, path.repo)
+        )
+        .handle("listRepos", ({ headers }) =>
+          readToken(headers.cookie, requested(headers)).pipe(
+            Effect.flatMap((token) => queue.discoverRepos(token)),
+            Effect.map((repos) => ({
+              repos: repos.map((entry) => ({ ...entry, openPulls: 0 })),
+            }))
+          )
         )
         .handle("resolveInstallation", ({ path, headers }) =>
           requireSession(headers.cookie).pipe(

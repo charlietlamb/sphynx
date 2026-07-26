@@ -6,8 +6,17 @@ import { useState } from "react";
 import { CommentComposer } from "@/components/pull-request/comment-composer";
 import { CommentItem } from "@/components/pull-request/comment-item";
 import { CommentThreadFooter } from "@/components/pull-request/comment-thread-footer";
+import { FileTypeIcon } from "@/components/pull-request/file-type-icon";
 import type { ReviewCommenting } from "@/components/pull-request/use-review-comments";
 import { plural } from "@/lib/claims";
+import { baseName } from "@/lib/paths";
+
+function lineLabel(thread: ReviewThread) {
+  if (thread.startLine && thread.startLine !== thread.line) {
+    return `Lines ${thread.startLine}–${thread.line}`;
+  }
+  return `Line ${thread.line}`;
+}
 
 export type ThreadCommenting = Pick<
   ReviewCommenting,
@@ -49,7 +58,7 @@ export function CommentThread({
   return (
     <div
       className={cn(
-        "my-2.5 mr-4 ml-1 max-w-3xl overflow-hidden rounded-md border border-border bg-background font-sans shadow-xs",
+        "my-3 mr-6 ml-4 max-w-[min(48rem,100%)] overflow-hidden rounded-md border border-border bg-background",
         className
       )}
     >
@@ -73,6 +82,20 @@ export function CommentThread({
       ) : null}
       {collapsed ? null : (
         <>
+          {thread.isResolved ? null : (
+            <div className="flex items-center gap-2 border-border border-b bg-muted/30 px-3.5 py-2 text-xs">
+              <FileTypeIcon
+                className="size-3.5 shrink-0 text-muted-foreground"
+                path={thread.path}
+              />
+              <span className="min-w-0 truncate font-medium text-foreground">
+                {baseName(thread.path)}
+              </span>
+              <span className="shrink-0 text-muted-foreground">
+                {lineLabel(thread)}
+              </span>
+            </div>
+          )}
           {thread.comments.map((comment, index) => (
             <CommentItem
               comment={comment}

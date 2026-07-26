@@ -1,4 +1,5 @@
 import type { QueuePull, RepoFlow } from "@sphynx/schema/review-queue";
+import { parseScoreRatio } from "@/lib/score";
 
 export type SizeClass = "xs" | "s" | "m" | "l" | "xl";
 
@@ -47,15 +48,15 @@ export function pullScores(pull: QueuePull): ScoreSummary[] {
     if (!reviewer.score) {
       continue;
     }
-    const [value, scale] = reviewer.score.split("/").map(Number);
-    if (!(value !== undefined && scale)) {
+    const ratio = parseScoreRatio(reviewer.score);
+    if (ratio === null) {
       continue;
     }
     scored.push({
       at: reviewer.submittedAt,
       summary: {
         label: reviewer.score,
-        ratio: value / scale,
+        ratio,
         reviewer: reviewer.name,
       },
     });
@@ -196,12 +197,41 @@ export function filterQueue(
   return { groups, order: collectOrder(groups) };
 }
 
+export interface CiRollup {
+  failing: number;
+  passing: number;
+  running: number;
+}
+
 export interface RailBranchItem {
   branch: string;
+  ci: CiRollup;
   contested: number;
   isStage: boolean;
   mergeable: number;
   total: number;
+}
+
+function ciRollup(group: BranchGroup | undefined): CiRollup {
+  const rollup: CiRollup = { failing: 0, running: 0, passing: 0 };
+  if (!group) {
+    return rollup;
+  }
+  const walk = (nodes: readonly StackNode[]) => {
+    for (const node of nodes) {
+      const { failed, pending } = node.pull.ciCounts;
+      if (failed > 0) {
+        rollup.failing += 1;
+      } else if (pending > 0) {
+        rollup.running += 1;
+      } else {
+        rollup.passing += 1;
+      }
+      walk(node.children);
+    }
+  };
+  walk(group.nodes);
+  return rollup;
 }
 
 export function railBranches(
@@ -214,6 +244,7 @@ export function railBranches(
     const group = byBranch.get(stage);
     return {
       branch: stage,
+      ci: ciRollup(group),
       isStage: true,
       total: group?.total ?? 0,
       mergeable: group?.mergeable ?? 0,
@@ -224,6 +255,7 @@ export function railBranches(
     if (!stageSet.has(group.branch)) {
       items.push({
         branch: group.branch,
+        ci: ciRollup(group),
         isStage: false,
         total: group.total,
         mergeable: group.mergeable,

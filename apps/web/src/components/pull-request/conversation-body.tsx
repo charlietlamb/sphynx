@@ -23,7 +23,12 @@ export function ConversationBody({
     );
   }
   return (
-    <div className={cn("text-[12px] leading-snug", className)}>
+    <div
+      className={cn(
+        "min-w-0 text-[12px] leading-snug [overflow-wrap:anywhere]",
+        className
+      )}
+    >
       <CommentMarkdown text={body} />
     </div>
   );

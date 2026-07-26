@@ -11,6 +11,7 @@ import {
 } from "@/components/dashboard/pending-merges-store";
 import { useSettings } from "@/components/settings/settings-provider";
 import { logWorkbenchEvent } from "@/components/workbench/workbench-store";
+import { trackEvent } from "@/lib/analytics";
 import { isAccessBlocked, postJson } from "@/lib/api";
 import { installationSettingsUrl } from "@/lib/github-app";
 import { keys } from "@/lib/query/keys";
@@ -127,6 +128,11 @@ export function usePullActions(pull: QueuePull) {
         kind: "pr-merged",
         pull: { number: pull.number, title: pull.title },
       });
+      trackEvent("pull_merged", {
+        owner: pull.owner,
+        repo: pull.repo,
+        number: pull.number,
+      });
       confirm(`Merged #${pull.number}`, pull.title);
     },
   });
@@ -148,6 +154,11 @@ export function usePullActions(pull: QueuePull) {
         kind: "review-changes",
         pull: { number: pull.number, title: pull.title },
         detail: body,
+      });
+      trackEvent("pull_blocked", {
+        owner: pull.owner,
+        repo: pull.repo,
+        number: pull.number,
       });
       confirm(`Requested changes on #${pull.number}`, pull.title);
       queryClient.invalidateQueries({ queryKey: keys.pull(pull) });
