@@ -74,14 +74,14 @@ export function MosaicDashboardShell({
   const bodies: Record<PaneId, ReactNode> = {
     rail: (
       <div className={CARD}>
-        <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-3">
           {rail}
         </div>
         {railFooter}
       </div>
     ),
     queue: (
-      <section className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-card shadow-xs [clip-path:inset(0_round_var(--radius))]">
+      <section className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-card shadow-xs">
         {queue}
       </section>
     ),
