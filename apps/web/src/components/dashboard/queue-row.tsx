@@ -1,9 +1,4 @@
 import type { QueuePull } from "@sphynx/schema/review-queue";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@sphynx/ui/components/ui/avatar";
 import { cn } from "@sphynx/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
@@ -12,6 +7,7 @@ import { ReviewerStack } from "@/components/dashboard/reviewer-stack";
 import { ScoreSlot } from "@/components/dashboard/score-slot";
 import { SignalTip } from "@/components/dashboard/signal-tip";
 import { SizeTicks } from "@/components/dashboard/size-ticks";
+import { GithubProfile } from "@/components/github/github-profile";
 import { prefetchPullRequest } from "@/components/pull-request/pull-request-queries";
 import { fullDate, shortAge } from "@/lib/age";
 
@@ -87,16 +83,13 @@ export function QueueRow({
       style={{ paddingLeft: BASE_INDENT + depth * INDENT_STEP }}
       type="button"
     >
-      <Avatar className="size-5 shrink-0 rounded-full">
-        <AvatarImage
-          alt={pull.author?.login ?? "unknown"}
-          className="rounded-full"
-          src={pull.author?.avatarUrl}
-        />
-        <AvatarFallback className="rounded-full text-[9px]">
-          {pull.author?.login[0] ?? "?"}
-        </AvatarFallback>
-      </Avatar>
+      <GithubProfile
+        avatarUrl={pull.author?.avatarUrl}
+        link={false}
+        login={pull.author?.login ?? null}
+        size="sm"
+        variant="avatar"
+      />
       <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70 tabular-nums">
         #{pull.number}
       </span>

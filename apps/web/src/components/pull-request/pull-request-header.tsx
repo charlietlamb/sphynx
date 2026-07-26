@@ -1,11 +1,7 @@
 import type { PullRequestSummary } from "@sphynx/schema/pull-requests";
 import { StatusPill, type StatusTone } from "@sphynx/ui/components/status-pill";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@sphynx/ui/components/ui/avatar";
 import type { ReactNode } from "react";
+import { GithubProfile } from "@/components/github/github-profile";
 import { AppHeader } from "@/components/layout/app-header";
 import { BranchChip } from "@/components/layout/branch-chip";
 import { DiffStat } from "@/components/pull-request/diff-stat";
@@ -77,13 +73,12 @@ export function PullRequestHeader({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-muted-foreground text-sm">
         <StatusPill label={label} tone={tone} />
         {author ? (
-          <span className="flex items-center gap-1.5">
-            <Avatar size="sm">
-              <AvatarImage alt={author.login} src={author.avatarUrl} />
-              <AvatarFallback>{author.login[0]}</AvatarFallback>
-            </Avatar>
-            <span className="text-foreground">{author.login}</span>
-          </span>
+          <GithubProfile
+            avatarUrl={author.avatarUrl}
+            labelClassName="text-foreground"
+            login={author.login}
+            size="sm"
+          />
         ) : null}
         <span className="flex flex-wrap items-center gap-1.5">
           {mergeVerb(pullRequest)}{" "}
