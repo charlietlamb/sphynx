@@ -126,6 +126,7 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
           <PullRequestHeaderSkeleton pullRequestRef={pullRequestRef} />
         ) : (
           <PullRequestHeader
+            canAct={Boolean(session?.user)}
             progress={
               viewedFiles && patches.data ? (
                 <ViewedProgress
