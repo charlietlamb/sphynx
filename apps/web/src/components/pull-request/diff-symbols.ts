@@ -64,14 +64,17 @@ export const DIFF_UNSAFE_CSS = `
   overflow: hidden;
 }
 [data-annotation-content],
-[data-annotation-content] * {
+[data-annotation-content] *,
+[data-annotation-slot],
+[data-annotation-slot] * {
+  font-family: var(--font-sans);
   white-space: normal;
   text-wrap: wrap;
 }
-[data-annotation-slot],
-[data-annotation-slot] * {
-  white-space: normal;
-  text-wrap: wrap;
+[data-annotation-slot] code,
+[data-annotation-slot] pre,
+[data-annotation-slot] .font-mono {
+  font-family: var(--font-mono);
 }
 [data-separator="line-info"] [data-expand-button],
 [data-separator="line-info"] [data-separator-content] {
