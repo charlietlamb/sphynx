@@ -24,7 +24,6 @@ import {
 } from "@/components/dashboard/thread-copy-all";
 import { ThreadReplyComposer } from "@/components/dashboard/thread-reply-composer";
 import { HAIRLINE_DIVIDE } from "@/components/layout/dividers";
-import { SectionHeader } from "@/components/layout/section-header";
 import { FileTypeIcon } from "@/components/pull-request/file-type-icon";
 import {
   useReplyToComment,
@@ -226,12 +225,22 @@ export function ThreadPreviews({
   const shown = orderedThreadPreviews(pull);
   const hidden = pull.unresolvedThreads - shown.length;
   return (
-    <div className="flex flex-col px-4">
-      <SectionHeader
-        action={<CopyForAgent value={unresolvedThreadsText(pull)} />}
-        icon={<ChatCircleIcon className="size-3" weight="fill" />}
-        label="Open threads"
-      />
+    <div className="flex flex-col">
+      <div className="flex h-8 items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <ChatCircleIcon
+            className="size-3.5 shrink-0 text-muted-foreground/60"
+            weight="fill"
+          />
+          <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+            Open threads
+          </span>
+          <span className="text-muted-foreground/40 text-xs tabular-nums">
+            {pull.unresolvedThreads}
+          </span>
+        </span>
+        <CopyForAgent value={unresolvedThreadsText(pull)} />
+      </div>
       <div className={cn("flex flex-col", HAIRLINE_DIVIDE)}>
         {shown.map((preview) => (
           <ThreadPreviewRow
@@ -243,7 +252,7 @@ export function ThreadPreviews({
         ))}
       </div>
       {hidden > 0 ? (
-        <p className="py-2 text-muted-foreground/50 text-xs">
+        <p className="pt-2 text-muted-foreground/50 text-xs">
           +{plural(hidden, "more open thread")}
         </p>
       ) : null}

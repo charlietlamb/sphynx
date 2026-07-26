@@ -8,8 +8,8 @@ const STORAGE_KEY = "sphynx-dashboard-mosaic";
 const PANES: PaneId[] = ["rail", "queue", "dossier"];
 
 export const DEFAULT_SPLITS: Record<PaneId, number> = {
-  rail: 17,
-  queue: 53,
+  rail: 23,
+  queue: 47,
   dossier: 30,
 };
 
