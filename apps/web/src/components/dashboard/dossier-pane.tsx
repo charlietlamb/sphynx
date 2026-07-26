@@ -71,11 +71,20 @@ export function DossierPane({
   return (
     <div className="fade-in flex h-full min-h-0 animate-in flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs duration-150">
       <div className="flex flex-col px-4 pt-5 pb-4">
-        <h2 className="text-balance font-heading text-xl leading-tight tracking-tight">
-          {pull.title}{" "}
-          <span className="text-muted-foreground/50">#{pull.number}</span>
+        <div className="flex items-start justify-between gap-3">
+          <p className="font-heading font-semibold text-2xl text-foreground tabular-nums tracking-tight">
+            #{pull.number}
+          </p>
+          <DossierActions
+            canAct={canAct}
+            onOpen={() => onOpen(pull)}
+            pull={pull}
+          />
+        </div>
+        <h2 className="mt-1.5 text-balance font-heading text-[15px] text-muted-foreground leading-snug tracking-tight">
+          {pull.title}
         </h2>
-        <div className="mt-2">
+        <div className="mt-3">
           <ClaimLine now={now} pull={pull} />
         </div>
         <div className="mt-3.5 flex items-center gap-2">
@@ -112,7 +121,6 @@ export function DossierPane({
       ) : (
         <DossierOverview canAct={canAct} now={now} pull={pull} />
       )}
-      <DossierActions canAct={canAct} onOpen={() => onOpen(pull)} pull={pull} />
     </div>
   );
 }

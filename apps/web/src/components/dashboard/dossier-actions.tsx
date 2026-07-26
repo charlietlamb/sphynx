@@ -4,8 +4,8 @@ import {
   ProhibitIcon,
 } from "@phosphor-icons/react";
 import type { QueuePull } from "@sphynx/schema/review-queue";
-import { ShortcutButton } from "@sphynx/ui/components/shortcut-button";
 import { useDialog } from "@/components/dashboard/dashboard-dialogs";
+import { IconAction } from "@/components/dashboard/icon-action";
 import { usePullActions } from "@/components/dashboard/use-pull-actions";
 
 interface DossierActionsProps {
@@ -24,40 +24,31 @@ export function DossierActions({ canAct, onOpen, pull }: DossierActionsProps) {
     blockedReason ?? (canAct ? undefined : "sign in to act on pulls");
 
   return (
-    <div className="mt-auto flex flex-col gap-2 border-border border-t px-4 py-3">
-      <div className="flex items-center justify-end gap-2">
-        <ShortcutButton
-          disabled={!canDecide || block.isPending}
-          onClick={() => dialogs.open("blockPull", { pull })}
-          shortcut="b"
-          size="sm"
-          title={disabledTitle}
-          variant="outline"
-        >
-          <ProhibitIcon className="size-3.5" weight="fill" />
-          Block
-        </ShortcutButton>
-        <ShortcutButton
-          disabled={!canDecide || merge.isPending}
-          onClick={() => dialogs.open("mergePull", { pull })}
-          shortcut="m"
-          size="sm"
-          title={disabledTitle}
-          variant="outline"
-        >
-          <GitMergeIcon className="size-3.5" weight="fill" />
-          Merge
-        </ShortcutButton>
-        <ShortcutButton
-          className="btn-primary-glow flex-1"
-          onClick={onOpen}
-          shortcut="p"
-          size="sm"
-        >
-          <GitPullRequestIcon className="size-3.5" weight="fill" />
-          Open pull
-        </ShortcutButton>
-      </div>
+    <div className="flex shrink-0 items-center gap-1.5">
+      <IconAction
+        disabled={!canDecide || block.isPending}
+        icon={<ProhibitIcon className="size-[1.125rem]" weight="fill" />}
+        label="Block"
+        onClick={() => dialogs.open("blockPull", { pull })}
+        shortcut="B"
+        title={disabledTitle}
+      />
+      <IconAction
+        disabled={!canDecide || merge.isPending}
+        icon={<GitMergeIcon className="size-[1.125rem]" weight="fill" />}
+        label="Merge"
+        onClick={() => dialogs.open("mergePull", { pull })}
+        shortcut="M"
+        title={disabledTitle}
+      />
+      <IconAction
+        className="btn-primary-glow"
+        icon={<GitPullRequestIcon className="size-[1.125rem]" weight="fill" />}
+        label="Open pull"
+        onClick={onOpen}
+        shortcut="P"
+        variant="default"
+      />
     </div>
   );
 }
