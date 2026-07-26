@@ -1,5 +1,6 @@
 import { GitMergeIcon } from "@phosphor-icons/react";
 import type { PullRequestSummary } from "@sphynx/schema/pull-requests";
+import { ShortcutButton } from "@sphynx/ui/components/shortcut-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,8 +12,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@sphynx/ui/components/ui/alert-dialog";
-import { Button } from "@sphynx/ui/components/ui/button";
-import { useState } from "react";
+import { useHotkey } from "@sphynx/ui/hooks/use-hotkey";
+import { useCallback, useState } from "react";
 import { useMergePullRequest } from "@/components/pull-request/pull-request-queries";
 
 interface PullRequestMergeButtonProps {
@@ -31,6 +32,15 @@ export function PullRequestMergeButton({
     number: pullRequest.number,
   });
 
+  const mergeable =
+    canAct && pullRequest.state === "open" && !pullRequest.draft;
+
+  useHotkey(
+    "m",
+    useCallback(() => setOpen(true), []),
+    { enabled: mergeable }
+  );
+
   if (pullRequest.state !== "open" || pullRequest.draft) {
     return null;
   }
@@ -44,15 +54,16 @@ export function PullRequestMergeButton({
     <AlertDialog onOpenChange={setOpen} open={open}>
       <AlertDialogTrigger
         render={
-          <Button
-            className="btn-primary-glow h-8 gap-1.5 px-3 text-xs"
+          <ShortcutButton
+            className="btn-primary-glow h-8 gap-1.5 text-xs"
             disabled={!canAct || merging}
+            shortcut="M"
             size="sm"
             title={canAct ? undefined : "Sign in to merge"}
           >
             <GitMergeIcon className="size-3.5" weight="fill" />
             Merge
-          </Button>
+          </ShortcutButton>
         }
       />
       <AlertDialogContent>
