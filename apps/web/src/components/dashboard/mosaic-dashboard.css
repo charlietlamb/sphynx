@@ -73,22 +73,18 @@
 }
 
 /*
- * Arrange mode — an explicit, toggled state. Each pane reads as "movable now":
- * a soft primary ring frames the card and the top carries a grab strip. Off by
- * default so the resting dashboard stays quiet. The ring lands on the card body
- * (the tile's visible surface), brightening on hover.
+ * Arrange mode — an explicit, toggled state. Each pane reads as "movable now"
+ * by recoloring its existing 1px card border to the primary accent (no extra
+ * ring, so the hairline stays exactly 1px like every other border), brightening
+ * on hover. Off by default so the resting dashboard stays quiet.
  */
 [data-arranging] .mosaic-window-body > :not(.mosaic-grab) {
-  box-shadow:
-    0 0 0 1.5px color-mix(in oklab, var(--primary) 55%, transparent),
-    0 0 0 5px color-mix(in oklab, var(--primary) 8%, transparent);
-  transition: box-shadow 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  border-color: color-mix(in oklab, var(--primary) 50%, transparent);
+  transition: border-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 [data-arranging] .mosaic-tile:hover .mosaic-window-body > :not(.mosaic-grab) {
-  box-shadow:
-    0 0 0 1.5px var(--primary),
-    0 0 0 5px color-mix(in oklab, var(--primary) 14%, transparent);
+  border-color: var(--primary);
 }
 
 .sphynx-mosaic .mosaic-split {
