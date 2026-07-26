@@ -25,7 +25,7 @@ export function DashboardShell({
   switcher,
 }: DashboardShellProps) {
   return (
-    <main className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
+    <main className="flex h-svh min-h-[640px] flex-col overflow-hidden bg-background text-foreground">
       <div className="flex flex-1 flex-col md:hidden">
         <NoticePanel
           description="Open Sphynx on a larger screen to work the review queue."
