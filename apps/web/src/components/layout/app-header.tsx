@@ -11,11 +11,12 @@ import { SphynxMark } from "@/components/layout/sphynx-mark";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
 
 interface AppHeaderProps {
+  actions?: ReactNode;
   githubUrl: string | null;
   switcher: ReactNode;
 }
 
-export function AppHeader({ githubUrl, switcher }: AppHeaderProps) {
+export function AppHeader({ actions, githubUrl, switcher }: AppHeaderProps) {
   const palette = useCommandPalette();
   return (
     <header className="flex items-center justify-between gap-2 px-4 py-2.5">
@@ -47,6 +48,7 @@ export function AppHeader({ githubUrl, switcher }: AppHeaderProps) {
           <span className="flex-1 text-left">Search</span>
           <Kbd>⌘K</Kbd>
         </button>
+        {actions}
         {githubUrl ? <GithubLink href={githubUrl} /> : null}
         <SettingsDialog />
         <UserMenu />
