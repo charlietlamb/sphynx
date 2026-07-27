@@ -72,14 +72,21 @@
   display: none;
 }
 
-/*
- * The full-tile drag source (arrange mode) keeps the library's default toolbar
- * z-index (4), which sits BELOW the drop-target zones (z-index 5) that appear
- * during a drag — so drops register on the zones, not the source overlay, and the
- * pane never collapses. No pointer-events juggling required.
- */
 .sphynx-mosaic .mosaic-window-toolbar {
   z-index: 4;
+}
+
+/*
+ * In arrange mode the whole card is the drag source (a full-tile toolbar). It
+ * must catch the mousedown to START a drag, but once a drag is in flight it
+ * would otherwise sit over the drop-target zones and swallow the release, so the
+ * drop reads as "no target" and the pane collapses. react-mosaic flags an active
+ * window drag with `.mosaic.-dragging`; during it, let the toolbars pass pointer
+ * events through to the drop zones underneath. Initiation is unaffected because
+ * the class is only set AFTER a drag has already begun.
+ */
+.sphynx-mosaic.-dragging .mosaic-window-toolbar {
+  pointer-events: none;
 }
 
 /*
@@ -118,6 +125,11 @@
   opacity: 0.06;
 }
 
+/*
+ * Split handle: an 8px transparent hit-area centered on the 1px seam, so the
+ * resize grab target stays comfortable while the visible divider is a single
+ * hairline that brightens on hover/resize.
+ */
 .sphynx-mosaic .mosaic-split {
   background: transparent;
 }
@@ -128,23 +140,35 @@
 }
 
 .sphynx-mosaic .mosaic-split .mosaic-split-line {
-  background: transparent;
+  background: var(--border);
   transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .sphynx-mosaic .mosaic-split:hover .mosaic-split-line,
 .sphynx-mosaic .mosaic-split.-active .mosaic-split-line {
-  background: var(--border);
+  background: color-mix(in oklab, var(--primary) 60%, var(--border));
 }
 
 .sphynx-mosaic .mosaic-split.-row {
-  width: 13px;
-  margin-left: -6.5px;
+  width: 8px;
+  margin-left: -4px;
+}
+
+.sphynx-mosaic .mosaic-split.-row .mosaic-split-line {
+  right: auto;
+  left: 50%;
+  width: 1px;
 }
 
 .sphynx-mosaic .mosaic-split.-column {
-  height: 13px;
-  margin-top: -6.5px;
+  height: 8px;
+  margin-top: -4px;
+}
+
+.sphynx-mosaic .mosaic-split.-column .mosaic-split-line {
+  top: 50%;
+  bottom: auto;
+  height: 1px;
 }
 
 /*

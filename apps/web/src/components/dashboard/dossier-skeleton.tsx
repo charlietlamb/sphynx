@@ -9,7 +9,7 @@ const REVIEWER_WIDTHS = ["5.5rem", "7rem", "4.5rem"];
 
 export function DossierSkeleton() {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs">
       <div className="flex flex-col gap-2 px-4 pt-4 pb-2">
         <div className="flex flex-col">
           <span className="flex h-[27.5px] items-center">

@@ -5,7 +5,6 @@ import { Mosaic, type MosaicPath, MosaicWindow } from "react-mosaic-component";
 import { ArrangeToggle } from "@/components/dashboard/arrange-toggle";
 import { useIsClient } from "@/components/dashboard/use-is-client";
 import {
-  DEFAULT_SPLITS,
   type PaneId,
   useMosaicLayout,
 } from "@/components/dashboard/use-mosaic-layout";
@@ -42,6 +41,31 @@ function renderPanePreview(title: string) {
       </span>
     </div>
   );
+}
+
+type LayoutTree = ReturnType<typeof useMosaicLayout>["layout"];
+
+/**
+ * The pre-hydration fallback (before the client-only Mosaic mounts) renders the
+ * panes as a plain flex row so the saved arrangement's proportions show instantly
+ * instead of a default-split flash. It reads the top-level row split when the
+ * layout is a simple row (the common case) and falls back to equal shares.
+ */
+function fallbackPanes(layout: LayoutTree): { id: PaneId; share: number }[] {
+  if (
+    typeof layout === "object" &&
+    layout.type === "split" &&
+    layout.direction === "row" &&
+    layout.children.every((c) => typeof c === "string")
+  ) {
+    const ids = layout.children as PaneId[];
+    const splits = layout.splitPercentages ?? ids.map(() => 100 / ids.length);
+    return ids.map((id, index) => ({ id, share: splits[index] ?? 1 }));
+  }
+  return (["rail", "queue", "dossier"] as PaneId[]).map((id) => ({
+    id,
+    share: 1,
+  }));
 }
 
 export function MosaicDashboardShell({
@@ -152,13 +176,9 @@ export function MosaicDashboardShell({
               value={layout}
             />
           ) : (
-            <div className="absolute inset-1.5 flex gap-[13px]">
-              {(Object.keys(DEFAULT_SPLITS) as PaneId[]).map((id) => (
-                <div
-                  className="min-w-0"
-                  key={id}
-                  style={{ flexGrow: DEFAULT_SPLITS[id] }}
-                >
+            <div className="absolute inset-0 flex">
+              {fallbackPanes(layout).map(({ id, share }) => (
+                <div className="min-w-0" key={id} style={{ flexGrow: share }}>
                   {bodies[id]}
                 </div>
               ))}
