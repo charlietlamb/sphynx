@@ -73,6 +73,16 @@
 }
 
 /*
+ * In arrange mode the whole card is the drag source (a full-tile toolbar). Once a
+ * drag is in progress, that overlay must stop swallowing pointer events so the
+ * library's drop-target zones underneath can register the drop — otherwise every
+ * drop lands on the source toolbar, reads as "no target", and the pane collapses.
+ */
+.sphynx-mosaic.-dragging .mosaic-window-toolbar {
+  pointer-events: none;
+}
+
+/*
  * Arrange mode — an explicit, toggled state. Each pane reads as "movable now"
  * with a soft primary ring; the hovered pane brightens its ring and washes a
  * transparent primary tint over the card so the drop target is unmistakable.
