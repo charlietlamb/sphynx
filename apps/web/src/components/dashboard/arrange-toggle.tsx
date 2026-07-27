@@ -35,7 +35,7 @@ export function ArrangeToggle({
       <SignalTip label={arranging ? "Done arranging" : "Rearrange panes"}>
         <Toggle
           aria-label="Toggle arrange mode"
-          className="size-[1.875rem] rounded-md border border-input bg-transparent hover:bg-muted aria-pressed:border-primary/30 aria-pressed:bg-primary/10 aria-pressed:text-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+          className="input-bevel-shadow size-[1.875rem] rounded-md border border-border bg-background text-foreground hover:bg-muted aria-pressed:border-primary/40 aria-pressed:bg-primary/10 aria-pressed:text-primary aria-pressed:shadow-none data-[state=on]:bg-primary/10 data-[state=on]:text-primary dark:bg-input/30 dark:aria-pressed:bg-primary/15"
           onPressedChange={onToggle}
           pressed={arranging}
         >

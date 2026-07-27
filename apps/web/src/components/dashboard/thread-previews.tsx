@@ -232,7 +232,7 @@ export function ThreadPreviews({
             className="size-3.5 shrink-0 text-muted-foreground/60"
             weight="fill"
           />
-          <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+          <span className="font-medium text-foreground text-xs">
             Open threads
           </span>
           <span className="text-muted-foreground/40 text-xs tabular-nums">
