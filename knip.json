@@ -10,7 +10,8 @@
         "vite.config.ts"
       ],
       "project": "src/**",
-      "ignore": ["src/routeTree.gen.ts"]
+      "ignore": ["src/routeTree.gen.ts"],
+      "ignoreDependencies": ["react-dnd"]
     },
     "packages/ui": {
       "ignore": ["src/components/ui/**", "src/hooks/**"]

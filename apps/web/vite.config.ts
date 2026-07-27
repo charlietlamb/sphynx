@@ -13,13 +13,13 @@ export default defineConfig({
     dedupe: ["react-dnd", "dnd-core"],
   },
   optimizeDeps: {
+    // react-mosaic + our own HTML5 dnd manager must prebundle react-dnd into a
+    // single shared instance. Only the packages we resolve directly are listed;
+    // the MultiBackend chain is intentionally omitted (see use-mosaic-dnd-manager).
     include: [
       "react-mosaic-component",
       "react-dnd",
       "react-dnd-html5-backend",
-      "react-dnd-multi-backend",
-      "react-dnd-preview",
-      "react-dnd-touch-backend",
       "dnd-core",
     ],
   },
