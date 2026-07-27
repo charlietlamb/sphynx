@@ -28,7 +28,7 @@ function BranchHeaderSkeleton({
 export function QueueSkeleton() {
   return (
     <div className="flex min-h-full flex-col px-4 pb-2">
-      <div className="-mx-4 flex h-11 shrink-0 items-center gap-3 border-border border-b px-4">
+      <div className="-mx-4 flex h-11 shrink-0 items-center gap-3 border-border border-b bg-card px-4">
         <span className="flex shrink-0 items-center gap-2.5">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground [&_svg]:size-3">
             <GitPullRequestIcon weight="fill" />

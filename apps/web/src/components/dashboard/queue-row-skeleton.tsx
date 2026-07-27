@@ -14,7 +14,10 @@ export function QueueRowSkeleton({ titleWidth }: QueueRowSkeletonProps) {
       <span className="min-w-0 flex-1">
         <Skeleton className="h-3.5" style={{ width: titleWidth }} />
       </span>
-      <Skeleton className="size-[5px] shrink-0 rounded-full" />
+      <Skeleton className="h-3.5 w-8 shrink-0 rounded-[5px]" />
+      <span className="flex w-5 shrink-0 justify-center">
+        <Skeleton className="size-1.5 rounded-full" />
+      </span>
       <span className="flex shrink-0 items-end gap-px">
         {TICK_HEIGHTS.map((height) => (
           <Skeleton
@@ -23,7 +26,7 @@ export function QueueRowSkeleton({ titleWidth }: QueueRowSkeletonProps) {
           />
         ))}
       </span>
-      <Skeleton className="h-3 w-6 shrink-0" />
+      <Skeleton className="h-3 w-8 shrink-0" />
     </div>
   );
 }
