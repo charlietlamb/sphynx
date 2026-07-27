@@ -108,8 +108,7 @@ export function MosaicDashboardShell({
 
   const renderTile = (id: PaneId, path: MosaicPath) => (
     <MosaicWindow<PaneId>
-      className="group/tile relative"
-      draggable={arranging}
+      draggable
       path={path}
       renderPreview={() => renderPanePreview(PANE_TITLES[id])}
       renderToolbar={() =>

@@ -85,6 +85,28 @@ function readStoredLayout(): MosaicNode<PaneId> {
 
 const RESIZE_IDLE_MS = 120;
 
+/**
+ * True if any split in the tree collapses a pane to (near) 0%. On window-drag
+ * start react-mosaic defers `hide(path)`, which emits exactly this: the dragged
+ * pane collapsed to a 0/100 split. Applying it shrinks the drag-source overlay's
+ * box to zero mid-dragstart, and Chrome aborts the whole drag on frame one
+ * (dragstart → dragend, no dragover — react-dnd #1085/#2177). So we never apply
+ * a collapsed tree; the pane stays full-size and the drag survives. The real
+ * committed layout arrives on `onRelease`.
+ */
+function hasCollapsedSplit(node: MosaicNode<PaneId> | null): boolean {
+  if (node === null || typeof node === "string" || typeof node === "number") {
+    return false;
+  }
+  if (node.type === "tabs") {
+    return false;
+  }
+  if (node.splitPercentages?.some((percentage) => percentage < 3)) {
+    return true;
+  }
+  return node.children.some(hasCollapsedSplit);
+}
+
 export function useMosaicLayout() {
   const [layout, setLayout] = useState<MosaicNode<PaneId>>(readStoredLayout);
   const [resizing, setResizing] = useState(false);
@@ -100,6 +122,9 @@ export function useMosaicLayout() {
 
   const onChange = useCallback(
     (next: MosaicNode<PaneId> | null) => {
+      if (hasCollapsedSplit(next)) {
+        return;
+      }
       setLayout(next ?? DEFAULT_LAYOUT);
       setResizing(true);
       clearIdleTimer();
