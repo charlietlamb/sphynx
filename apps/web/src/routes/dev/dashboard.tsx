@@ -129,16 +129,6 @@ const PULLS: QueuePull[] = [
     blocker: null,
     decision: "contested",
   }),
-  ...Array.from({ length: 45 }, (_, index) =>
-    pull({
-      number: 2300 - index,
-      title: `chore(deps): bump package-${index} in /packages to fill the queue`,
-      ci: index % 2 === 0 ? "success" : "failure",
-      ciFailures: index % 2 === 0 ? [] : [{ name: "Check", url: null }],
-      blocker: index % 2 === 0 ? null : "Fix failing checks",
-      decision: index % 2 === 0 ? "ready" : "needs-eyes",
-    })
-  ),
 ];
 
 const FLOW: RepoFlow = {
