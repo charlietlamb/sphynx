@@ -143,6 +143,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "react-dnd@16.0.1": "patches/react-dnd@16.0.1.patch",
+  },
   "catalog": {
     "@base-ui/react": "1.5.0",
     "@better-auth/drizzle-adapter": "1.6.13",
