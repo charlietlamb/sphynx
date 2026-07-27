@@ -67,6 +67,29 @@ function repairLayout(node: MosaicNode<PaneId> | null): MosaicNode<PaneId> {
   };
 }
 
+const MIN_SPLIT = 4;
+
+/**
+ * react-mosaic collapses the drag source to a 0% split via `hide()` on drag
+ * start, and that update reaches our controlled `onChange` (the library calls
+ * `hide(path)` without its suppress flag). The matching `show()` on a cancelled
+ * drop IS suppressed, so a collapsed pane would stick. Any split percentage below
+ * the resize minimum can only be that hide artifact — never a legitimate user
+ * layout — so we treat such a tree as one to ignore.
+ */
+function hasCollapsedSplit(node: MosaicNode<PaneId> | null): boolean {
+  if (node === null || typeof node === "string" || typeof node === "number") {
+    return false;
+  }
+  if (node.type === "tabs") {
+    return false;
+  }
+  if (node.splitPercentages?.some((p) => p < MIN_SPLIT)) {
+    return true;
+  }
+  return node.children.some(hasCollapsedSplit);
+}
+
 function readStoredLayout(): MosaicNode<PaneId> {
   if (typeof window === "undefined") {
     return DEFAULT_LAYOUT;
@@ -100,6 +123,9 @@ export function useMosaicLayout() {
 
   const onChange = useCallback(
     (next: MosaicNode<PaneId> | null) => {
+      if (hasCollapsedSplit(next)) {
+        return;
+      }
       setLayout(repairLayout(next));
       setResizing(true);
       clearIdleTimer();
@@ -112,6 +138,9 @@ export function useMosaicLayout() {
     (next: MosaicNode<PaneId> | null) => {
       clearIdleTimer();
       setResizing(false);
+      if (hasCollapsedSplit(next)) {
+        return;
+      }
       const repaired = repairLayout(next);
       setLayout(repaired);
       if (typeof window !== "undefined") {

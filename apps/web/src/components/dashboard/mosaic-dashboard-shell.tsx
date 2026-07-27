@@ -89,7 +89,7 @@ export function MosaicDashboardShell({
       renderToolbar={() =>
         arranging ? (
           <div
-            className="absolute inset-0 z-40 cursor-grab active:cursor-grabbing"
+            className="absolute inset-0 cursor-grab active:cursor-grabbing"
             title={`Drag to rearrange ${PANE_TITLES[id]}`}
           />
         ) : (
