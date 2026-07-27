@@ -33,14 +33,6 @@ const PANE_TITLES: Record<PaneId, string> = {
   dossier: "Overview",
 };
 
-function GrabHandle() {
-  return (
-    <div className="mosaic-grab pointer-events-none absolute inset-x-0 top-0 z-20 flex h-6 items-center justify-center text-muted-foreground/40 transition-opacity duration-150 group-hover/tile:text-muted-foreground/70">
-      <DotsSixIcon className="size-4" weight="bold" />
-    </div>
-  );
-}
-
 function renderPanePreview(title: string) {
   return (
     <div className="mosaic-pane-preview flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-lg">
@@ -105,7 +97,6 @@ export function MosaicDashboardShell({
       )}
       title={PANE_TITLES[id]}
     >
-      {arranging ? <GrabHandle /> : null}
       {bodies[id]}
     </MosaicWindow>
   );
