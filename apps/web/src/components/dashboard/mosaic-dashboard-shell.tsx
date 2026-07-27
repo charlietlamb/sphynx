@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Mosaic, type MosaicPath, MosaicWindow } from "react-mosaic-component";
 import { ArrangeToggle } from "@/components/dashboard/arrange-toggle";
 import { useIsClient } from "@/components/dashboard/use-is-client";
+import { useMosaicDndManager } from "@/components/dashboard/use-mosaic-dnd-manager";
 import {
   type PaneId,
   useMosaicLayout,
@@ -77,6 +78,7 @@ export function MosaicDashboardShell({
   switcher,
 }: MosaicDashboardShellProps) {
   const isClient = useIsClient();
+  const dndManager = useMosaicDndManager();
   const {
     arranging,
     layout,
@@ -169,6 +171,7 @@ export function MosaicDashboardShell({
           {isClient ? (
             <Mosaic<PaneId>
               className="sphynx-mosaic"
+              dragAndDropManager={dndManager}
               onChange={onChange}
               onRelease={onRelease}
               renderTile={renderTile}
