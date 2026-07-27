@@ -110,16 +110,17 @@ export function MosaicDashboardShell({
       draggable={arranging}
       path={path}
       renderPreview={() => renderPanePreview(PANE_TITLES[id])}
-      renderToolbar={() =>
-        arranging ? (
-          <div
-            className="absolute inset-0 cursor-grab active:cursor-grabbing"
-            title={`Drag to rearrange ${PANE_TITLES[id]}`}
-          />
-        ) : (
-          <div className="absolute inset-x-0 top-0 h-6" />
-        )
-      }
+      renderToolbar={() => (
+        <div
+          className={cn(
+            "absolute inset-0",
+            arranging
+              ? "cursor-grab active:cursor-grabbing"
+              : "pointer-events-none"
+          )}
+          title={arranging ? `Drag to rearrange ${PANE_TITLES[id]}` : undefined}
+        />
+      )}
       title={PANE_TITLES[id]}
     >
       {bodies[id]}

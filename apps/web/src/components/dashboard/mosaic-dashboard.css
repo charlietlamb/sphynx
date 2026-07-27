@@ -172,6 +172,28 @@
 }
 
 /*
+ * react-mosaic's `.drop-target-container` carries no z-index, but each pane body
+ * is `z-index: 1` — so the body content (queue header, dossier) hit-tests ABOVE
+ * the drop zones, and a drag-over/drop lands on the content instead of a zone,
+ * so nothing commits. Lift the container above the body for the duration of the
+ * drag (the `-dragging` class is only present then) so drop targets receive the
+ * pointer.
+ */
+.sphynx-mosaic .drop-target-container.-dragging {
+  z-index: 40;
+}
+
+/*
+ * While a window drag is in flight, the pane body (queue header, dossier, etc.)
+ * must not intercept the drag-over/drop — those pointer events have to reach the
+ * drop zones layered above. `.-dragging` is only on the root during a window
+ * drag, so this never affects resting interaction or resize.
+ */
+.sphynx-mosaic.-dragging .mosaic-window-body {
+  pointer-events: none;
+}
+
+/*
  * Drop zones — the blue row-focus accent. The library toggles the positional
  * edge (left/right/top/bottom) between calc(100% - 30%) and calc(100% - 50%) as
  * you arm a zone, so the region grows to the exact size the dropped pane will
