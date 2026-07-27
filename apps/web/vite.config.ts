@@ -10,6 +10,18 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
+    dedupe: ["react-dnd", "dnd-core"],
+  },
+  optimizeDeps: {
+    include: [
+      "react-mosaic-component",
+      "react-dnd",
+      "react-dnd-html5-backend",
+      "react-dnd-multi-backend",
+      "react-dnd-preview",
+      "react-dnd-touch-backend",
+      "dnd-core",
+    ],
   },
   server: {
     port: 3006,
