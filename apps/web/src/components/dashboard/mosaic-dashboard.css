@@ -1,0 +1,219 @@
+/**
+ * Cards-on-canvas theme for react-mosaic. Scoped under `.sphynx-mosaic` so it
+ * fully replaces the default `mosaic-blueprint-theme` chrome.
+ *
+ * react-mosaic positions every `.mosaic-tile` absolutely via inline top/right/
+ * bottom/left percentages and ships NO transition, so a drop or reflow snaps
+ * instantly. We reintroduce motion by transitioning those edges — but only when
+ * the tree is committed (drop / resize-end), never during a live resize drag,
+ * which streams ~30fps updates that a transition would turn into rubber-banding.
+ * The parent toggles `[data-resizing]` for exactly that window.
+ *
+ * The gutter comes from the library's own model — a margin on each tile — not
+ * from the split handle (which is only the drag hit-area). root inset 3.5px +
+ * tile margin 6.5px gives a 10px outer edge (matching the header's px-2.5) and a
+ * 13px seam between adjacent cards.
+ */
+
+.sphynx-mosaic.mosaic {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.sphynx-mosaic .mosaic-root {
+  inset: 3.5px;
+}
+
+.sphynx-mosaic .mosaic-tile {
+  margin: 6.5px;
+  transition:
+    top 190ms cubic-bezier(0.23, 1, 0.32, 1),
+    right 190ms cubic-bezier(0.23, 1, 0.32, 1),
+    bottom 190ms cubic-bezier(0.23, 1, 0.32, 1),
+    left 190ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+[data-resizing] .mosaic-tile {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sphynx-mosaic .mosaic-tile {
+    transition: none;
+  }
+}
+
+.sphynx-mosaic .mosaic-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+
+.sphynx-mosaic .mosaic-window-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  background: transparent;
+  border: none;
+}
+
+.sphynx-mosaic .mosaic-window-toolbar {
+  height: auto;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sphynx-mosaic .mosaic-window-title {
+  display: none;
+}
+
+.sphynx-mosaic .mosaic-window-toolbar {
+  z-index: 4;
+}
+
+/*
+ * In arrange mode the whole card is the drag source (a full-tile toolbar). It
+ * must catch the mousedown to START a drag, but once a drag is in flight it
+ * would otherwise sit over the drop-target zones and swallow the release, so the
+ * drop reads as "no target" and the pane collapses. react-mosaic flags an active
+ * window drag with `.mosaic.-dragging`; during it, let the toolbars pass pointer
+ * events through to the drop zones underneath. Initiation is unaffected because
+ * the class is only set AFTER a drag has already begun.
+ */
+.sphynx-mosaic.-dragging .mosaic-window-toolbar {
+  pointer-events: none;
+}
+
+/*
+ * Arrange mode — an explicit, toggled state. Each pane reads as "movable now"
+ * with a soft primary ring; the hovered pane brightens its ring and washes a
+ * transparent primary tint over the card so the drop target is unmistakable.
+ * Everything eases smoothly. Off by default so the resting dashboard stays quiet.
+ */
+[data-arranging] .mosaic-window-body > :not(.mosaic-grab) {
+  position: relative;
+  box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--primary) 40%, transparent);
+  transition: box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+[data-arranging] .mosaic-tile:hover .mosaic-window-body > :not(.mosaic-grab) {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+/* Transparent primary wash over the hovered pane. */
+[data-arranging] .mosaic-window-body > :not(.mosaic-grab)::after {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  content: "";
+  background: var(--primary);
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+[data-arranging]
+  .mosaic-tile:hover
+  .mosaic-window-body
+  > :not(.mosaic-grab)::after {
+  opacity: 0.06;
+}
+
+/*
+ * Split handle: an 8px transparent hit-area centered on the 1px seam, so the
+ * resize grab target stays comfortable while the visible divider is a single
+ * hairline that brightens on hover/resize.
+ */
+.sphynx-mosaic .mosaic-split {
+  background: transparent;
+}
+
+.sphynx-mosaic .mosaic-split:hover,
+.sphynx-mosaic .mosaic-split.-active {
+  background: transparent;
+}
+
+.sphynx-mosaic .mosaic-split .mosaic-split-line {
+  background: var(--border);
+  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.sphynx-mosaic .mosaic-split:hover .mosaic-split-line,
+.sphynx-mosaic .mosaic-split.-active .mosaic-split-line {
+  background: color-mix(in oklab, var(--primary) 60%, var(--border));
+}
+
+.sphynx-mosaic .mosaic-split.-row {
+  width: 8px;
+  margin-left: -4px;
+}
+
+.sphynx-mosaic .mosaic-split.-row .mosaic-split-line {
+  right: auto;
+  left: 50%;
+  width: 1px;
+}
+
+.sphynx-mosaic .mosaic-split.-column {
+  height: 8px;
+  margin-top: -4px;
+}
+
+.sphynx-mosaic .mosaic-split.-column .mosaic-split-line {
+  top: 50%;
+  bottom: auto;
+  height: 1px;
+}
+
+/*
+ * Drop zones — the blue row-focus accent. The library toggles the positional
+ * edge (left/right/top/bottom) between calc(100% - 30%) and calc(100% - 50%) as
+ * you arm a zone, so the region grows to the exact size the dropped pane will
+ * occupy. We transition that edge (not inset) for a crisp grow-into-place, plus
+ * opacity for the fade-in. Reads as: "pane lands here, at this size".
+ */
+.sphynx-mosaic .drop-target-container .drop-target {
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+  border: 2px solid color-mix(in oklab, var(--primary) 55%, transparent);
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in oklab, var(--primary) 20%, transparent);
+  transition:
+    opacity 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    top 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    right 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    bottom 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    left 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.sphynx-mosaic .drop-target-container .drop-target.drop-target-hover {
+  background: color-mix(in oklab, var(--primary) 20%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sphynx-mosaic .drop-target-container .drop-target {
+    transition: opacity 140ms ease-out;
+  }
+}
+
+/*
+ * The floating drag chip — compact, sized to its content. react-dnd snapshots
+ * it as the OS drag image at dragstart, so it must render real pixels (no
+ * opacity/visibility tricks, which blank the snapshot) yet never be seen in
+ * place — park it fully off-screen.
+ */
+.mosaic-pane-preview {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: max-content;
+  max-width: 240px;
+  pointer-events: none;
+}

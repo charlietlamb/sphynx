@@ -11,10 +11,6 @@
       {
         "files": ["**/components/settings/use-resync.ts"],
         "rules": ["react-doctor/query-mutation-missing-invalidation"]
-      },
-      {
-        "files": ["**/components/dashboard/use-pane-order.ts"],
-        "rules": ["react-doctor/no-impure-state-updater"]
       }
     ]
   }
