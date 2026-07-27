@@ -28,6 +28,30 @@ The react-mosaic attempt is preserved on `archive/dashboard-mosaic-react-mosaic`
 Rejected: react-mosaic (removed — the reason for this plan); Dockview (heavy
 chrome to restyle, same class of problem as mosaic).
 
+## UI to preserve (locked — carry over from the react-mosaic version)
+
+These interactions were dialed in and the user wants them kept exactly; the
+rebuild changes the *engine*, not the feel:
+
+- **Arrange toggle** in the header top-right cluster — square icon-only outline
+  button matching the Settings button, primary-tinted when active, with an inline
+  **Reset** button that appears only while arranging. (Lift `arrange-toggle.tsx`
+  from the archive branch.)
+- **Full-card grab** — in arrange mode the entire card is the drag handle, not a
+  thin strip. (dnd-kit: put `listeners` on the whole card.)
+- **Primary hover wash + ring** — the hovered pane in arrange mode gets a soft
+  primary ring that brightens + a transparent primary tint over the card. Plain
+  Tailwind (the CSS is in the archive `mosaic-dashboard.css` arrange block).
+- **Correct skeletons** — the queue/dossier skeletons match the real row/card
+  layout (card background, 8-slot rows) and render in the saved order + sizes
+  instantly (no default-layout flash). Already improved on the current branch;
+  keep and ensure they flow through the order-driven shell.
+- **Smooth motion** — reorder eases <200ms, transforms/opacity only (dnd-kit
+  gives this natively).
+- **Cards-on-canvas** — floating rounded cards, cool palette, blue accent,
+  Phosphor fill icons. Keep the 13px gutter (do NOT go flush/1px — that was a
+  mis-step we reverted).
+
 ## Scope decisions (confirm before building)
 
 1. **Rearrange model.** react-mosaic allowed arbitrary tiling (stack two panes in
@@ -99,7 +123,10 @@ chrome to restyle, same class of problem as mosaic).
 - Arrange mode: only mount `DndContext`/sortable listeners when the Arrange toggle
   is on (resting dashboard has zero drag overhead / noise).
 
-### Phase 3 — the arrange affordance (port the good parts)
+### Phase 3 — the arrange affordance (port the locked UI above)
+Implements the "UI to preserve" list. Source-of-truth for the styling is the
+archive branch (`arrange-toggle.tsx`, the `[data-arranging]` block in
+`mosaic-dashboard.css`) — lift the Tailwind, drop the mosaic-specific plumbing.
 - Header **Arrange toggle** (top-right cluster, square icon-only outline button
   matching Settings) — reuse the design we landed: primary-tinted active state,
   inline **Reset** button when active. This code is in the archive branch
