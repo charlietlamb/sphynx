@@ -40,10 +40,10 @@ interface DashboardShellProps {
 const CARD =
   "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs";
 
-const PANE_META: Record<PaneId, { defaultSize: number; minSize: number }> = {
-  rail: { defaultSize: 17, minSize: 12 },
-  queue: { defaultSize: 53, minSize: 30 },
-  dossier: { defaultSize: 30, minSize: 20 },
+const PANE_MIN: Record<PaneId, number> = {
+  rail: 12,
+  queue: 30,
+  dossier: 20,
 };
 
 export function DashboardShell({
@@ -54,13 +54,18 @@ export function DashboardShell({
   railFooter,
   switcher,
 }: DashboardShellProps) {
-  const { arranging, order, reorder, reset, toggleArranging } = usePaneOrder();
+  const { arranging, order, reorder, reset, resize, sizes, toggleArranging } =
+    usePaneOrder();
 
-  const handleReset = () => {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem("react-resizable-panels:sphynx-dashboard");
-    }
-    reset();
+  const onLayout = (layout: number[]) => {
+    const next = { ...sizes };
+    order.forEach((id, index) => {
+      const size = layout[index];
+      if (typeof size === "number") {
+        next[id] = size;
+      }
+    });
+    resize(next);
   };
 
   const sensors = useSensors(
@@ -126,7 +131,7 @@ export function DashboardShell({
               actions={
                 <ArrangeToggle
                   arranging={arranging}
-                  onReset={handleReset}
+                  onReset={reset}
                   onToggle={toggleArranging}
                 />
               }
@@ -145,17 +150,17 @@ export function DashboardShell({
             strategy={horizontalListSortingStrategy}
           >
             <ResizablePanelGroup
-              autoSaveId="sphynx-dashboard"
               className="min-h-0 flex-1"
               direction="horizontal"
+              onLayout={onLayout}
             >
               {order.flatMap((id, index) => {
                 const panel = (
                   <ResizablePanel
-                    defaultSize={PANE_META[id].defaultSize}
+                    defaultSize={sizes[id]}
                     id={id}
                     key={id}
-                    minSize={PANE_META[id].minSize}
+                    minSize={PANE_MIN[id]}
                     order={index}
                   >
                     <div

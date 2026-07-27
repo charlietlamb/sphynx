@@ -3,7 +3,13 @@ import { useCallback, useEffect, useState } from "react";
 export type PaneId = "rail" | "queue" | "dossier";
 
 const PANES: PaneId[] = ["rail", "queue", "dossier"];
+const DEFAULT_SIZES: Record<PaneId, number> = {
+  rail: 17,
+  queue: 53,
+  dossier: 30,
+};
 const ORDER_KEY = "sphynx-dashboard-order";
+const SIZES_KEY = "sphynx-dashboard-sizes";
 
 function isCompleteOrder(value: unknown): value is PaneId[] {
   return (
@@ -20,32 +26,56 @@ function isDefaultOrder(order: PaneId[]): boolean {
   );
 }
 
-function readStoredOrder(): PaneId[] {
+function isPaneSizes(value: unknown): value is Record<PaneId, number> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    PANES.every(
+      (pane) => typeof (value as Record<string, unknown>)[pane] === "number"
+    )
+  );
+}
+
+function isDefaultSizes(sizes: Record<PaneId, number>): boolean {
+  return PANES.every((pane) => sizes[pane] === DEFAULT_SIZES[pane]);
+}
+
+function readStored<T>(
+  key: string,
+  guard: (value: unknown) => value is T,
+  fallback: T
+): T {
   if (typeof window === "undefined") {
-    return PANES;
+    return fallback;
   }
-  const raw = window.localStorage.getItem(ORDER_KEY);
+  const raw = window.localStorage.getItem(key);
   if (!raw) {
-    return PANES;
+    return fallback;
   }
   try {
     const parsed = JSON.parse(raw) as unknown;
-    return isCompleteOrder(parsed) ? parsed : PANES;
+    return guard(parsed) ? parsed : fallback;
   } catch {
-    return PANES;
+    return fallback;
   }
 }
 
 /**
- * Pane order for the dashboard: a flat, always-complete `PaneId[]` (no tree, no
- * collapse edge cases). Reorder/reset stay pure state setters; the order is
- * mirrored to storage in an effect, and a reset also drops the panel-sizes key.
+ * Pane order + sizes for the dashboard, both keyed to pane identity so a pane
+ * keeps its width across a reorder (react-resizable-panels' own autosave is
+ * positional and would swap widths). Order and sizes each persist to their own
+ * key, dropped when they match the default. Setters stay pure; the mirror to
+ * storage lives in effects.
  */
 export function usePaneOrder() {
-  const [order, setOrder] = useState<PaneId[]>(readStoredOrder);
+  const [order, setOrder] = useState<PaneId[]>(() =>
+    readStored(ORDER_KEY, isCompleteOrder, PANES)
+  );
+  const [sizes, setSizes] = useState<Record<PaneId, number>>(() =>
+    readStored(SIZES_KEY, isPaneSizes, DEFAULT_SIZES)
+  );
   const [arranging, setArranging] = useState(false);
 
-  // Mirror the committed order to storage; the default order clears the key.
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -57,15 +87,35 @@ export function usePaneOrder() {
     }
   }, [order]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (isDefaultSizes(sizes)) {
+      window.localStorage.removeItem(SIZES_KEY);
+    } else {
+      window.localStorage.setItem(SIZES_KEY, JSON.stringify(sizes));
+    }
+  }, [sizes]);
+
   const reorder = useCallback((next: PaneId[]) => {
     if (isCompleteOrder(next)) {
       setOrder(next);
     }
   }, []);
 
-  const reset = useCallback(() => setOrder(PANES), []);
+  const resize = useCallback((next: Record<PaneId, number>) => {
+    if (isPaneSizes(next)) {
+      setSizes(next);
+    }
+  }, []);
+
+  const reset = useCallback(() => {
+    setOrder(PANES);
+    setSizes(DEFAULT_SIZES);
+  }, []);
 
   const toggleArranging = useCallback(() => setArranging((on) => !on), []);
 
-  return { arranging, order, reorder, reset, toggleArranging };
+  return { arranging, order, reorder, reset, resize, sizes, toggleArranging };
 }
