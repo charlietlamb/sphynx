@@ -178,9 +178,13 @@ export function MosaicDashboardShell({
               value={layout}
             />
           ) : (
-            <div className="absolute inset-0 flex">
+            <div className="absolute inset-[3.5px] flex">
               {fallbackPanes(layout).map(({ id, share }) => (
-                <div className="min-w-0" key={id} style={{ flexGrow: share }}>
+                <div
+                  className="m-[6.5px] min-w-0 shrink-0 grow-0"
+                  key={id}
+                  style={{ flexBasis: `calc(${share}% - 13px)` }}
+                >
                   {bodies[id]}
                 </div>
               ))}
