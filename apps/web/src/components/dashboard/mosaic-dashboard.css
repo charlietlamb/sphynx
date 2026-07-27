@@ -90,6 +90,34 @@
 }
 
 /*
+ * The full-tile drag overlay lives in the toolbar (z-index 4) above the pane
+ * body (z-index 1), but the body's selectable TEXT still wins the browser's
+ * native drag: pressing on a queue row starts a text/content drag instead of
+ * react-dnd's element drag, which the browser then instantly aborts (observed:
+ * dragstart carries `text/plain`, isDragging never becomes true). While
+ * arranging, take the body out of hit-testing and forbid its text from being
+ * selected or dragged, so the only thing under the pointer is the overlay and
+ * the only drag the browser can start is the element drag. Reverts the instant
+ * arrange mode is toggled off, so the resting pane stays fully interactive.
+ */
+[data-arranging] .mosaic-window-body {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/*
+ * Once the element drag is in flight, react-mosaic's drop-target container must
+ * sit above the pane body so drag-over/drop land on a zone and the reorder
+ * commits. The container ships with no z-index while the body is z-index 1, so
+ * lift it for the duration of the drag (the `-dragging` class is present only
+ * then).
+ */
+.sphynx-mosaic .drop-target-container.-dragging {
+  z-index: 40;
+}
+
+/*
  * Arrange mode — an explicit, toggled state. Each pane reads as "movable now"
  * with a soft primary ring; the hovered pane brightens its ring and washes a
  * transparent primary tint over the card so the drop target is unmistakable.
