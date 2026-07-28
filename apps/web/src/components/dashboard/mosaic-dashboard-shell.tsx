@@ -4,13 +4,13 @@ import type { ReactNode } from "react";
 import { Mosaic, type MosaicPath, MosaicWindow } from "react-mosaic-component";
 import { ArrangeToggle } from "@/components/dashboard/arrange-toggle";
 import { MosaicFallback } from "@/components/dashboard/mosaic-fallback";
-import { useIsClient } from "@/components/dashboard/use-is-client";
 import { useMosaicDndManager } from "@/components/dashboard/use-mosaic-dnd-manager";
 import {
   type PaneId,
   useMosaicLayout,
 } from "@/components/dashboard/use-mosaic-layout";
 import { AppHeader } from "@/components/layout/app-header";
+import { useIsClient } from "@/lib/use-is-client";
 import "react-mosaic-component/react-mosaic-component.css";
 import "@/components/dashboard/mosaic-dashboard.css";
 
@@ -55,15 +55,8 @@ export function MosaicDashboardShell({
 }: MosaicDashboardShellProps) {
   const isClient = useIsClient();
   const dndManager = useMosaicDndManager();
-  const {
-    arranging,
-    layout,
-    onChange,
-    onRelease,
-    reset,
-    resizing,
-    toggleArranging,
-  } = useMosaicLayout();
+  const { arranging, layout, onChange, onRelease, reset, toggleArranging } =
+    useMosaicLayout();
 
   const bodies: Record<PaneId, ReactNode> = {
     rail: (
@@ -141,10 +134,9 @@ export function MosaicDashboardShell({
         <div
           className="relative min-h-0 flex-1"
           data-arranging={arranging ? "" : undefined}
-          data-resizing={resizing ? "" : undefined}
         >
           {isClient ? (
-            <div className="fade-in absolute inset-0 animate-in duration-200">
+            <div className="fade-in absolute inset-0 animate-in duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]">
               <Mosaic<PaneId>
                 className="sphynx-mosaic"
                 dragAndDropManager={dndManager}

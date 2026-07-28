@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { MosaicNode } from "react-mosaic-component";
 
 export type PaneId = "rail" | "queue" | "dossier";
@@ -83,7 +83,12 @@ function readStoredLayout(): MosaicNode<PaneId> {
   }
 }
 
-const RESIZE_IDLE_MS = 120;
+/**
+ * A legitimate pane never goes below react-mosaic's `minimumPaneSizePercentage`
+ * (12%), so any split under this epsilon can only be the drag-start `hide()`
+ * collapse artifact — never a real user layout.
+ */
+const COLLAPSE_EPSILON = 3;
 
 /**
  * True if any split in the tree collapses a pane to (near) 0%. On window-drag
@@ -101,7 +106,9 @@ function hasCollapsedSplit(node: MosaicNode<PaneId> | null): boolean {
   if (node.type === "tabs") {
     return false;
   }
-  if (node.splitPercentages?.some((percentage) => percentage < 3)) {
+  if (
+    node.splitPercentages?.some((percentage) => percentage < COLLAPSE_EPSILON)
+  ) {
     return true;
   }
   return node.children.some(hasCollapsedSplit);
@@ -109,42 +116,22 @@ function hasCollapsedSplit(node: MosaicNode<PaneId> | null): boolean {
 
 export function useMosaicLayout() {
   const [layout, setLayout] = useState<MosaicNode<PaneId>>(readStoredLayout);
-  const [resizing, setResizing] = useState(false);
   const [arranging, setArranging] = useState(false);
-  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clearIdleTimer = useCallback(() => {
-    if (idleTimer.current !== null) {
-      clearTimeout(idleTimer.current);
-      idleTimer.current = null;
+  const onChange = useCallback((next: MosaicNode<PaneId> | null) => {
+    if (hasCollapsedSplit(next)) {
+      return;
     }
+    setLayout(next ?? DEFAULT_LAYOUT);
   }, []);
 
-  const onChange = useCallback(
-    (next: MosaicNode<PaneId> | null) => {
-      if (hasCollapsedSplit(next)) {
-        return;
-      }
-      setLayout(next ?? DEFAULT_LAYOUT);
-      setResizing(true);
-      clearIdleTimer();
-      idleTimer.current = setTimeout(() => setResizing(false), RESIZE_IDLE_MS);
-    },
-    [clearIdleTimer]
-  );
-
-  const onRelease = useCallback(
-    (next: MosaicNode<PaneId> | null) => {
-      clearIdleTimer();
-      setResizing(false);
-      const repaired = repairLayout(next);
-      setLayout(repaired);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(repaired));
-      }
-    },
-    [clearIdleTimer]
-  );
+  const onRelease = useCallback((next: MosaicNode<PaneId> | null) => {
+    const repaired = repairLayout(next);
+    setLayout(repaired);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(repaired));
+    }
+  }, []);
 
   const reset = useCallback(() => {
     setLayout(DEFAULT_LAYOUT);
@@ -161,7 +148,6 @@ export function useMosaicLayout() {
     onChange,
     onRelease,
     reset,
-    resizing,
     toggleArranging,
   };
 }

@@ -17,18 +17,19 @@ import {
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { cn } from "@sphynx/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
-import { useIsClient } from "@/components/dashboard/use-is-client";
 import { trackEvent } from "@/lib/analytics";
 import { signOut, useSession } from "@/lib/auth-client";
+import { useIsClient } from "@/lib/use-is-client";
 
+/**
+ * Renders the skeleton on the server and the first client render (session state
+ * isn't settled until mounted), so hydration matches and React doesn't discard
+ * and regenerate the surrounding tree.
+ */
 export function UserMenu() {
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
   const isClient = useIsClient();
-  // Render the skeleton on the server AND the first client render (session state
-  // isn't reliable until mounted), so hydration matches and React doesn't
-  // regenerate the shell — a regeneration discards the pre-paint layout and
-  // flashes the default.
   if (!isClient || isPending) {
     return <Skeleton className="size-[1.875rem] rounded-md" />;
   }

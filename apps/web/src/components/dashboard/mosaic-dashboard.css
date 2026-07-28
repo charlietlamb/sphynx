@@ -78,17 +78,17 @@
 }
 
 /* Soft primary ring per pane; brighten + wash the hovered one. */
-[data-arranging] .mosaic-window-body > :not(.mosaic-grab) {
+[data-arranging] .mosaic-window-body > * {
   position: relative;
   box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--primary) 40%, transparent);
   transition: box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-[data-arranging] .mosaic-tile:hover .mosaic-window-body > :not(.mosaic-grab) {
+[data-arranging] .mosaic-tile:hover .mosaic-window-body > * {
   box-shadow: 0 0 0 2px var(--primary);
 }
 
-[data-arranging] .mosaic-window-body > :not(.mosaic-grab)::after {
+[data-arranging] .mosaic-window-body > *::after {
   position: absolute;
   inset: 0;
   z-index: 30;
@@ -100,10 +100,7 @@
   transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-[data-arranging]
-  .mosaic-tile:hover
-  .mosaic-window-body
-  > :not(.mosaic-grab)::after {
+[data-arranging] .mosaic-tile:hover .mosaic-window-body > *::after {
   opacity: 0.06;
 }
 

@@ -233,6 +233,11 @@
       transform: translateX(100%);
     }
   }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-shimmer::after {
+      animation: none;
+    }
+  }
 
   /* Primary counterpart to input-bevel-shadow: a single subtle top-light inset,
      matching the secondary button's restraint so both read as one flat material.
