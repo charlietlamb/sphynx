@@ -45,7 +45,7 @@ export function PullRequestHeader({
   const tone = pullRequest.draft ? "neutral" : STATE_TONES[pullRequest.state];
 
   return (
-    <header className="flex flex-col border-border border-b">
+    <header className="flex flex-col">
       <AppHeader
         githubUrl={pullRequest.githubUrl}
         switcher={
@@ -58,7 +58,7 @@ export function PullRequestHeader({
           />
         }
       />
-      <div className="flex items-start justify-between gap-4 px-4 pt-3 pb-1">
+      <div className="flex items-start justify-between gap-4 border-border border-t px-4 pt-3 pb-1">
         <h1 className="text-balance font-heading text-2xl tracking-tight">
           {pullRequest.title}{" "}
           <span className="text-muted-foreground/60">

@@ -10,12 +10,12 @@ export function PullRequestHeaderSkeleton({
 }) {
   const { owner, repo, number } = pullRequestRef;
   return (
-    <header className="flex flex-col border-border border-b">
+    <header className="flex flex-col">
       <AppHeader
         githubUrl={`https://github.com/${owner}/${repo}/pull/${number}`}
         switcher={<SwitcherSkeleton />}
       />
-      <div className="flex items-start justify-between gap-4 px-4 pt-3 pb-1">
+      <div className="flex items-start justify-between gap-4 border-border border-t px-4 pt-3 pb-1">
         <Skeleton className="h-8 w-2/5" />
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2">
