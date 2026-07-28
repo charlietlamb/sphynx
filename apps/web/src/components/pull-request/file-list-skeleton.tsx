@@ -1,5 +1,6 @@
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { cn } from "@sphynx/ui/lib/utils";
+import { PaneCard } from "@/components/layout/pane-card";
 import { useSettings } from "@/components/settings/settings-provider";
 
 const ROWS: readonly { id: string; indent: number; width: string }[] = [
@@ -27,15 +28,15 @@ export function FileListSkeleton() {
   const { settings } = useSettings();
   if (settings.sidebarCollapsed) {
     return (
-      <div className="flex h-full w-10 flex-col items-center gap-2 border-border border-r py-1.5">
+      <PaneCard className="h-full w-10 items-center gap-2 py-1.5">
         <Skeleton className="size-7 rounded-md" />
         <Skeleton className="h-2.5 w-4" />
-      </div>
+      </PaneCard>
     );
   }
   return (
-    <div className="flex h-full w-64 flex-col border-border border-r">
-      <div className="flex items-center justify-between gap-1 border-border border-b py-1 pr-2 pl-1">
+    <PaneCard className="h-full w-64">
+      <div className="flex h-11 shrink-0 items-center justify-between gap-1 border-border border-b py-1 pr-2 pl-1">
         <span className="flex items-center gap-1">
           <Skeleton className="size-7 rounded-md" />
           <Skeleton className="h-4 w-12" />
@@ -74,6 +75,6 @@ export function FileListSkeleton() {
           })}
         </div>
       </div>
-    </div>
+    </PaneCard>
   );
 }

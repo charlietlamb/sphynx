@@ -3,6 +3,7 @@ import type { PullRequestFile } from "@sphynx/schema/pull-requests";
 import { Button } from "@sphynx/ui/components/ui/button";
 import { ScrollArea } from "@sphynx/ui/components/ui/scroll-area";
 import { useMemo, useState } from "react";
+import { PaneCard } from "@/components/layout/pane-card";
 import { FileTree } from "@/components/pull-request/file-tree";
 import { useSettings } from "@/components/settings/settings-provider";
 import { buildFileTree } from "@/lib/file-tree";
@@ -67,7 +68,7 @@ export function FileList({
   };
   if (settings.sidebarCollapsed) {
     return (
-      <div className="flex h-full w-10 flex-col items-center gap-2 border-border border-r py-1.5">
+      <PaneCard className="h-full w-10 items-center py-1.5">
         <Button
           aria-label="Expand file sidebar"
           onClick={toggleSidebar}
@@ -76,15 +77,15 @@ export function FileList({
         >
           <SidebarSimpleIcon />
         </Button>
-        <span className="text-[10px] text-muted-foreground tabular-nums">
+        <span className="mt-1 text-[10px] text-muted-foreground tabular-nums">
           {files.length}
         </span>
-      </div>
+      </PaneCard>
     );
   }
   return (
-    <div className="flex h-full w-64 flex-col border-border border-r">
-      <div className="flex items-center justify-between gap-1 border-border border-b py-1 pr-2 pl-1">
+    <PaneCard className="h-full w-64">
+      <div className="flex h-11 shrink-0 items-center justify-between gap-1 border-border border-b py-1 pr-2 pl-1">
         <div className="flex min-w-0 items-center gap-1">
           <Button
             aria-label="Collapse file sidebar"
@@ -124,6 +125,6 @@ export function FileList({
           />
         </nav>
       </ScrollArea>
-    </div>
+    </PaneCard>
   );
 }

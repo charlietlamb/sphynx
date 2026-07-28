@@ -244,7 +244,7 @@ export default function DiffWorkspace({
             ) : null}
           </div>
         ) : null}
-        <div className="flex min-h-0 min-w-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 gap-2.5">
           <aside className="h-full shrink-0">
             <FileList
               files={files}
@@ -256,7 +256,7 @@ export default function DiffWorkspace({
             />
           </aside>
           <div
-            className="grid min-h-0 min-w-0 flex-1 gap-4 py-3 pl-4"
+            className="grid min-h-0 min-w-0 flex-1 gap-2.5"
             style={{
               gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
               gridTemplateRows: "minmax(0, 1fr)",
