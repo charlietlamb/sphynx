@@ -5,6 +5,11 @@ import type {
   PullRequestSummary,
 } from "@sphynx/schema/pull-requests";
 import { Button } from "@sphynx/ui/components/ui/button";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@sphynx/ui/components/ui/resizable";
 import { useMemo, useState } from "react";
 import { NoticePanel } from "@/components/layout/notice-panel";
 import { PaneCard } from "@/components/layout/pane-card";
@@ -153,72 +158,95 @@ export default function ConversationPanel({
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  return (
-    <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden">
-      <PaneCard className="min-w-0 flex-1">
-        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
-          <div className="flex w-full max-w-[52rem] flex-col px-8 pt-6 pb-2">
-            <TimelineRow node={avatarNode(summary.author)} variant="card">
-              <ConversationDescription
-                descriptionHTML={conversation.data.descriptionHTML}
-                now={now}
-                summary={summary}
-              />
-            </TimelineRow>
-            {feed.map((item, index) => {
-              const { node, variant } = timelineNode(item);
-              return (
-                <div
-                  data-thread-key={
-                    item.kind === "thread" ? feedKey(item) : undefined
-                  }
-                  key={feedKey(item)}
+  const feedPane = (
+    <PaneCard className="h-full min-w-0 flex-1">
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+        <div className="flex w-full max-w-[52rem] flex-col px-8 pt-6 pb-2">
+          <TimelineRow node={avatarNode(summary.author)} variant="card">
+            <ConversationDescription
+              descriptionHTML={conversation.data.descriptionHTML}
+              now={now}
+              summary={summary}
+            />
+          </TimelineRow>
+          {feed.map((item, index) => {
+            const { node, variant } = timelineNode(item);
+            return (
+              <div
+                data-thread-key={
+                  item.kind === "thread" ? feedKey(item) : undefined
+                }
+                key={feedKey(item)}
+              >
+                <TimelineRow
+                  last={index === feed.length - 1}
+                  node={node}
+                  variant={variant}
                 >
-                  <TimelineRow
-                    last={index === feed.length - 1}
-                    node={node}
-                    variant={variant}
-                  >
-                    <ConversationFeedItem
-                      commenting={commenting}
-                      focusedThreadKey={focusedThreadKey}
-                      item={item}
-                      now={now}
-                      onToggleFocus={toggleFocus}
-                      patches={patches}
-                    />
-                  </TimelineRow>
-                </div>
-              );
-            })}
-          </div>
+                  <ConversationFeedItem
+                    commenting={commenting}
+                    focusedThreadKey={focusedThreadKey}
+                    item={item}
+                    now={now}
+                    onToggleFocus={toggleFocus}
+                    patches={patches}
+                  />
+                </TimelineRow>
+              </div>
+            );
+          })}
         </div>
-        <div className="border-border border-t bg-card/85 backdrop-blur">
-          <div className="w-full max-w-[52rem] px-8 py-3">
-            <ConversationComposer busy={adding} onSubmit={addComment} />
-          </div>
+      </div>
+      <div className="border-border border-t bg-card/85 backdrop-blur">
+        <div className="w-full max-w-[52rem] px-8 py-3">
+          <ConversationComposer busy={adding} onSubmit={addComment} />
         </div>
-      </PaneCard>
-      <PaneCard className="hidden w-[26rem] shrink-0 lg:flex">
-        {focusedThread ? (
-          <ConversationCodePane
-            file={filesByPath.get(focusedThread.path) ?? null}
-            onClose={() => setFocusedThreadKey(null)}
-            onOpenInDiff={openInDiff}
-            patch={patches.get(focusedThread.path) ?? null}
-            thread={focusedThread}
-          />
-        ) : (
-          <ConversationOverview
-            now={now}
-            onFocusThread={focusThreadFromOverview}
-            participants={participants}
-            reviewers={latestVerdicts(conversation.data.reviews)}
-            summary={summary}
-            threadItems={threadItems}
-          />
-        )}
-      </PaneCard>
+      </div>
+    </PaneCard>
+  );
+
+  const sidebarPane = (
+    <PaneCard className="h-full min-w-0 flex-1">
+      {focusedThread ? (
+        <ConversationCodePane
+          file={filesByPath.get(focusedThread.path) ?? null}
+          onClose={() => setFocusedThreadKey(null)}
+          onOpenInDiff={openInDiff}
+          patch={patches.get(focusedThread.path) ?? null}
+          thread={focusedThread}
+        />
+      ) : (
+        <ConversationOverview
+          now={now}
+          onFocusThread={focusThreadFromOverview}
+          participants={participants}
+          reviewers={latestVerdicts(conversation.data.reviews)}
+          summary={summary}
+          threadItems={threadItems}
+        />
+      )}
+    </PaneCard>
+  );
+
+  return (
+    <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 lg:hidden">{feedPane}</div>
+      <ResizablePanelGroup
+        autoSaveId="pr-conversation-panes"
+        className="hidden min-h-0 flex-1 lg:flex"
+        direction="horizontal"
+      >
+        <ResizablePanel defaultSize={68} minSize={45}>
+          {feedPane}
+        </ResizablePanel>
+        <ResizableHandle
+          className="mx-0.5 w-2.5 rounded-full bg-transparent after:w-2.5 hover:after:bg-border/50 focus-visible:ring-0 focus-visible:after:bg-border/50 data-[resize-handle-state=drag]:after:bg-border"
+          withHandle
+        />
+        <ResizablePanel defaultSize={32} minSize={22}>
+          {sidebarPane}
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }
