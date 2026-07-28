@@ -1,6 +1,5 @@
 import type { ReviewComment } from "@sphynx/schema/pull-request-comments";
 import { Badge } from "@sphynx/ui/components/ui/badge";
-import { cn } from "@sphynx/ui/lib/utils";
 import { useState } from "react";
 import { CommentBody } from "@/components/pull-request/comment-body";
 import { ConversationCardHeader } from "@/components/pull-request/conversation-card-header";
@@ -8,22 +7,12 @@ import { ConversationCardHeader } from "@/components/pull-request/conversation-c
 interface CommentItemProps {
   comment: ReviewComment;
   originalLines: readonly string[];
-  topBorder: boolean;
 }
 
-export function CommentItem({
-  comment,
-  originalLines,
-  topBorder,
-}: CommentItemProps) {
+export function CommentItem({ comment, originalLines }: CommentItemProps) {
   const [now] = useState(() => Date.now());
   return (
-    <div
-      className={cn(
-        "flex min-w-0 flex-col gap-2.5 p-3.5",
-        topBorder && "border-border border-t"
-      )}
-    >
+    <div className="flex min-w-0 flex-col gap-1.5">
       <ConversationCardHeader
         at={comment.createdAt}
         author={comment.author}

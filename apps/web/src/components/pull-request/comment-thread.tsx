@@ -1,22 +1,14 @@
-import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react";
+import { CaretRightIcon } from "@phosphor-icons/react";
 import type { ReviewThread } from "@sphynx/schema/pull-request-comments";
 import { Badge } from "@sphynx/ui/components/ui/badge";
 import { cn } from "@sphynx/ui/lib/utils";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { CommentComposer } from "@/components/pull-request/comment-composer";
 import { CommentItem } from "@/components/pull-request/comment-item";
 import { CommentThreadFooter } from "@/components/pull-request/comment-thread-footer";
-import { FileTypeIcon } from "@/components/pull-request/file-type-icon";
 import type { ReviewCommenting } from "@/components/pull-request/use-review-comments";
 import { plural } from "@/lib/claims";
-import { baseName } from "@/lib/paths";
-
-function lineLabel(thread: ReviewThread) {
-  if (thread.startLine && thread.startLine !== thread.line) {
-    return `Lines ${thread.startLine}–${thread.line}`;
-  }
-  return `Line ${thread.line}`;
-}
 
 export type ThreadCommenting = Pick<
   ReviewCommenting,
@@ -24,6 +16,8 @@ export type ThreadCommenting = Pick<
 >;
 
 interface CommentThreadProps {
+  /** The file:line control shown in the header; also the focus toggle in the feed. */
+  anchor?: ReactNode;
   className?: string;
   commenting: ThreadCommenting;
   originalLines: readonly string[];
@@ -31,6 +25,7 @@ interface CommentThreadProps {
 }
 
 export function CommentThread({
+  anchor,
   className,
   commenting,
   originalLines,
@@ -55,76 +50,64 @@ export function CommentThread({
     setReplyOpen(false);
   };
 
+  if (collapsed) {
+    return (
+      <button
+        className={cn(
+          "flex w-full items-center gap-2 text-left text-muted-foreground text-xs",
+          className
+        )}
+        onClick={() => setExpanded(true)}
+        type="button"
+      >
+        <CaretRightIcon className="size-3 shrink-0" />
+        <Badge variant="outline">Resolved</Badge>
+        {anchor}
+        <span className="truncate">
+          {thread.comments[0]?.author?.login ?? "unknown"} ·{" "}
+          {plural(thread.comments.length, "comment")}
+        </span>
+      </button>
+    );
+  }
+
   return (
-    <div
-      className={cn(
-        "my-3 mr-6 ml-4 max-w-[min(48rem,100%)] overflow-hidden rounded-md border border-border bg-background",
-        className
-      )}
-    >
-      {thread.isResolved ? (
-        <button
-          className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-muted-foreground text-xs hover:bg-muted/40"
-          onClick={() => setExpanded((open) => !open)}
-          type="button"
-        >
-          {collapsed ? (
-            <CaretRightIcon className="size-3" />
-          ) : (
-            <CaretDownIcon className="size-3" />
-          )}
-          <Badge variant="outline">Resolved</Badge>
-          <span className="truncate">
-            {thread.comments[0]?.author?.login ?? "unknown"} ·{" "}
-            {plural(thread.comments.length, "comment")}
-          </span>
-        </button>
+    <div className={cn("flex min-w-0 flex-col gap-2", className)}>
+      {anchor ? (
+        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+          <span>Comment on</span>
+          {anchor}
+          {thread.isResolved ? <Badge variant="outline">Resolved</Badge> : null}
+        </div>
       ) : null}
-      {collapsed ? null : (
-        <>
-          {thread.isResolved ? null : (
-            <div className="flex items-center gap-2 border-border border-b bg-muted/30 px-3.5 py-2 text-xs">
-              <FileTypeIcon
-                className="size-3.5 shrink-0 text-muted-foreground"
-                path={thread.path}
-              />
-              <span className="min-w-0 truncate font-medium text-foreground">
-                {baseName(thread.path)}
-              </span>
-              <span className="shrink-0 text-muted-foreground">
-                {lineLabel(thread)}
-              </span>
-            </div>
-          )}
-          {thread.comments.map((comment, index) => (
-            <CommentItem
-              comment={comment}
-              key={comment.id}
-              originalLines={originalLines}
-              topBorder={index > 0 || thread.isResolved}
-            />
-          ))}
-          {replyOpen ? (
-            <CommentComposer
-              busy={commenting.replying}
-              hasPendingReview={false}
-              mode="reply"
-              onCancel={() => setReplyOpen(false)}
-              onSubmit={submitReply}
-              suggestionSeed={originalLines.join("\n")}
-              variant="inline"
-            />
-          ) : null}
-          {(canReply || onResolve) && !replyOpen ? (
-            <CommentThreadFooter
-              canReply={canReply}
-              onReply={() => setReplyOpen(true)}
-              onResolve={onResolve}
-              resolved={thread.isResolved}
-            />
-          ) : null}
-        </>
-      )}
+      <div className="flex flex-col gap-3">
+        {thread.comments.map((comment) => (
+          <CommentItem
+            comment={comment}
+            key={comment.id}
+            originalLines={originalLines}
+          />
+        ))}
+      </div>
+      {replyOpen ? (
+        <CommentComposer
+          busy={commenting.replying}
+          hasPendingReview={false}
+          mode="reply"
+          onCancel={() => setReplyOpen(false)}
+          onSubmit={submitReply}
+          suggestionSeed={originalLines.join("\n")}
+          variant="inline"
+        />
+      ) : null}
+      {(canReply || onResolve) && !replyOpen ? (
+        <CommentThreadFooter
+          canReply={canReply}
+          onReply={() => setReplyOpen(true)}
+          onResolve={onResolve}
+          resolved={thread.isResolved}
+        />
+      ) : null}
     </div>
   );
 }

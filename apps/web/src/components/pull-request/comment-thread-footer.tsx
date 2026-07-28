@@ -15,10 +15,10 @@ export function CommentThreadFooter({
   resolved,
 }: CommentThreadFooterProps) {
   return (
-    <div className="flex items-center gap-2 border-border border-t px-4 py-2.5">
+    <div className="-ml-2 flex items-center gap-0.5 pt-0.5">
       {canReply ? (
         <Button
-          className="h-7 gap-1.5 px-2.5 text-xs"
+          className="h-7 gap-1.5 px-2 text-muted-foreground text-xs hover:text-foreground"
           onClick={onReply}
           size="sm"
           variant="ghost"
@@ -29,10 +29,10 @@ export function CommentThreadFooter({
       ) : null}
       {onResolve ? (
         <Button
-          className="h-7 gap-1.5 px-2.5 text-xs"
+          className="h-7 gap-1.5 px-2 text-muted-foreground text-xs hover:text-foreground"
           onClick={onResolve}
           size="sm"
-          variant="outline"
+          variant="ghost"
         >
           <CheckCircleIcon className="size-3.5" weight="fill" />
           {resolved ? "Unresolve" : "Resolve"}
