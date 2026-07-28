@@ -2,13 +2,12 @@ import type {
   PullRequestFile,
   PullRequestRef,
 } from "@sphynx/schema/pull-requests";
-import { cn } from "@sphynx/ui/lib/utils";
 import { useCallback, useMemo, useRef } from "react";
 import { DefinitionTrailBar } from "@/components/pull-request/definition-trail-bar";
-import { DiffCardList } from "@/components/pull-request/diff-card-list";
+import { DiffColumns } from "@/components/pull-request/diff-columns";
 import { DiffWorkerPool } from "@/components/pull-request/diff-worker-pool";
+import { DiffWorkspaceLayout } from "@/components/pull-request/diff-workspace-layout";
 import { FileList } from "@/components/pull-request/file-list";
-import { PaneColumn } from "@/components/pull-request/pane-column";
 import type {
   PatchMap,
   SymbolIndex,
@@ -33,6 +32,7 @@ import { useReviewNavigation } from "@/components/pull-request/use-review-naviga
 import { useReviewStore } from "@/components/pull-request/use-review-state";
 import { useSymbolHints } from "@/components/pull-request/use-symbol-hints";
 import { useTokenCursor } from "@/components/pull-request/use-token-cursor";
+import { useSettings } from "@/components/settings/settings-provider";
 
 interface DiffWorkspaceProps {
   files: readonly PullRequestFile[];
@@ -50,6 +50,7 @@ export default function DiffWorkspace({
   symbolIndex,
 }: DiffWorkspaceProps) {
   const [{ file, line, panes }, setSearch] = usePullRequestSearch();
+  const { settings } = useSettings();
   const { viewedFiles, setViewed, setAllViewed } =
     useViewedFiles(pullRequestRef);
   const threads = useCommentThreads(pullRequestRef);
@@ -117,8 +118,6 @@ export default function DiffWorkspace({
   } else if (trail.length >= 2) {
     visiblePanes = [trail.length - 2, trail.length - 1];
   }
-  const columnCount = showMain ? 1 + visiblePanes.length : visiblePanes.length;
-
   const setColumnRef = useCallback(
     (column: 0 | 1, node: HTMLDivElement | null) => {
       columnRefs.current[column] = node;
@@ -217,6 +216,41 @@ export default function DiffWorkspace({
     isSelecting,
   });
 
+  const fileTree = (
+    <FileList
+      files={files}
+      onMarkAllViewed={markAllViewed}
+      onSelect={navigation.selectFile}
+      relations={(currentPath && importGraph.get(currentPath)) || null}
+      selectedPath={currentPath}
+      viewedFiles={viewedFiles}
+    />
+  );
+
+  const diffGrid = (
+    <DiffColumns
+      commenting={commenting}
+      files={files}
+      focusColumn={focusColumn}
+      focusedColumn={focusedColumn}
+      headSha={headSha}
+      navigation={navigation}
+      onSelectMain={selectMainPosition}
+      onSelectPane={selectPanePosition}
+      onSetViewed={markViewed}
+      paneCursors={paneCursors}
+      patches={patches}
+      pullRequestRef={pullRequestRef}
+      setColumnRef={setColumnRef}
+      showMain={showMain}
+      symbolIndex={symbolIndex}
+      threads={threads}
+      trail={trail}
+      viewedFiles={viewedFiles}
+      visiblePanes={visiblePanes}
+    />
+  );
+
   return (
     <DiffWorkerPool>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -244,91 +278,12 @@ export default function DiffWorkspace({
             ) : null}
           </div>
         ) : null}
-        <div className="flex min-h-0 min-w-0 flex-1 gap-2.5">
-          <aside className="h-full shrink-0">
-            <FileList
-              files={files}
-              onMarkAllViewed={markAllViewed}
-              onSelect={navigation.selectFile}
-              relations={(currentPath && importGraph.get(currentPath)) || null}
-              selectedPath={currentPath}
-              viewedFiles={viewedFiles}
-            />
-          </aside>
-          <div
-            className="grid min-h-0 min-w-0 flex-1 gap-2.5"
-            style={{
-              gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
-              gridTemplateRows: "minmax(0, 1fr)",
-            }}
-          >
-            <div
-              className={cn(
-                "isolate max-h-full min-w-0 flex-col self-start overflow-hidden",
-                showMain ? "flex" : "hidden"
-              )}
-              onPointerDown={() => focusColumn(0)}
-              ref={(node) => {
-                if (showMain) {
-                  setColumnRef(0, node);
-                }
-              }}
-            >
-              <DiffCardList
-                commenting={commenting}
-                files={files}
-                focused={focusedColumn === 0}
-                handleRef={navigation.attachMain}
-                headSha={headSha}
-                onNavigate={navigation.openTrail}
-                onSelectLine={selectMainPosition}
-                onSetViewed={markViewed}
-                patches={patches}
-                pullRequestRef={pullRequestRef}
-                symbolIndex={symbolIndex}
-                threads={threads}
-                viewedFiles={viewedFiles}
-              />
-            </div>
-            {visiblePanes.map((depth, order) => {
-              const entry = trail[depth];
-              const paneFile = files.find(
-                (candidate) => candidate.path === entry.path
-              );
-              if (!paneFile) {
-                return null;
-              }
-              const column: 0 | 1 = showMain || order === 1 ? 1 : 0;
-              const trailKey = trailKeyAt(trail, depth);
-              return (
-                <PaneColumn
-                  column={column}
-                  columnRef={setColumnRef}
-                  cursorLine={paneCursors[trailKey]}
-                  depth={depth}
-                  entry={entry}
-                  file={paneFile}
-                  focused={focusedColumn === column}
-                  headSha={headSha}
-                  key={trailKey}
-                  onAttach={navigation.attachPane}
-                  onClose={() =>
-                    navigation.setTrail(
-                      depth === 0 ? null : trail.slice(0, depth)
-                    )
-                  }
-                  onFocus={focusColumn}
-                  onNavigate={navigation.navigateFrom}
-                  onSelectPosition={selectPanePosition}
-                  onSetViewed={markViewed}
-                  patches={patches}
-                  pullRequestRef={pullRequestRef}
-                  symbolIndex={symbolIndex}
-                  viewedFiles={viewedFiles}
-                />
-              );
-            })}
-          </div>
+        <div className="flex min-h-0 min-w-0 flex-1">
+          <DiffWorkspaceLayout
+            collapsed={settings.sidebarCollapsed}
+            diff={diffGrid}
+            fileTree={fileTree}
+          />
         </div>
         {hints.hints ? (
           <SymbolHintOverlay

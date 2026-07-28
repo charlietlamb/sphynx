@@ -68,7 +68,7 @@ export function FileList({
   };
   if (settings.sidebarCollapsed) {
     return (
-      <PaneCard className="h-full w-10 items-center py-1.5">
+      <PaneCard className="h-full w-full items-center py-1.5">
         <Button
           aria-label="Expand file sidebar"
           onClick={toggleSidebar}
@@ -84,7 +84,7 @@ export function FileList({
     );
   }
   return (
-    <PaneCard className="h-full w-64">
+    <PaneCard className="h-full w-full">
       <div className="flex h-11 shrink-0 items-center justify-between gap-1 border-border border-b py-1 pr-2 pl-1">
         <div className="flex min-w-0 items-center gap-1">
           <Button

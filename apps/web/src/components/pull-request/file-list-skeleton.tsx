@@ -35,7 +35,7 @@ export function FileListSkeleton() {
     );
   }
   return (
-    <PaneCard className="h-full w-64">
+    <PaneCard className="h-full w-full">
       <div className="flex h-11 shrink-0 items-center justify-between gap-1 border-border border-b py-1 pr-2 pl-1">
         <span className="flex items-center gap-1">
           <Skeleton className="size-7 rounded-md" />
