@@ -10,6 +10,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@sphynx/ui/components/ui/resizable";
+import { cn } from "@sphynx/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { NoticePanel } from "@/components/layout/notice-panel";
 import { PaneCard } from "@/components/layout/pane-card";
@@ -23,6 +24,7 @@ import {
   latestVerdicts,
 } from "@/components/pull-request/conversation-feed";
 import { ConversationFeedItem } from "@/components/pull-request/conversation-feed-item";
+import { CONVERSATION_MEASURE } from "@/components/pull-request/conversation-measure";
 import { ConversationOverview } from "@/components/pull-request/conversation-overview";
 import { ConversationSkeleton } from "@/components/pull-request/conversation-skeleton";
 import type { PatchMap } from "@/components/pull-request/patch-map";
@@ -62,7 +64,7 @@ export default function ConversationPanel({
   const { reply, replying } = useReplyToComment(pullRequestRef);
   const { resolve } = useResolveThread(pullRequestRef);
   const [focusedThreadKey, setFocusedThreadKey] = useState<string | null>(null);
-  const now = Date.now();
+  const [now] = useState(() => Date.now());
 
   const feed = useMemo(
     () =>
@@ -161,7 +163,7 @@ export default function ConversationPanel({
   const feedPane = (
     <PaneCard className="h-full min-w-0 flex-1">
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
-        <div className="flex w-full max-w-[52rem] flex-col px-8 pt-6 pb-2">
+        <div className={cn("flex flex-col pt-6 pb-2", CONVERSATION_MEASURE)}>
           <TimelineRow node={avatarNode(summary.author)} variant="card">
             <ConversationDescription
               descriptionHTML={conversation.data.descriptionHTML}
@@ -198,7 +200,7 @@ export default function ConversationPanel({
         </div>
       </div>
       <div className="border-border border-t bg-card/85 backdrop-blur">
-        <div className="w-full max-w-[52rem] px-8 py-3">
+        <div className={cn("py-3", CONVERSATION_MEASURE)}>
           <ConversationComposer busy={adding} onSubmit={addComment} />
         </div>
       </div>

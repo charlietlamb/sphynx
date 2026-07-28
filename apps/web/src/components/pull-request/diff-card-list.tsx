@@ -237,6 +237,7 @@ export function DiffCardList({
         <>
           {threadsByKey.get(key)?.map((thread) => (
             <CommentThread
+              className="my-3 mr-6 ml-4 max-w-[min(48rem,100%)] rounded-md border border-border bg-background p-3.5"
               commenting={commenting}
               key={thread.comments[0]?.id ?? thread.line}
               originalLines={lineText(

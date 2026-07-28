@@ -1,6 +1,8 @@
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
+import { cn } from "@sphynx/ui/lib/utils";
 import { PaneCard } from "@/components/layout/pane-card";
 import { SectionHeader } from "@/components/layout/section-header";
+import { CONVERSATION_MEASURE } from "@/components/pull-request/conversation-measure";
 import { TimelineRow } from "@/components/pull-request/timeline-row";
 
 const ROW_KEYS = ["first", "second", "third"];
@@ -19,7 +21,7 @@ export function ConversationSkeleton() {
     <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden">
       <PaneCard className="min-w-0 flex-1">
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
-          <div className="flex w-full max-w-[52rem] flex-col px-8 pt-6 pb-2">
+          <div className={cn("flex flex-col pt-6 pb-2", CONVERSATION_MEASURE)}>
             <TimelineRow node={avatarNode} variant="card">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
@@ -53,7 +55,9 @@ export function ConversationSkeleton() {
           </div>
         </div>
         <div className="border-border border-t">
-          <div className="flex w-full max-w-[52rem] items-center gap-2 px-8 py-3">
+          <div
+            className={cn("flex items-center gap-2 py-3", CONVERSATION_MEASURE)}
+          >
             <Skeleton className="h-9 flex-1 rounded-md" />
             <Skeleton className="h-9 w-20 rounded-md" />
           </div>
