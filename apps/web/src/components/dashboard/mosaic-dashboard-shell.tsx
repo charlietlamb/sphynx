@@ -1,5 +1,4 @@
 import { DotsSixIcon } from "@phosphor-icons/react";
-import { cn } from "@sphynx/ui/lib/utils";
 import type { ReactNode } from "react";
 import { Mosaic, type MosaicPath, MosaicWindow } from "react-mosaic-component";
 import { ArrangeToggle } from "@/components/dashboard/arrange-toggle";
@@ -10,6 +9,7 @@ import {
   useMosaicLayout,
 } from "@/components/dashboard/use-mosaic-layout";
 import { AppHeader } from "@/components/layout/app-header";
+import { CARD_SURFACE, PaneCard } from "@/components/layout/pane-card";
 import { useIsClient } from "@/lib/use-is-client";
 import "react-mosaic-component/react-mosaic-component.css";
 import "@/components/dashboard/mosaic-dashboard.css";
@@ -24,9 +24,6 @@ interface MosaicDashboardShellProps {
   railFooter?: ReactNode;
   switcher: ReactNode;
 }
-
-const CARD =
-  "flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs";
 
 const PANE_TITLES: Record<PaneId, string> = {
   rail: "Flow",
@@ -60,17 +57,17 @@ export function MosaicDashboardShell({
 
   const bodies: Record<PaneId, ReactNode> = {
     rail: (
-      <div className={CARD}>
+      <PaneCard className="h-full">
         <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-3">
           {rail}
         </div>
         {railFooter}
-      </div>
+      </PaneCard>
     ),
     queue: (
-      <section className="no-scrollbar flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-card shadow-xs">
+      <PaneCard className="no-scrollbar h-full overflow-y-auto overflow-x-hidden">
         {queue}
-      </section>
+      </PaneCard>
     ),
     dossier,
   };
@@ -99,25 +96,25 @@ export function MosaicDashboardShell({
   return (
     <main className="flex h-svh min-h-[640px] flex-col overflow-hidden bg-background text-foreground">
       <div className="flex flex-1 flex-col overflow-y-auto p-2.5 md:hidden">
-        <div className={cn("mb-2.5 overflow-hidden", CARD, "h-auto")}>
+        <PaneCard className="mb-2.5 h-auto">
           <AppHeader githubUrl={githubUrl} switcher={switcher} />
-        </div>
-        <div className={cn("mb-2.5 h-[60vh]", CARD)}>
+        </PaneCard>
+        <PaneCard className="mb-2.5 h-[60vh]">
           <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
             {rail}
           </div>
           {railFooter}
-        </div>
-        <div className={cn("mb-2.5 h-[100vh]", CARD)}>
+        </PaneCard>
+        <PaneCard className="mb-2.5 h-[100vh]">
           <section className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
             {queue}
           </section>
-        </div>
+        </PaneCard>
         <div className="min-h-[100vh]">{dossier}</div>
       </div>
       <div className="hidden min-h-0 flex-1 flex-col md:flex">
         <div className="px-2.5 pt-2.5">
-          <div className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
+          <div className={CARD_SURFACE}>
             <AppHeader
               actions={
                 <ArrangeToggle

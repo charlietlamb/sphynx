@@ -18,6 +18,7 @@ import { usePullBody } from "@/components/dashboard/use-pull-body";
 import { VerdictMatrix } from "@/components/dashboard/verdict-matrix";
 import { GithubProfile } from "@/components/github/github-profile";
 import { HAIRLINE_DIVIDE } from "@/components/layout/dividers";
+import { PaneCard } from "@/components/layout/pane-card";
 import { SectionHeader } from "@/components/layout/section-header";
 import { type ClaimTone, claimFor } from "@/lib/claims";
 
@@ -74,7 +75,7 @@ export function DossierPane({
   const hasDescription = pull.hasBody;
   const activeTab = hasDescription ? tab : "overview";
   return (
-    <div className="fade-in flex h-full min-h-0 animate-in flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs duration-150">
+    <PaneCard className="fade-in h-full animate-in duration-150">
       <div className="flex flex-col px-4">
         <SectionHeader
           action={
@@ -130,7 +131,7 @@ export function DossierPane({
       ) : (
         <DossierOverview canAct={canAct} now={now} pull={pull} />
       )}
-    </div>
+    </PaneCard>
   );
 }
 

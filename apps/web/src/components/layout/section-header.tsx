@@ -1,9 +1,36 @@
 import { cn } from "@sphynx/ui/lib/utils";
 import type { ReactNode } from "react";
 
+interface PaneHeaderLabelProps {
+  count?: ReactNode;
+  icon?: ReactNode;
+  label: string;
+}
+
+export function PaneHeaderLabel({ count, icon, label }: PaneHeaderLabelProps) {
+  return (
+    <span className="flex min-w-0 shrink-0 items-center gap-2.5">
+      {icon ? (
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground [&_svg]:size-3">
+          {icon}
+        </span>
+      ) : null}
+      <p className="font-heading font-medium text-foreground text-sm tracking-tight">
+        {label}
+      </p>
+      {count === undefined ? null : (
+        <span className="text-muted-foreground/60 text-xs tabular-nums">
+          {count}
+        </span>
+      )}
+    </span>
+  );
+}
+
 interface SectionHeaderProps {
   action?: ReactNode;
   className?: string;
+  count?: ReactNode;
   icon?: ReactNode;
   label: string;
 }
@@ -11,6 +38,7 @@ interface SectionHeaderProps {
 export function SectionHeader({
   action,
   className,
+  count,
   icon,
   label,
 }: SectionHeaderProps) {
@@ -21,16 +49,7 @@ export function SectionHeader({
         className
       )}
     >
-      <span className="flex min-w-0 shrink-0 items-center gap-2.5">
-        {icon ? (
-          <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground [&_svg]:size-3">
-            {icon}
-          </span>
-        ) : null}
-        <p className="font-heading font-medium text-foreground text-sm tracking-tight">
-          {label}
-        </p>
-      </span>
+      <PaneHeaderLabel count={count} icon={icon} label={label} />
       {action ?? null}
     </div>
   );
