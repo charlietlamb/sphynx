@@ -239,10 +239,7 @@ export default function ConversationPanel({
         <ResizablePanel defaultSize={68} minSize={45}>
           {feedPane}
         </ResizablePanel>
-        <ResizableHandle
-          className="mx-0.5 w-2.5 rounded-full bg-transparent after:w-2.5 hover:after:bg-border/50 focus-visible:ring-0 focus-visible:after:bg-border/50 data-[resize-handle-state=drag]:after:bg-border"
-          withHandle
-        />
+        <ResizableHandle className="w-2 bg-transparent after:w-px after:bg-transparent after:transition-colors after:duration-150 after:ease-[cubic-bezier(0.23,1,0.32,1)] hover:after:bg-border focus-visible:ring-0 data-[resize-handle-state=drag]:bg-transparent data-[resize-handle-state=drag]:after:bg-border" />
         <ResizablePanel defaultSize={32} minSize={22}>
           {sidebarPane}
         </ResizablePanel>
