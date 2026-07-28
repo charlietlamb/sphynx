@@ -32,6 +32,7 @@ export const DIFF_UNSAFE_CSS = `
   content: "";
   position: absolute;
   inset: 0;
+  z-index: -1;
   pointer-events: none;
   border: 0 solid var(--border);
   border-radius: 0;
