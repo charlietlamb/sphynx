@@ -35,6 +35,7 @@ export type ConversationVerdict = typeof ConversationVerdictSchema.Type;
 export const ConversationReviewSchema = Schema.Struct({
   id: Schema.String,
   author: Schema.NullOr(GitHubUserSchema),
+  isBot: Schema.optionalWith(Schema.Boolean, { default: () => false }),
   verdict: ConversationVerdictSchema,
   body: Schema.String,
   bodyHTML: Schema.NullOr(Schema.String),

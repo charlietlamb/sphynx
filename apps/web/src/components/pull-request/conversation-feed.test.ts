@@ -52,6 +52,7 @@ const comment = (id: string, createdAt: string) => ({
 const review = (id: string, submittedAt: string) => ({
   id,
   author,
+  isBot: false,
   verdict: "approved" as const,
   body: "",
   bodyHTML: null,

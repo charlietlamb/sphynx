@@ -41,14 +41,21 @@ export function ConversationReviewCard({
         now={now}
         showAvatar={false}
         verb={
-          <span
-            className={cn(
-              "flex items-center gap-1.5",
-              VERDICT_TONES[review.verdict]
-            )}
-          >
-            <VerdictIcon verdict={review.verdict} />
-            {VERDICT_LABELS[review.verdict]}
+          <span className="flex items-center gap-1.5">
+            {review.isBot ? (
+              <span className="rounded-md bg-primary/12 px-1.5 py-0.5 font-medium text-[11px] text-primary">
+                AI review
+              </span>
+            ) : null}
+            <span
+              className={cn(
+                "flex items-center gap-1.5",
+                VERDICT_TONES[review.verdict]
+              )}
+            >
+              <VerdictIcon verdict={review.verdict} />
+              {VERDICT_LABELS[review.verdict]}
+            </span>
           </span>
         }
       />

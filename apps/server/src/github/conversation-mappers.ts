@@ -23,7 +23,7 @@ query($owner: String!, $name: String!, $number: Int!) {
       reviews(first: 50) {
         nodes {
           id fullDatabaseId state body bodyHTML submittedAt url
-          author { login avatarUrl }
+          author { __typename login avatarUrl }
           comments(first: 1) { totalCount }
         }
       }
@@ -92,6 +92,12 @@ const RawConversationCommentSchema = Schema.Struct({
 
 type RawConversationComment = typeof RawConversationCommentSchema.Type;
 
+const RawReviewAuthorSchema = Schema.Struct({
+  __typename: Schema.optional(Schema.String),
+  login: Schema.String,
+  avatarUrl: Schema.String,
+});
+
 const RawConversationReviewSchema = Schema.Struct({
   id: Schema.String,
   fullDatabaseId: Schema.NullishOr(Schema.String),
@@ -100,7 +106,7 @@ const RawConversationReviewSchema = Schema.Struct({
   bodyHTML: Schema.String,
   submittedAt: Schema.NullishOr(Schema.String),
   url: Schema.String,
-  author: Schema.NullishOr(GitHubUserSchema),
+  author: Schema.NullishOr(RawReviewAuthorSchema),
   comments: Schema.Struct({ totalCount: Schema.Number }),
 });
 
@@ -348,7 +354,10 @@ function toGraphqlReview(
   }
   return {
     id: node.fullDatabaseId ?? node.id,
-    author: node.author ?? null,
+    author: node.author
+      ? { login: node.author.login, avatarUrl: node.author.avatarUrl }
+      : null,
+    isBot: node.author?.__typename === "Bot",
     verdict,
     body: node.body,
     bodyHTML: node.bodyHTML,

@@ -56,6 +56,7 @@ describe("toConversation", () => {
       {
         id: "67890",
         author,
+        isBot: false,
         verdict: "approved",
         body: "Ship it",
         bodyHTML: "<p>Ship it</p>",

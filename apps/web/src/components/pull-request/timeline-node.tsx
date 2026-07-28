@@ -2,6 +2,7 @@ import {
   ChatCircleIcon,
   GitCommitIcon,
   GitMergeIcon,
+  SparkleIcon,
   XCircleIcon,
 } from "@phosphor-icons/react";
 import type { GitHubUser } from "@sphynx/schema/pull-requests";
@@ -49,7 +50,15 @@ export function timelineNode(item: FeedItem): TimelineNode {
     case "comment":
       return { node: avatarNode(item.comment.author), variant: "card" };
     case "review":
-      return { node: avatarNode(item.review.author), variant: "card" };
+      return item.review.isBot
+        ? {
+            node: dotNode(
+              <SparkleIcon weight="fill" />,
+              "size-7 bg-primary/12 text-primary [&_svg]:size-3.5"
+            ),
+            variant: "card",
+          }
+        : { node: avatarNode(item.review.author), variant: "card" };
     case "thread":
       return {
         node: dotNode(
