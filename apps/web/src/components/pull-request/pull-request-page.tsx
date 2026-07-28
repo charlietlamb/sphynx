@@ -167,7 +167,7 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
           blockedMessage={accessBlock}
           owner={pullRequestRef.owner}
         />
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="fade-in flex min-h-0 flex-1 animate-in flex-col duration-150">
           {tab === "conversation" ? conversationContent : filesContent}
         </div>
       </div>
