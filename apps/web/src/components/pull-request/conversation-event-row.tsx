@@ -105,15 +105,17 @@ export function ConversationEventRow({
 }: ConversationEventRowProps) {
   const isCommit = event.kind === "commit";
   return (
-    <div className="flex w-full min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+    <div className="flex w-full min-w-0 items-center gap-2 text-[12px] text-muted-foreground/70">
       {!isCommit && event.actor ? (
-        <span className="font-medium text-foreground">{event.actor.login}</span>
+        <span className="font-medium text-foreground/80">
+          {event.actor.login}
+        </span>
       ) : null}
       <span className="flex min-w-0 flex-1 items-center gap-2 truncate">
         {eventPhrase(event)}
       </span>
       <span
-        className="ml-auto shrink-0 text-muted-foreground/60 tabular-nums"
+        className="ml-auto shrink-0 text-[11px] text-muted-foreground/40 tabular-nums"
         title={fullDate(event.at)}
       >
         {shortAge(event.at, now)}

@@ -26,9 +26,9 @@ export function ConversationCardHeader({
   showAvatar = true,
 }: ConversationCardHeaderProps) {
   return (
-    <div className="flex items-center gap-2 text-muted-foreground text-xs">
+    <div className="flex items-baseline gap-1.5 text-muted-foreground text-xs">
       {showAvatar ? (
-        <Avatar size="sm">
+        <Avatar className="self-center" size="sm">
           <AvatarImage
             alt={author?.login ?? "unknown"}
             src={author?.avatarUrl}
@@ -36,13 +36,13 @@ export function ConversationCardHeader({
           <AvatarFallback>{author?.login[0] ?? "?"}</AvatarFallback>
         </Avatar>
       ) : null}
-      <span className="font-medium text-foreground">
+      <span className="font-semibold text-[13px] text-foreground">
         {author?.login ?? "unknown"}
       </span>
       <span>{verb}</span>
       {githubUrl ? (
         <a
-          className="ml-auto hover:text-foreground hover:underline"
+          className="ml-auto text-[11px] text-muted-foreground/50 tabular-nums transition-colors hover:text-foreground"
           href={githubUrl}
           rel="noreferrer"
           target="_blank"
@@ -51,7 +51,10 @@ export function ConversationCardHeader({
           {shortAge(at, now)}
         </a>
       ) : (
-        <span className="ml-auto" title={fullDate(at)}>
+        <span
+          className="ml-auto text-[11px] text-muted-foreground/50 tabular-nums"
+          title={fullDate(at)}
+        >
           {shortAge(at, now)}
         </span>
       )}

@@ -9,6 +9,8 @@ interface ConversationBodyProps {
   className?: string;
 }
 
+const READING = "text-[13px] text-foreground/90 leading-relaxed";
+
 export function ConversationBody({
   body,
   bodyHTML,
@@ -17,18 +19,13 @@ export function ConversationBody({
   if (bodyHTML !== null && bodyHTML !== "") {
     return (
       <div
-        className={cn(PROSE_CLASSES, className)}
+        className={cn(PROSE_CLASSES, READING, className)}
         dangerouslySetInnerHTML={{ __html: sanitizeGitHubHtml(bodyHTML) }}
       />
     );
   }
   return (
-    <div
-      className={cn(
-        "min-w-0 text-[12px] leading-snug [overflow-wrap:anywhere]",
-        className
-      )}
-    >
+    <div className={cn("min-w-0 [overflow-wrap:anywhere]", READING, className)}>
       <CommentMarkdown text={body} />
     </div>
   );

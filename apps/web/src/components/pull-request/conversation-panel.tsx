@@ -155,42 +155,46 @@ export default function ConversationPanel({
 
   return (
     <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden">
-      <PaneCard className="no-scrollbar min-w-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-3xl flex-col px-4 py-6">
-          <TimelineRow node={avatarNode(summary.author)} variant="card">
-            <ConversationDescription
-              descriptionHTML={conversation.data.descriptionHTML}
-              now={now}
-              summary={summary}
-            />
-          </TimelineRow>
-          {feed.map((item, index) => {
-            const { node, variant } = timelineNode(item);
-            return (
-              <div
-                data-thread-key={
-                  item.kind === "thread" ? feedKey(item) : undefined
-                }
-                key={feedKey(item)}
-              >
-                <TimelineRow
-                  last={index === feed.length - 1}
-                  node={node}
-                  variant={variant}
+      <PaneCard className="min-w-0 flex-1">
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-3xl flex-col px-6 pt-6 pb-2">
+            <TimelineRow node={avatarNode(summary.author)} variant="card">
+              <ConversationDescription
+                descriptionHTML={conversation.data.descriptionHTML}
+                now={now}
+                summary={summary}
+              />
+            </TimelineRow>
+            {feed.map((item, index) => {
+              const { node, variant } = timelineNode(item);
+              return (
+                <div
+                  data-thread-key={
+                    item.kind === "thread" ? feedKey(item) : undefined
+                  }
+                  key={feedKey(item)}
                 >
-                  <ConversationFeedItem
-                    commenting={commenting}
-                    focusedThreadKey={focusedThreadKey}
-                    item={item}
-                    now={now}
-                    onToggleFocus={toggleFocus}
-                    patches={patches}
-                  />
-                </TimelineRow>
-              </div>
-            );
-          })}
-          <div className="pt-2 pl-10">
+                  <TimelineRow
+                    last={index === feed.length - 1}
+                    node={node}
+                    variant={variant}
+                  >
+                    <ConversationFeedItem
+                      commenting={commenting}
+                      focusedThreadKey={focusedThreadKey}
+                      item={item}
+                      now={now}
+                      onToggleFocus={toggleFocus}
+                      patches={patches}
+                    />
+                  </TimelineRow>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="border-border border-t bg-card/85 backdrop-blur">
+          <div className="mx-auto w-full max-w-3xl px-6 py-3">
             <ConversationComposer busy={adding} onSubmit={addComment} />
           </div>
         </div>

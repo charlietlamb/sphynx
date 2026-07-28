@@ -15,7 +15,7 @@ export function ConversationDescription({
 }: ConversationDescriptionProps) {
   const hasBody = Boolean(descriptionHTML || summary.body);
   return (
-    <div className="flex min-w-0 flex-col gap-2.5 rounded-md border border-border bg-background p-3.5">
+    <div className="flex min-w-0 flex-col gap-1.5">
       <ConversationCardHeader
         at={summary.createdAt}
         author={summary.author}
@@ -30,7 +30,7 @@ export function ConversationDescription({
           bodyHTML={descriptionHTML}
         />
       ) : (
-        <p className="text-[12px] text-muted-foreground/60">No description.</p>
+        <p className="text-[13px] text-muted-foreground/60">No description.</p>
       )}
     </div>
   );

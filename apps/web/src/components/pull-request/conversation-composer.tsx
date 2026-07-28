@@ -24,7 +24,7 @@ export function ConversationComposer({
 
   return (
     <form
-      className="flex flex-col gap-2.5 rounded-md border border-border bg-background p-3.5"
+      className="flex items-end gap-2"
       onSubmit={(event) => {
         event.preventDefault();
         form.handleSubmit();
@@ -33,7 +33,7 @@ export function ConversationComposer({
       <form.Field name="body">
         {(field) => (
           <Textarea
-            className="min-h-16 text-xs"
+            className="max-h-40 min-h-9 flex-1 resize-none py-2 text-[13px] leading-relaxed"
             onChange={(event) => field.handleChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
@@ -41,21 +41,23 @@ export function ConversationComposer({
                 form.handleSubmit();
               }
             }}
-            placeholder="Leave a comment"
+            placeholder="Leave a comment…"
             value={field.state.value}
           />
         )}
       </form.Field>
-      <div className="flex items-center justify-end">
-        <Button
-          className="h-6 px-2 text-xs"
-          disabled={busy}
-          size="sm"
-          type="submit"
-        >
-          Comment
-        </Button>
-      </div>
+      <form.Subscribe selector={(state) => state.values.body.trim() !== ""}>
+        {(hasText) => (
+          <Button
+            className="h-9 shrink-0"
+            disabled={busy || !hasText}
+            size="sm"
+            type="submit"
+          >
+            Comment
+          </Button>
+        )}
+      </form.Subscribe>
     </form>
   );
 }

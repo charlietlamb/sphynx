@@ -5,14 +5,13 @@ interface TimelineRowProps {
   children: ReactNode;
   /** The final row stops the rail at its node instead of running to the bottom. */
   last?: boolean;
-  /** The node threaded onto the rail: an avatar for cards, an icon for rows. */
+  /** The node threaded onto the rail: an avatar for comments, a dot for events. */
   node: ReactNode;
-  /** `card` aligns the node with a card's header line; `row` with the single line. */
+  /** `card` gives a comment its own breathing room; `row` is a compact event line. */
   variant: "card" | "row";
 }
 
-const GUTTER = "w-10";
-const NODE_TOP = { card: "1.375rem", row: "0.875rem" } as const;
+const RAIL = "w-7";
 
 export function TimelineRow({
   node,
@@ -21,27 +20,21 @@ export function TimelineRow({
   children,
 }: TimelineRowProps) {
   return (
-    <div className="relative flex">
-      <div className={cn("relative shrink-0", GUTTER)}>
+    <div className="relative flex gap-3">
+      <div className={cn("relative flex shrink-0 justify-center", RAIL)}>
         <span
           aria-hidden
           className={cn(
             "absolute top-0 left-1/2 w-px -translate-x-1/2 bg-border",
-            last ? "h-[var(--node-top)]" : "h-full"
+            last ? "h-3.5" : "bottom-0"
           )}
-          style={{ "--node-top": NODE_TOP[variant] } as React.CSSProperties}
         />
-        <span
-          className="absolute left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-background"
-          style={{ top: NODE_TOP[variant] }}
-        >
-          {node}
-        </span>
+        <span className="relative flex items-start pt-0.5">{node}</span>
       </div>
       <div
         className={cn(
           "min-w-0 flex-1",
-          variant === "row" ? "flex min-h-7 items-center pb-1" : "pb-3"
+          variant === "row" ? "flex min-h-5 items-center pb-4" : "pb-5"
         )}
       >
         {children}

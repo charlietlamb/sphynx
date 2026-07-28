@@ -2,6 +2,7 @@ import type {
   ConversationReview,
   ConversationVerdict,
 } from "@sphynx/schema/pull-request-conversation";
+import { cn } from "@sphynx/ui/lib/utils";
 import { ConversationBody } from "@/components/pull-request/conversation-body";
 import { ConversationCardHeader } from "@/components/pull-request/conversation-card-header";
 import { VerdictIcon } from "@/components/pull-request/verdict-icon";
@@ -12,6 +13,13 @@ const VERDICT_LABELS: Record<ConversationVerdict, string> = {
   "changes-requested": "requested changes",
   commented: "reviewed",
   dismissed: "reviewed (dismissed)",
+};
+
+const VERDICT_TONES: Record<ConversationVerdict, string> = {
+  approved: "font-medium text-addition",
+  "changes-requested": "font-medium text-deletion",
+  commented: "",
+  dismissed: "",
 };
 
 interface ConversationReviewCardProps {
@@ -25,7 +33,7 @@ export function ConversationReviewCard({
 }: ConversationReviewCardProps) {
   const hasBody = review.body.trim() !== "";
   return (
-    <div className="flex min-w-0 flex-col gap-2.5 rounded-md border border-border bg-background p-3.5">
+    <div className="flex min-w-0 flex-col gap-1.5">
       <ConversationCardHeader
         at={review.submittedAt}
         author={review.author}
@@ -33,7 +41,12 @@ export function ConversationReviewCard({
         now={now}
         showAvatar={false}
         verb={
-          <span className="flex items-center gap-1.5">
+          <span
+            className={cn(
+              "flex items-center gap-1.5",
+              VERDICT_TONES[review.verdict]
+            )}
+          >
             <VerdictIcon verdict={review.verdict} />
             {VERDICT_LABELS[review.verdict]}
           </span>

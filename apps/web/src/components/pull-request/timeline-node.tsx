@@ -10,6 +10,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@sphynx/ui/components/ui/avatar";
+import { cn } from "@sphynx/ui/lib/utils";
 import type { ReactNode } from "react";
 import type { FeedItem } from "@/components/pull-request/conversation-feed";
 import { EVENT_ICONS } from "@/components/pull-request/event-icons";
@@ -21,7 +22,7 @@ interface TimelineNode {
 
 export function avatarNode(author: GitHubUser | null): ReactNode {
   return (
-    <Avatar className="size-7 overflow-hidden ring-4 ring-background" size="sm">
+    <Avatar className="size-7 overflow-hidden ring-4 ring-card" size="sm">
       <AvatarImage alt={author?.login ?? "unknown"} src={author?.avatarUrl} />
       <AvatarFallback className="text-[11px]">
         {author?.login?.[0]?.toUpperCase() ?? "?"}
@@ -30,9 +31,14 @@ export function avatarNode(author: GitHubUser | null): ReactNode {
   );
 }
 
-function iconNode(icon: ReactNode): ReactNode {
+function dotNode(icon: ReactNode, tone?: string): ReactNode {
   return (
-    <span className="flex size-6 items-center justify-center rounded-full bg-muted text-muted-foreground ring-4 ring-background">
+    <span
+      className={cn(
+        "flex size-[18px] items-center justify-center rounded-full ring-4 ring-card [&_svg]:size-2.5",
+        tone ?? "bg-muted text-muted-foreground/60"
+      )}
+    >
       {icon}
     </span>
   );
@@ -46,14 +52,17 @@ export function timelineNode(item: FeedItem): TimelineNode {
       return { node: avatarNode(item.review.author), variant: "card" };
     case "thread":
       return {
-        node: iconNode(<ChatCircleIcon className="size-3.5" weight="fill" />),
+        node: dotNode(
+          <ChatCircleIcon weight="fill" />,
+          "bg-primary/12 text-primary"
+        ),
         variant: "card",
       };
     case "event":
       return {
-        node: iconNode(
+        node: dotNode(
           item.event.kind === "commit" ? (
-            <GitCommitIcon className="size-3.5" weight="fill" />
+            <GitCommitIcon weight="fill" />
           ) : (
             EVENT_ICONS[item.event.kind]
           )
@@ -62,12 +71,15 @@ export function timelineNode(item: FeedItem): TimelineNode {
       };
     default:
       return {
-        node: iconNode(
+        node: dotNode(
           item.state === "merged" ? (
-            <GitMergeIcon className="size-3.5 text-primary" weight="fill" />
+            <GitMergeIcon weight="fill" />
           ) : (
-            <XCircleIcon className="size-3.5 text-deletion" weight="fill" />
-          )
+            <XCircleIcon weight="fill" />
+          ),
+          item.state === "merged"
+            ? "bg-primary/12 text-primary"
+            : "bg-deletion/12 text-deletion"
         ),
         variant: "row",
       };

@@ -7,46 +7,55 @@ const ROW_KEYS = ["first", "second", "third"];
 const REVIEWER_KEYS = ["one", "two"];
 
 const headerIcon = <Skeleton className="size-2.5 rounded-[2px]" />;
-const avatarNode = <Skeleton className="size-7 rounded-full" />;
-const iconNode = <Skeleton className="size-6 rounded-full" />;
+const avatarNode = (
+  <Skeleton className="size-7 rounded-full ring-4 ring-card" />
+);
+const dotNode = (
+  <Skeleton className="size-[18px] rounded-full ring-4 ring-card" />
+);
 
 export function ConversationSkeleton() {
   return (
     <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden">
-      <PaneCard className="no-scrollbar min-w-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-3xl flex-col px-4 py-6">
-          <TimelineRow node={avatarNode} variant="card">
-            <div className="flex flex-col gap-2.5 rounded-md border border-border bg-background p-3.5">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="ml-auto h-3 w-8" />
-              </div>
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-4/5" />
-              <Skeleton className="h-3 w-3/5" />
-            </div>
-          </TimelineRow>
-          {ROW_KEYS.map((key) => (
-            <TimelineRow key={key} node={iconNode} variant="row">
-              <div className="flex items-center gap-2 py-[3px]">
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-3 w-48" />
-                <Skeleton className="ml-auto h-3 w-8" />
+      <PaneCard className="min-w-0 flex-1">
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-3xl flex-col px-6 pt-6 pb-2">
+            <TimelineRow node={avatarNode} variant="card">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-3.5 w-24" />
+                  <Skeleton className="ml-auto h-3 w-8" />
+                </div>
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+                <Skeleton className="h-3 w-3/5" />
               </div>
             </TimelineRow>
-          ))}
-          <TimelineRow last node={avatarNode} variant="card">
-            <div className="flex flex-col gap-2.5 rounded-md border border-border bg-background p-3.5">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="ml-auto h-3 w-8" />
+            {ROW_KEYS.map((key) => (
+              <TimelineRow key={key} node={dotNode} variant="row">
+                <div className="flex w-full items-center gap-2">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-48" />
+                  <Skeleton className="ml-auto h-3 w-8" />
+                </div>
+              </TimelineRow>
+            ))}
+            <TimelineRow last node={avatarNode} variant="card">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-3.5 w-20" />
+                  <Skeleton className="ml-auto h-3 w-8" />
+                </div>
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-2/3" />
               </div>
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-2/3" />
-            </div>
-          </TimelineRow>
-          <div className="pt-2 pl-10">
-            <Skeleton className="h-20 w-full rounded-md" />
+            </TimelineRow>
+          </div>
+        </div>
+        <div className="border-border border-t">
+          <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 py-3">
+            <Skeleton className="h-9 flex-1 rounded-md" />
+            <Skeleton className="h-9 w-20 rounded-md" />
           </div>
         </div>
       </PaneCard>
