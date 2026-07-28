@@ -38,7 +38,7 @@ function file(
 }
 
 const longBody = Array.from(
-  { length: 60 },
+  { length: 200 },
   (_, i) => `+  const line${i + 1} = compute(${i + 1});`
 ).join("\n");
 
@@ -61,11 +61,11 @@ const PATCHES: PatchMap = new Map([
   ],
   [
     "src/strategy/arbitrage.ts",
-    `@@ -0,0 +1,6 @@\n+export function findArbitrageCandidates(events: OddsEvent[]) {\n+  const candidates = [];\n${longBody}\n+  return candidates;\n+}`,
+    `@@ -0,0 +1,204 @@\n+export function findArbitrageCandidates(events: OddsEvent[]) {\n+  const candidates = [];\n${longBody}\n+  return candidates;\n+}`,
   ],
   [
     "src/strategy/arbitrage.test.ts",
-    `@@ -0,0 +1,8 @@\n+import { expect, test } from "bun:test";\n+import type { OddsEvent } from "../odds-api/types.ts";\n+import { findArbitrageCandidates } from "./arbitrage.ts";\n${longBody}\n+test("returns candidates", () => {\n+  expect(findArbitrageCandidates([])).toEqual([]);\n+});`,
+    `@@ -0,0 +1,206 @@\n+import { expect, test } from "bun:test";\n+import type { OddsEvent } from "../odds-api/types.ts";\n+import { findArbitrageCandidates } from "./arbitrage.ts";\n${longBody}\n+test("returns candidates", () => {\n+  expect(findArbitrageCandidates([])).toEqual([]);\n+});`,
   ],
   [
     "README.md",

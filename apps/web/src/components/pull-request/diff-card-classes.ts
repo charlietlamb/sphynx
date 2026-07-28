@@ -7,6 +7,5 @@ export const CARD_CLASSES = cn(
   "[&_diffs-container]:bg-card",
   "[&_diffs-container]:pb-2.5",
   "[&_diffs-container]:shadow-xs",
-  "[&_diffs-container]:overflow-hidden",
   "[&_diffs-container]:transition-colors"
 );
