@@ -176,7 +176,7 @@ export function DiffCardList({
   const options = useMemo(
     () => ({
       ...symbolOptions,
-      stickyHeaders: true,
+      stickyHeaders: false,
       layout: CARD_LAYOUT,
       itemMetrics: COLLAPSED_ITEM_METRICS,
     }),

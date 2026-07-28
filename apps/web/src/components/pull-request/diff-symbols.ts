@@ -24,37 +24,16 @@ export const DIFF_UNSAFE_CSS = `
 }
 [data-diffs-header] {
   border-bottom: 1px solid var(--border);
-  border-radius: calc(var(--radius) - 2px) calc(var(--radius) - 2px) 0 0;
-}
-[data-diffs-header][data-sticky] {
-  container-type: scroll-state;
 }
 [data-diffs-header]::after {
   content: "";
   position: absolute;
   inset: 0 0 auto 0;
-  height: 1px;
+  height: 2px;
   background: transparent;
 }
 :host([data-active]) [data-diffs-header]::after {
-  height: 2px;
   background: var(--primary);
-}
-@container scroll-state(stuck: top) {
-  [data-diffs-header]::after {
-    background: var(--border);
-  }
-  :host([data-active]) [data-diffs-header]::after {
-    height: 2px;
-    background: var(--primary);
-  }
-}
-[data-diffs-header]::before {
-  content: "";
-  position: absolute;
-  inset: -8px 0 0 0;
-  background: var(--background);
-  z-index: -1;
 }
 [data-separator="line-info"] [data-separator-wrapper] {
   width: 100cqi;
