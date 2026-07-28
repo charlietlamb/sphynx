@@ -25,7 +25,7 @@ import { useDiffSymbolOptions } from "@/components/pull-request/use-diff-symbol-
 import { useExpandedFiles } from "@/components/pull-request/use-expanded-files";
 import type { ReviewCommenting } from "@/components/pull-request/use-review-comments";
 
-const CARD_LAYOUT = { paddingTop: 8, paddingBottom: 12, gap: 20 };
+const CARD_LAYOUT = { paddingTop: 0, paddingBottom: 10, gap: 10 };
 
 const COLLAPSED_HEADER_HEIGHT = 47;
 const COLLAPSED_ITEM_METRICS = {

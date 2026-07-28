@@ -42,11 +42,14 @@ export function useDiffHeader(
        * the library's diffHeaderHeight (44px), px-4 its 16px inline padding.
        */
       return (
-        <span className="flex h-11 min-w-0 flex-1 items-center gap-2 border-border border-b bg-card px-4 text-[13px]">
+        <span className="flex h-11 min-w-0 flex-1 items-center gap-2.5 border-border border-b bg-card px-4 text-sm">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/60 [&_svg]:size-3">
             <FileTypeIcon className="text-foreground" path={item.id} />
           </span>
-          <span className="min-w-0 truncate text-foreground/90" dir="rtl">
+          <span
+            className="min-w-0 truncate font-heading font-medium text-foreground tracking-tight"
+            dir="rtl"
+          >
             {item.id}
           </span>
           <CopyPathButton path={item.id} />
