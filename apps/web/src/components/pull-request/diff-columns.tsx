@@ -63,7 +63,7 @@ export function DiffColumns({
   const columnCount = showMain ? 1 + visiblePanes.length : visiblePanes.length;
   return (
     <div
-      className="grid min-h-0 min-w-0 flex-1 gap-2.5"
+      className="grid size-full min-h-0 min-w-0 gap-2.5"
       style={{
         gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
         gridTemplateRows: "minmax(0, 1fr)",

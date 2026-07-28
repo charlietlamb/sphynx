@@ -26,7 +26,7 @@ export function DiffWorkspaceLayout({
     return (
       <div className="flex min-h-0 min-w-0 flex-1 gap-2.5">
         <div className="h-full w-10 shrink-0">{fileTree}</div>
-        {diff}
+        <div className="min-h-0 min-w-0 flex-1">{diff}</div>
       </div>
     );
   }
