@@ -157,7 +157,7 @@ export default function ConversationPanel({
     <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden">
       <PaneCard className="min-w-0 flex-1">
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-3xl flex-col px-6 pt-6 pb-2">
+          <div className="flex w-full max-w-[52rem] flex-col px-8 pt-6 pb-2">
             <TimelineRow node={avatarNode(summary.author)} variant="card">
               <ConversationDescription
                 descriptionHTML={conversation.data.descriptionHTML}
@@ -194,7 +194,7 @@ export default function ConversationPanel({
           </div>
         </div>
         <div className="border-border border-t bg-card/85 backdrop-blur">
-          <div className="mx-auto w-full max-w-3xl px-6 py-3">
+          <div className="w-full max-w-[52rem] px-8 py-3">
             <ConversationComposer busy={adding} onSubmit={addComment} />
           </div>
         </div>

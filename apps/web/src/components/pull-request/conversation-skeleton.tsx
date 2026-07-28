@@ -19,7 +19,7 @@ export function ConversationSkeleton() {
     <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden">
       <PaneCard className="min-w-0 flex-1">
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-3xl flex-col px-6 pt-6 pb-2">
+          <div className="flex w-full max-w-[52rem] flex-col px-8 pt-6 pb-2">
             <TimelineRow node={avatarNode} variant="card">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
@@ -53,7 +53,7 @@ export function ConversationSkeleton() {
           </div>
         </div>
         <div className="border-border border-t">
-          <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 py-3">
+          <div className="flex w-full max-w-[52rem] items-center gap-2 px-8 py-3">
             <Skeleton className="h-9 flex-1 rounded-md" />
             <Skeleton className="h-9 w-20 rounded-md" />
           </div>
