@@ -24,6 +24,13 @@
 
 .sphynx-mosaic .mosaic-tile {
   margin: 6.5px;
+  /*
+   * Explicitly NO transition. react-mosaic sets tile position via inline
+   * top/right/bottom/left; a `transition` here would (a) animate the mount and
+   * any reflow into a visible slide/flash, and (b) animate the hide-on-drag
+   * collapse into the dragstart window and abort the drag. Keep it off.
+   */
+  transition: none;
 }
 
 .sphynx-mosaic .mosaic-window {

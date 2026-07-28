@@ -3,6 +3,7 @@ import { cn } from "@sphynx/ui/lib/utils";
 import type { ReactNode } from "react";
 import { Mosaic, type MosaicPath, MosaicWindow } from "react-mosaic-component";
 import { ArrangeToggle } from "@/components/dashboard/arrange-toggle";
+import { MosaicFallback } from "@/components/dashboard/mosaic-fallback";
 import { useIsClient } from "@/components/dashboard/use-is-client";
 import { useMosaicDndManager } from "@/components/dashboard/use-mosaic-dnd-manager";
 import {
@@ -42,31 +43,6 @@ function renderPanePreview(title: string) {
       </span>
     </div>
   );
-}
-
-type LayoutTree = ReturnType<typeof useMosaicLayout>["layout"];
-
-/**
- * The pre-hydration fallback (before the client-only Mosaic mounts) renders the
- * panes as a plain flex row so the saved arrangement's proportions show instantly
- * instead of a default-split flash. It reads the top-level row split when the
- * layout is a simple row (the common case) and falls back to equal shares.
- */
-function fallbackPanes(layout: LayoutTree): { id: PaneId; share: number }[] {
-  if (
-    typeof layout === "object" &&
-    layout.type === "split" &&
-    layout.direction === "row" &&
-    layout.children.every((c) => typeof c === "string")
-  ) {
-    const ids = layout.children as PaneId[];
-    const splits = layout.splitPercentages ?? ids.map(() => 100 / ids.length);
-    return ids.map((id, index) => ({ id, share: splits[index] ?? 1 }));
-  }
-  return (["rail", "queue", "dossier"] as PaneId[]).map((id) => ({
-    id,
-    share: 1,
-  }));
 }
 
 export function MosaicDashboardShell({
@@ -168,27 +144,19 @@ export function MosaicDashboardShell({
           data-resizing={resizing ? "" : undefined}
         >
           {isClient ? (
-            <Mosaic<PaneId>
-              className="sphynx-mosaic"
-              dragAndDropManager={dndManager}
-              onChange={onChange}
-              onRelease={onRelease}
-              renderTile={renderTile}
-              resize={{ minimumPaneSizePercentage: 12 }}
-              value={layout}
-            />
-          ) : (
-            <div className="absolute inset-[3.5px] flex">
-              {fallbackPanes(layout).map(({ id, share }) => (
-                <div
-                  className="m-[6.5px] min-w-0 shrink-0 grow-0"
-                  key={id}
-                  style={{ flexBasis: `calc(${share}% - 13px)` }}
-                >
-                  {bodies[id]}
-                </div>
-              ))}
+            <div className="fade-in absolute inset-0 animate-in duration-200">
+              <Mosaic<PaneId>
+                className="sphynx-mosaic"
+                dragAndDropManager={dndManager}
+                onChange={onChange}
+                onRelease={onRelease}
+                renderTile={renderTile}
+                resize={{ minimumPaneSizePercentage: 12 }}
+                value={layout}
+              />
             </div>
+          ) : (
+            <MosaicFallback />
           )}
         </div>
       </div>
