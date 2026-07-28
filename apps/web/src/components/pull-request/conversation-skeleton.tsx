@@ -1,4 +1,5 @@
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
+import { PaneCard } from "@/components/layout/pane-card";
 import { SectionHeader } from "@/components/layout/section-header";
 import { TimelineRow } from "@/components/pull-request/timeline-row";
 
@@ -11,8 +12,8 @@ const iconNode = <Skeleton className="size-6 rounded-full" />;
 
 export function ConversationSkeleton() {
   return (
-    <div className="flex min-h-0 flex-1 overflow-hidden">
-      <div className="min-h-0 flex-1 overflow-y-auto">
+    <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden">
+      <PaneCard className="no-scrollbar min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-3xl flex-col px-4 py-6">
           <TimelineRow node={avatarNode} variant="card">
             <div className="flex flex-col gap-2.5 rounded-md border border-border bg-background p-3.5">
@@ -48,8 +49,8 @@ export function ConversationSkeleton() {
             <Skeleton className="h-20 w-full rounded-md" />
           </div>
         </div>
-      </div>
-      <aside className="hidden min-h-0 w-[26rem] shrink-0 flex-col border-border border-l lg:flex">
+      </PaneCard>
+      <PaneCard className="no-scrollbar hidden w-[26rem] shrink-0 overflow-y-auto lg:flex">
         <div className="flex flex-col gap-2 border-border border-b px-4 pb-2">
           <SectionHeader icon={headerIcon} label="Overview" />
           <div className="flex items-center gap-5 py-0.5">
@@ -92,7 +93,7 @@ export function ConversationSkeleton() {
             </div>
           </div>
         </div>
-      </aside>
+      </PaneCard>
     </div>
   );
 }

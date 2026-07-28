@@ -7,6 +7,7 @@ import type {
 import { Button } from "@sphynx/ui/components/ui/button";
 import { useMemo, useState } from "react";
 import { NoticePanel } from "@/components/layout/notice-panel";
+import { PaneCard } from "@/components/layout/pane-card";
 import { ConversationCodePane } from "@/components/pull-request/conversation-code-pane";
 import { ConversationComposer } from "@/components/pull-request/conversation-composer";
 import { ConversationDescription } from "@/components/pull-request/conversation-description";
@@ -153,8 +154,8 @@ export default function ConversationPanel({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 overflow-hidden">
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+    <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden">
+      <PaneCard className="no-scrollbar min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-3xl flex-col px-4 py-6">
           <TimelineRow node={avatarNode(summary.author)} variant="card">
             <ConversationDescription
@@ -193,8 +194,8 @@ export default function ConversationPanel({
             <ConversationComposer busy={adding} onSubmit={addComment} />
           </div>
         </div>
-      </div>
-      <aside className="hidden min-h-0 w-[26rem] shrink-0 flex-col border-border border-l lg:flex">
+      </PaneCard>
+      <PaneCard className="hidden w-[26rem] shrink-0 lg:flex">
         {focusedThread ? (
           <ConversationCodePane
             file={filesByPath.get(focusedThread.path) ?? null}
@@ -213,7 +214,7 @@ export default function ConversationPanel({
             threadItems={threadItems}
           />
         )}
-      </aside>
+      </PaneCard>
     </div>
   );
 }
