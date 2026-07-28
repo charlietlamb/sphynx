@@ -25,6 +25,17 @@ export const DIFF_UNSAFE_CSS = `
 [data-diffs-header] {
   border-bottom: 1px solid var(--border);
 }
+[data-diffs-header][data-sticky] {
+  container-type: scroll-state;
+}
+[data-diffs-header]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 0 solid var(--border);
+  border-radius: 0;
+}
 [data-diffs-header]::after {
   content: "";
   position: absolute;
@@ -34,6 +45,15 @@ export const DIFF_UNSAFE_CSS = `
 }
 :host([data-active]) [data-diffs-header]::after {
   background: var(--primary);
+}
+@container scroll-state(stuck: top) {
+  [data-diffs-header]::before {
+    border-width: 1px 0 0 0;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  [data-diffs-header]::after {
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
 }
 [data-separator="line-info"] [data-separator-wrapper] {
   width: 100cqi;
