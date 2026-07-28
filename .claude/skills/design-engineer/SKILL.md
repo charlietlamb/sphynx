@@ -33,6 +33,18 @@ Always apply these alongside this skill:
 
 - `animations` — animation decision framework, easing, springs, CSS transforms, clip-path, gestures, performance, accessibility, and the Sonner principles. Apply when any motion or transition work is involved.
 - `references` — use the Mobbin MCP to research real-world UI from top design companies (Attio, ElevenLabs, OpenAI, Intercom, Dub, Cursor, Midday, Peec AI). Apply before building any non-trivial UI pattern to study how the best products handle it.
+
+### Discipline skills
+
+Pull in the relevant discipline skill for detailed rules when the work touches its domain. `better-interface` coordinates the rest for a full review — reach for it when reviewing a whole screen or flow.
+
+- `better-interface` — cross-discipline interface review that coordinates the six discipline skills below. Invoke for a holistic audit of a screen, flow, or feature.
+- `better-ui` — design-engineering polish: border radius, shadows, borders, hover/enter/exit micro-interactions, icons, motion restraint. Apply when building or refining any visual component.
+- `better-typography` — font selection and pairing, type scales, variable fonts/OpenType, spacing, wrapping, truncation, typographic accessibility. Apply for any text styling.
+- `better-colors` — OKLCH color space, palette generation, contrast, gamut, semantic tokens, Tailwind v4 theming, light/dark. Apply when choosing or reviewing color.
+- `better-accessibility` — focus states, keyboard support, ARIA, forms, screen readers, hit areas, reduced motion. Apply when building interactive widgets, modals, menus, or forms.
+- `better-layout` — structure, grouping, alignment, reading order, progressive disclosure, responsive breakpoints, RTL/logical properties. Apply when laying out a page or component.
+- `better-writing` — UX copy: button/link labels, error messages, placeholders, settings labels, empty states, voice and tone. Apply when writing any user-facing text.
 - `emil-design-eng` — Emil Kowalski's philosophy on UI polish, component design, animation decisions, and invisible details. Apply when polishing components or judging whether a detail is worth adding.
 - `apple-design` — Apple's approach to fluid, physical motion and interface depth, translated for the web. Apply for gesture-driven UI, springs, sheets, translucency, and typography foundations.
 - `animation-vocabulary` — shared vocabulary for describing motion precisely. Apply when specifying or reviewing animation work.
