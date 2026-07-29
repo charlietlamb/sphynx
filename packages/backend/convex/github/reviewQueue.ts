@@ -5,8 +5,26 @@ import { GitHubUnavailable, type GitHubError } from "./githubErrors";
 import {
   BatchedPullsSchema,
   PULL_FIELDS_FRAGMENT,
+  RawPullSchema,
   toQueuePull,
 } from "./queueMappers";
+
+const SINGLE_PULL_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      state
+      mergedAt
+      ...PullFields
+    }
+  }
+}
+${PULL_FIELDS_FRAGMENT}`;
+
+const SinglePullSchema = Schema.Struct({
+  repository: Schema.NullOr(
+    Schema.Struct({ pullRequest: Schema.NullOr(RawPullSchema) }),
+  ),
+});
 
 /**
  * Installation tokens authenticate as the app on an org, so there is no
@@ -217,10 +235,34 @@ export const makeReviewQueue = (client: GitHubClient) => {
         Effect.annotateLogs({ "github.repo": repoKey(entry) }),
       );
 
+  /**
+   * Re-derive one pull request into the queue shape — the projector's per-PR
+   * refresh. Fetches just that PR through the same `toQueuePull` mapping the
+   * batch build uses, so a webhook update and a full rebuild agree.
+   */
+  const refreshPull = (
+    ref: { owner: string; repo: string; number: number },
+    token: string,
+  ): Effect.Effect<QueuePull | null, GitHubError> =>
+    client
+      .query(token, SinglePullSchema, SINGLE_PULL_QUERY, {
+        owner: ref.owner,
+        name: ref.repo,
+        number: ref.number,
+      })
+      .pipe(
+        Effect.map((data) => {
+          const pull = data.repository?.pullRequest ?? null;
+          return pull === null ? null : toQueuePull(ref.owner, ref.repo, pull);
+        }),
+        Effect.withSpan("GitHubReviewQueue.refreshPull"),
+      );
+
   return {
     discoverRepos,
     openPullsChunk,
     openPullsForRepos,
+    refreshPull,
     repoEvents,
   } as const;
 };

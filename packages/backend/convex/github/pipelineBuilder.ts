@@ -379,6 +379,15 @@ export const discoverRepos = (
   return makeReviewQueue(client).discoverRepos(token);
 };
 
+/** Re-derive one pull request — the projector's per-PR webhook refresh. */
+export const refreshPull = (
+  ref: { owner: string; repo: string; number: number },
+  token: string,
+) => {
+  const client = makeGitHubClient(configFromEnv());
+  return makeReviewQueue(client).refreshPull(ref, token);
+};
+
 /**
  * A repo's recent activity from the Events API — the one-time workbench feed
  * seed at backfill/resync.
