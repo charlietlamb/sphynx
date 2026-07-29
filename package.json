@@ -67,7 +67,6 @@
     "dev": "turbo dev",
     "build": "turbo run build",
     "start": "bun --cwd apps/web start",
-    "start:server": "bun --cwd apps/server start",
     "typecheck": "turbo run typecheck",
     "check": "ultracite check",
     "fix": "ultracite fix",

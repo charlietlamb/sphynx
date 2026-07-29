@@ -15,16 +15,7 @@
           ]
         }
       ]
-    },
-    "server": {
-      "root": ".",
-      "runtime": "container",
-      "entrypoint": "Dockerfile.vercel",
-      "ignoreCommand": "npx turbo-ignore @sphynx/server"
     }
   },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": { "service": "server" } },
-    { "source": "/(.*)", "destination": { "service": "web" } }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": { "service": "web" } }]
 }
