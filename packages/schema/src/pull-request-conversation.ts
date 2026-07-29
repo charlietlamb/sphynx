@@ -1,16 +1,5 @@
-import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform";
 import { Schema } from "effect";
-import {
-  GitHubRateLimited,
-  GitHubTimeout,
-  GitHubUnavailable,
-  GitHubUserSchema,
-  InstallationRequired,
-  PullRequestNotFound,
-  PullRequestRefSchema,
-  Unauthorized,
-} from "./pull-requests";
-import { cookieHeaders } from "./shared";
+import { GitHubUserSchema } from "./pull-requests";
 
 export const ConversationCommentSchema = Schema.Struct({
   id: Schema.String,
@@ -81,38 +70,3 @@ export const ConversationSchema = Schema.Struct({
 });
 
 export type Conversation = typeof ConversationSchema.Type;
-
-export const AddConversationCommentSchema = Schema.Struct({
-  body: Schema.String.pipe(Schema.minLength(1)),
-});
-
-export type AddConversationComment = typeof AddConversationCommentSchema.Type;
-
-const getConversation = HttpApiEndpoint.get(
-  "getConversation",
-  "/api/github/repos/:owner/:repo/pulls/:number/conversation"
-)
-  .setPath(PullRequestRefSchema)
-  .setHeaders(cookieHeaders)
-  .addSuccess(ConversationSchema);
-
-const addConversationComment = HttpApiEndpoint.post(
-  "addConversationComment",
-  "/api/github/repos/:owner/:repo/pulls/:number/conversation-comments"
-)
-  .setPath(PullRequestRefSchema)
-  .setHeaders(cookieHeaders)
-  .setPayload(AddConversationCommentSchema)
-  .addSuccess(ConversationCommentSchema);
-
-export const PullRequestConversationApi = HttpApiGroup.make(
-  "pullRequestConversation"
-)
-  .add(getConversation)
-  .add(addConversationComment)
-  .addError(Unauthorized, { status: 401 })
-  .addError(InstallationRequired, { status: 403 })
-  .addError(PullRequestNotFound, { status: 404 })
-  .addError(GitHubRateLimited, { status: 429 })
-  .addError(GitHubUnavailable, { status: 502 })
-  .addError(GitHubTimeout, { status: 504 });

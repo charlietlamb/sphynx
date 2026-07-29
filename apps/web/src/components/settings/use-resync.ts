@@ -1,7 +1,8 @@
+import { api } from "@sphynx/backend/convex/_generated/api";
 import { useMutation } from "@tanstack/react-query";
+import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/analytics";
-import { postJson } from "@/lib/api";
 
 /**
  * Re-materialize an installation as if it were freshly connected. The server
@@ -11,13 +12,14 @@ import { postJson } from "@/lib/api";
  * mid-rebuild and could flash a partial or empty dashboard before SSE repaints.
  */
 export function useResync(installationId: number | null, label: string) {
+  const resync = useAction(api.github.writes.resync);
   return useMutation({
     mutationKey: ["resync", installationId],
     mutationFn: () => {
       if (installationId === null) {
         return Promise.reject(new Error("No organization selected"));
       }
-      return postJson(`/api/github/installations/${installationId}/resync`);
+      return resync({ installationId });
     },
     onSuccess: () => {
       if (installationId !== null) {

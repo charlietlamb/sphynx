@@ -1,29 +1,16 @@
-import {
-  type Installation,
-  InstallationsSchema,
-} from "@sphynx/schema/review-queue";
-import { queryOptions, useQuery } from "@tanstack/react-query";
-import { Schema } from "effect";
-import { fetchGithub } from "@/lib/github-api";
-import { keys } from "@/lib/query/keys";
-
-async function fetchInstallations() {
-  const response = await fetchGithub("/installations", "installations");
-  return await Schema.decodeUnknownPromise(InstallationsSchema)(
-    await response.json()
-  );
-}
-
-function installationsQuery() {
-  return queryOptions({
-    queryKey: keys.installations(),
-    queryFn: fetchInstallations,
-    staleTime: 5 * 60_000,
-  });
-}
+import { api } from "@sphynx/backend/convex/_generated/api";
+import type { Installation } from "@sphynx/schema/review-queue";
+import { useQuery } from "@tanstack/react-query";
+import { useAction } from "convex/react";
 
 export function useInstallations(selected: number | null, enabled: boolean) {
-  const server = useQuery({ ...installationsQuery(), enabled });
+  const list = useAction(api.github.installations.listInstallations);
+  const server = useQuery({
+    queryKey: ["installations"],
+    queryFn: () => list(),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
   const installations: readonly Installation[] =
     server.data?.installations ?? [];
 

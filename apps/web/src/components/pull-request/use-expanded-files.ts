@@ -5,7 +5,10 @@ import type {
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { expandableFilePath } from "@/components/pull-request/full-contents";
-import { fileContentsQuery } from "@/components/pull-request/pull-request-queries";
+import {
+  fileContentsQuery,
+  useFileContentsAction,
+} from "@/components/pull-request/pull-request-queries";
 
 export type FileContents = ReadonlyMap<string, string>;
 
@@ -27,14 +30,17 @@ export function useExpandedFiles(
     return expandable;
   }, [files]);
 
+  const getFileContents = useFileContentsAction();
   const results = useQueries({
-    queries: paths.map((path) => fileContentsQuery(ref, headSha, path)),
+    queries: paths.map((path) =>
+      fileContentsQuery(getFileContents, ref, headSha, path)
+    ),
   });
 
   return useMemo(() => {
     const map = new Map<string, string>();
     paths.forEach((path, index) => {
-      const content = results[index]?.data?.content;
+      const content = results[index]?.data;
       if (typeof content === "string") {
         map.set(path, content);
       }

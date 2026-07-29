@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./api": "./src/api.ts",
     "./pull-request-comments": "./src/pull-request-comments.ts",
     "./pull-request-conversation": "./src/pull-request-conversation.ts",
     "./pull-request-views": "./src/pull-request-views.ts",
     "./pull-requests": "./src/pull-requests.ts",
+    "./read-model": "./src/read-model.ts",
     "./review-queue": "./src/review-queue.ts",
     "./workbench": "./src/workbench.ts"
   },
@@ -18,7 +18,7 @@
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
-    "@effect/platform": "catalog:",
+    "convex": "^1.42.3",
     "effect": "catalog:"
   },
   "devDependencies": {

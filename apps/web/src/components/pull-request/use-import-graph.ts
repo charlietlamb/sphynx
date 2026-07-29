@@ -4,7 +4,10 @@ import type {
 } from "@sphynx/schema/pull-requests";
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { fileContentsQuery } from "@/components/pull-request/pull-request-queries";
+import {
+  fileContentsQuery,
+  useFileContentsAction,
+} from "@/components/pull-request/pull-request-queries";
 import { buildImportGraph, type ImportGraph } from "@/lib/import-graph";
 
 const SOURCE_FILE = /\.(?:m|c)?[jt]sx?$/;
@@ -23,15 +26,16 @@ export function useImportGraph(
     () => files.filter(graphEligible).slice(0, MAX_GRAPH_FILES),
     [files]
   );
+  const getFileContents = useFileContentsAction();
   const contents = useQueries({
     queries: eligible.map((file) =>
-      fileContentsQuery(ref, file.sha, file.path)
+      fileContentsQuery(getFileContents, ref, file.sha, file.path)
     ),
     combine: (results) =>
       results
         .map((result, index) => ({
           path: eligible[index]?.path ?? "",
-          content: result.data?.content ?? null,
+          content: result.data ?? null,
         }))
         .filter(
           (source): source is { path: string; content: string } =>

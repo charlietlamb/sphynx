@@ -1,37 +1,11 @@
-import { WorkbenchFeedSchema } from "@sphynx/schema/workbench";
-import { queryOptions, useQuery } from "@tanstack/react-query";
-import { Schema } from "effect";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "@sphynx/backend/convex/_generated/api";
+import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import type { MergedWorkbenchEvent } from "@/components/workbench/workbench-copy";
+import { toWorkbenchKind } from "@/components/workbench/workbench-kind";
 import { useWorkbenchStore } from "@/components/workbench/workbench-store";
-import { fetchGithub } from "@/lib/github-api";
-import { keys } from "@/lib/query/keys";
-
-async function fetchWorkbenchEvents(
-  owner: string,
-  repo: string,
-  installationId: number | null
-) {
-  const response = await fetchGithub(
-    `/repos/${owner}/${repo}/events`,
-    "events",
-    installationId
-  );
-  return await Schema.decodeUnknownPromise(WorkbenchFeedSchema)(
-    await response.json()
-  );
-}
-
-function workbenchEventsQuery(
-  owner: string,
-  repo: string,
-  installationId: number | null
-) {
-  return queryOptions({
-    queryKey: keys.repoEvents({ owner, repo }, installationId),
-    queryFn: () => fetchWorkbenchEvents(owner, repo, installationId),
-  });
-}
+import { useSession } from "@/lib/auth-client";
 
 export function useWorkbenchEvents(
   owner: string,
@@ -40,16 +14,30 @@ export function useWorkbenchEvents(
   enabled: boolean,
   pullTitles: ReadonlyMap<number, string>
 ) {
-  const server = useQuery({
-    ...workbenchEventsQuery(owner, repo, installationId),
-    enabled,
-  });
+  const server = useQuery(
+    convexQuery(
+      api.github.reader.readWorkbench,
+      enabled && installationId !== null
+        ? { installationId, owner, repo }
+        : "skip"
+    )
+  );
   const local = useWorkbenchStore(owner, repo);
+  const { data: session } = useSession();
 
   const events = useMemo<readonly MergedWorkbenchEvent[]>(() => {
-    const github = (server.data?.events ?? []).map(
-      (event): MergedWorkbenchEvent => ({
-        ...event,
+    const github = (server.data?.events ?? []).flatMap((event) => {
+      const kind = toWorkbenchKind(event.kind);
+      if (kind === null) {
+        return [];
+      }
+      const merged: MergedWorkbenchEvent = {
+        id: event.id,
+        at: event.at,
+        actor: event.actor,
+        kind,
+        detail: event.detail,
+        url: event.url,
         pull: event.pull
           ? {
               number: event.pull.number,
@@ -58,8 +46,9 @@ export function useWorkbenchEvents(
             }
           : null,
         source: "github",
-      })
-    );
+      };
+      return [merged];
+    });
     return [...github, ...local.events].sort(
       (a, b) => Date.parse(b.at) - Date.parse(a.at)
     );
@@ -75,7 +64,7 @@ export function useWorkbenchEvents(
     events,
     unseen,
     latest: events[0] ?? null,
-    viewer: server.data?.viewer ?? null,
+    viewer: session?.user?.name ?? null,
     isPending: server.isPending,
     isError: server.isError,
     refetch: server.refetch,

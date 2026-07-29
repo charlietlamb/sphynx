@@ -121,7 +121,7 @@ function ThreadPreviewRow({
           <AvatarImage
             alt={login ?? "unknown"}
             className="rounded-full"
-            src={preview.author?.avatarUrl}
+            src={preview.author?.avatarUrl ?? undefined}
           />
           <AvatarFallback className="rounded-full text-[8px]">
             {login?.[0] ?? "?"}

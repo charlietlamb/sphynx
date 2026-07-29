@@ -54,6 +54,20 @@
           }
         }
       }
+    },
+    {
+      // Convex resolves functions by module path and rejects filenames with
+      // hyphens (only alphanumerics, underscores, periods), so its modules are
+      // camelCase by requirement. Only the filename rule is relaxed here; every
+      // other lint stays enforced on these files.
+      "includes": ["packages/backend/convex/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": "off"
+          }
+        }
+      }
     }
   ]
 }

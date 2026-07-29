@@ -79,7 +79,9 @@ export function seededSummary(
     body: null,
     state: pull.state,
     draft: pull.isDraft,
-    author: pull.author,
+    author: pull.author
+      ? { login: pull.author.login, avatarUrl: pull.author.avatarUrl ?? "" }
+      : null,
     base: { ref: pull.baseRefName, sha: "" },
     head: { ref: pull.headRefName, sha: "" },
     stats: {
