@@ -31,6 +31,7 @@ import type * as github_refresh from "../github/refresh.js";
 import type * as github_reviewQueue from "../github/reviewQueue.js";
 import type * as github_rows from "../github/rows.js";
 import type * as github_tokens from "../github/tokens.js";
+import type * as github_userToken from "../github/userToken.js";
 import type * as github_validators from "../github/validators.js";
 import type * as github_verifyWebhook from "../github/verifyWebhook.js";
 import type * as github_webhook from "../github/webhook.js";
@@ -72,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   "github/reviewQueue": typeof github_reviewQueue;
   "github/rows": typeof github_rows;
   "github/tokens": typeof github_tokens;
+  "github/userToken": typeof github_userToken;
   "github/validators": typeof github_validators;
   "github/verifyWebhook": typeof github_verifyWebhook;
   "github/webhook": typeof github_webhook;
