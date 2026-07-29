@@ -45,17 +45,13 @@ export const DIFF_UNSAFE_CSS = `
   border-top-left-radius: var(--radius);
   border-top-right-radius: var(--radius);
 }
-[data-diffs-header]::after {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  background: transparent;
-  border-top-left-radius: var(--radius);
-  border-top-right-radius: var(--radius);
-}
-:host([data-active]) [data-diffs-header]::after {
-  background: var(--primary);
+/*
+ * The active-file accent is the header's own rounded top border turning primary
+ * and thickening, so it follows the corner curve instead of a square 2px bar.
+ */
+:host([data-active]) [data-diffs-header]::before {
+  border-top-width: 2px;
+  border-top-color: var(--primary);
 }
 [data-separator="line-info"] [data-separator-wrapper] {
   width: 100cqi;
