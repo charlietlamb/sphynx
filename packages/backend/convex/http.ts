@@ -1,8 +1,11 @@
 import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
+import { authComponent, createAuth } from "./auth";
 import { httpAction } from "./_generated/server";
 
 const http = httpRouter();
+
+authComponent.registerRoutes(http, createAuth);
 
 /**
  * GitHub webhook receiver. Reads the raw body (for HMAC), verifies + dedups +

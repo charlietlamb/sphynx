@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as github_appAuth from "../github/appAuth.js";
 import type * as github_appJwt from "../github/appJwt.js";
@@ -48,6 +49,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   crons: typeof crons;
   "github/appAuth": typeof github_appAuth;
   "github/appJwt": typeof github_appJwt;
@@ -109,5 +111,6 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
+  betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
   migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
 };
