@@ -119,3 +119,20 @@ export const repoFlowValidator = v.object({
 export const pipelineValidator = v.object({
   repos: v.array(repoFlowValidator),
 });
+
+export const workbenchEventFields = {
+  eventId: v.string(),
+  installationId: v.number(),
+  owner: v.string(),
+  repo: v.string(),
+  kind: v.string(),
+  actor: v.union(v.string(), v.null()),
+  actorAvatarUrl: v.union(v.string(), v.null()),
+  pullNumber: v.union(v.number(), v.null()),
+  title: v.union(v.string(), v.null()),
+  detail: v.union(v.string(), v.null()),
+  url: v.union(v.string(), v.null()),
+  occurredAt: v.number(),
+};
+
+export const workbenchEventInput = v.object(workbenchEventFields);

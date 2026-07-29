@@ -103,8 +103,8 @@ describe("writePull monotonicity gate", () => {
     expect(row?.decision).toBe("ready");
     expect(row?.reviewers[0]?.state).toBe("approved");
     expect(row?.ciFailures[0]?.name).toBe("build");
-    expect(row?.threads[0]?.bodyPreview).toBe("needs a test");
-    expect(row?.threads[0]?.rootCommentId).toBe(42n);
+    expect(row?.threadPreviews[0]?.body).toBe("needs a test");
+    expect(row?.threadPreviews[0]?.rootCommentId).toBe(42);
   });
 
   test("a stale rewrite does not clobber a newer row", async () => {
@@ -187,7 +187,7 @@ describe("writePull monotonicity gate", () => {
     expect(row?.ciCounts.pending).toBe(0);
   });
 
-  test("writeRepoFlow marks a departed open pull merged, sparing fresh ones", async () => {
+  test("writeRepoFlow closes a departed open pull, sparing fresh ones", async () => {
     const t = setup();
     await writeOne(t, pull({ number: 30 }), "2026-07-01T00:00:00Z");
     await writeOne(t, pull({ number: 31 }), "2026-07-08T00:00:00Z");
@@ -203,7 +203,7 @@ describe("writePull monotonicity gate", () => {
       snapshotAt: new Date("2026-07-05T00:00:00Z").getTime(),
       now: new Date("2026-07-05T00:00:01Z").getTime(),
     });
-    expect((await readPull(t, 30))?.state).toBe("merged");
+    expect((await readPull(t, 30))?.state).toBe("closed");
     expect((await readPull(t, 31))?.state).toBe("open");
   });
 

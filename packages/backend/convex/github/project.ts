@@ -5,7 +5,8 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import { internalAction } from "../_generated/server";
-import { refreshPull } from "./pipelineBuilder";
+import { getInstallationToken } from "./installationToken";
+import { refreshPull as refreshPullProgram } from "./pipelineBuilder";
 import {
   headCloseFor,
   headMoveFor,
@@ -14,13 +15,6 @@ import {
   workbenchTargetFor,
 } from "./projection";
 import { webhookToWorkbenchEvent } from "./workbenchMappers";
-
-async function token(ctx: ActionCtx, installationId: number, now: number) {
-  return await ctx.runAction(internal.github.appAuth.installationToken, {
-    installationId,
-    now,
-  });
-}
 
 /**
  * Refresh one PR from GitHub and write it through the gate, coalescing a burst
@@ -42,10 +36,10 @@ async function projectPull(
   if (claim === "queued") {
     return;
   }
-  const accessToken = await token(ctx, installationId, now);
+  const accessToken = await getInstallationToken(ctx, installationId, now);
   let go = true;
   while (go) {
-    const pull = await Effect.runPromise(refreshPull(ref, accessToken));
+    const pull = await Effect.runPromise(refreshPullProgram(ref, accessToken));
     if (pull !== null) {
       await ctx.runMutation(internal.github.writer.writePull, {
         installationId,
@@ -151,6 +145,35 @@ async function projectWorkbench(
     });
   }
 }
+
+/**
+ * Refresh a single PR into the read model — the after-a-write path. A write
+ * (merge/block/promote) schedules this so the dashboard reflects the change
+ * ahead of the webhook, without fabricating a webhook envelope.
+ */
+export const refreshPull = internalAction({
+  args: {
+    installationId: v.number(),
+    owner: v.string(),
+    repo: v.string(),
+    number: v.number(),
+    now: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    try {
+      await projectPull(
+        ctx,
+        args.installationId,
+        { owner: args.owner, repo: args.repo, number: args.number },
+        args.now,
+      );
+    } catch (error) {
+      console.error("post-write refresh failed", error);
+    }
+    return null;
+  },
+});
 
 /**
  * Process one accepted delivery: refresh the affected PR (or backfill on an

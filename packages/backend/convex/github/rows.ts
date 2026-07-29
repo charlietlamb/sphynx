@@ -38,16 +38,6 @@ export const pullDocFrom = (
   reviewers: pull.reviewers,
   ciFailures: pull.ciFailures,
   threadPreviews: pull.threadPreviews,
-  threads: pull.threadPreviews.map((thread) => ({
-    threadId: thread.id,
-    isResolved: false,
-    path: thread.path,
-    rootCommentId:
-      thread.rootCommentId === null ? null : BigInt(thread.rootCommentId),
-    authorLogin: thread.author?.login ?? null,
-    authorAvatarUrl: thread.author?.avatarUrl ?? null,
-    bodyPreview: thread.body,
-  })),
   ghUpdatedAt: new Date(pull.updatedAt).getTime(),
 });
 

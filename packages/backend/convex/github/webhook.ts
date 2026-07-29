@@ -5,12 +5,13 @@ import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { verifySignature } from "./verifyWebhook";
 
-function installationIdFrom(body: string): number | null {
+function parsePayload(
+  body: string,
+): { installation?: { id?: number } } & Record<string, unknown> {
   try {
-    const parsed = JSON.parse(body) as { installation?: { id?: number } };
-    return parsed.installation?.id ?? null;
+    return JSON.parse(body);
   } catch {
-    return null;
+    return {};
   }
 }
 
@@ -44,12 +45,13 @@ export const ingestWebhook = internalAction({
     if (!(args.deliveryId && args.eventType)) {
       return "rejected";
     }
+    const payload = parsePayload(args.body);
     const inserted = await ctx.runMutation(
       internal.github.ingest.recordDelivery,
       {
         deliveryId: args.deliveryId,
         eventType: args.eventType,
-        installationId: installationIdFrom(args.body),
+        installationId: payload.installation?.id ?? null,
         receivedAt: args.now,
       },
     );
@@ -59,7 +61,7 @@ export const ingestWebhook = internalAction({
     await ctx.scheduler.runAfter(0, internal.github.project.project, {
       eventType: args.eventType,
       deliveryId: args.deliveryId,
-      payload: JSON.parse(args.body),
+      payload,
       now: args.now,
     });
     return "accepted";

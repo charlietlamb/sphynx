@@ -5,24 +5,8 @@ import { v } from "convex/values";
 import { api, internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import { action } from "../_generated/server";
-import {
-  blockPull,
-  createPull,
-  mergePull,
-  searchPulls as searchPullsProgram,
-} from "./writeQueue";
+import { blockPull, createPull, mergePull } from "./writeQueue";
 import { userToken } from "./userToken";
-import { queuePullValidator } from "./validators";
-
-async function installationToken(
-  ctx: ActionCtx,
-  installationId: number,
-): Promise<string> {
-  return await ctx.runAction(internal.github.appAuth.installationToken, {
-    installationId,
-    now: Date.now(),
-  });
-}
 
 /** Resolve the installation that owns a repo from the read model. */
 async function installationFor(
@@ -33,29 +17,9 @@ async function installationFor(
 }
 
 /**
- * After a write lands on GitHub, refresh the affected PR into the read model so
- * the dashboard reflects it without waiting for the webhook. The write itself is
- * attributed to the user; this refresh reads as the installation.
+ * After a user-attributed write lands on GitHub, schedule a read-model refresh
+ * for that PR so the dashboard reflects the change ahead of the webhook.
  */
-async function refreshAfterWrite(
-  ctx: ActionCtx,
-  installationId: number,
-  owner: string,
-  repo: string,
-  number: number,
-) {
-  await ctx.scheduler.runAfter(0, internal.github.project.project, {
-    eventType: "pull_request",
-    deliveryId: `write:${installationId}:${owner}/${repo}#${number}:${Date.now()}`,
-    payload: {
-      installation: { id: installationId },
-      repository: { name: repo, owner: { login: owner } },
-      pull_request: { number },
-    },
-    now: Date.now(),
-  });
-}
-
 async function afterWrite(
   ctx: ActionCtx,
   owner: string,
@@ -64,7 +28,13 @@ async function afterWrite(
 ) {
   const installationId = await installationFor(ctx, owner);
   if (installationId !== null) {
-    await refreshAfterWrite(ctx, installationId, owner, repo, number);
+    await ctx.scheduler.runAfter(0, internal.github.project.refreshPull, {
+      installationId,
+      owner,
+      repo,
+      number,
+      now: Date.now(),
+    });
   }
 }
 
@@ -120,21 +90,16 @@ export const promote = action({
   },
 });
 
-/** Live GitHub PR search — a passthrough the materialized model cannot answer. */
-export const searchPulls = action({
-  args: {
-    installationId: v.number(),
-    query: v.string(),
-    limit: v.optional(v.number()),
-  },
-  returns: v.object({
-    pulls: v.array(queuePullValidator),
-    totalCount: v.number(),
-  }),
+/** Rebuild an installation's read model from GitHub on demand. */
+export const resync = action({
+  args: { installationId: v.number() },
+  returns: v.null(),
   handler: async (ctx, args) => {
-    const token = await installationToken(ctx, args.installationId);
-    return await Effect.runPromise(
-      searchPullsProgram(args.query, args.limit ?? 30, token),
-    );
+    await ctx.runAction(internal.github.materialize.materialize, {
+      installationId: args.installationId,
+      now: Date.now(),
+      seed: true,
+    });
+    return null;
   },
 });

@@ -5,17 +5,11 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import { internalAction } from "../_generated/server";
+import { getInstallationToken } from "./installationToken";
 import { buildPipeline, discoverRepos, repoEvents } from "./pipelineBuilder";
 import { toWorkbenchEvents } from "./workbenchMappers";
 
 const SEED_REPOS = 10;
-
-async function token(ctx: ActionCtx, installationId: number, now: number) {
-  return await ctx.runAction(internal.github.appAuth.installationToken, {
-    installationId,
-    now,
-  });
-}
 
 /**
  * Seed the workbench feed with recent Events-API history for the first repos.
@@ -50,8 +44,9 @@ async function seedWorkbench(
           })),
         });
       }
-    } catch {
+    } catch (error) {
       /** A repo that fails to seed still gets live events going forward. */
+      console.warn(`workbench seed failed for ${entry.owner}/${entry.repo}`, error);
     }
   }
 }
@@ -75,7 +70,11 @@ export const materialize = internalAction({
       installationId: args.installationId,
       reconciledAt: args.now,
     });
-    const accessToken = await token(ctx, args.installationId, args.now);
+    const accessToken = await getInstallationToken(
+      ctx,
+      args.installationId,
+      args.now,
+    );
     const pipeline = await Effect.runPromise(buildPipeline(accessToken));
     for (const flow of pipeline.repos) {
       await ctx.runMutation(internal.github.writer.writeRepoFlow, {

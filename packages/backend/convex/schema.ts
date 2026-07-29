@@ -8,17 +8,8 @@ import {
   pullStateValidator,
   reviewerVerdictValidator,
   threadPreviewValidator,
+  workbenchEventFields,
 } from "./github/validators";
-
-const embeddedThread = v.object({
-  threadId: v.string(),
-  isResolved: v.boolean(),
-  path: v.union(v.string(), v.null()),
-  rootCommentId: v.union(v.int64(), v.null()),
-  authorLogin: v.union(v.string(), v.null()),
-  authorAvatarUrl: v.union(v.string(), v.null()),
-  bodyPreview: v.string(),
-});
 
 export default defineSchema({
   reviewRepo: defineTable({
@@ -31,11 +22,6 @@ export default defineSchema({
   })
     .index("by_key", ["key"])
     .index("by_installation", ["installationId"])
-    .index("by_installation_and_owner_and_repo", [
-      "installationId",
-      "owner",
-      "repo",
-    ])
     .index("by_owner", ["owner"]),
 
   reviewPull: defineTable({
@@ -68,13 +54,11 @@ export default defineSchema({
     reviewers: v.array(reviewerVerdictValidator),
     ciFailures: v.array(failingCheckValidator),
     threadPreviews: v.array(threadPreviewValidator),
-    threads: v.array(embeddedThread),
     ghUpdatedAt: v.number(),
     fetchedAt: v.number(),
   })
     .index("by_key", ["key"])
     .index("by_installation_and_state", ["installationId", "state"])
-    .index("by_repo_and_number", ["repoKey", "number"])
     .index("by_repo_and_state", ["repoKey", "state"])
     .index("by_state_and_fetchedAt", ["state", "fetchedAt"]),
 
@@ -107,26 +91,11 @@ export default defineSchema({
     headSha: v.string(),
   })
     .index("by_owner_and_repo_and_number", ["owner", "repo", "number"])
-    .index("by_owner_and_repo_and_headSha", ["owner", "repo", "headSha"])
-    .index("by_installation", ["installationId"]),
+    .index("by_owner_and_repo_and_headSha", ["owner", "repo", "headSha"]),
 
-  workbenchEvent: defineTable({
-    eventId: v.string(),
-    installationId: v.number(),
-    owner: v.string(),
-    repo: v.string(),
-    kind: v.string(),
-    actor: v.union(v.string(), v.null()),
-    actorAvatarUrl: v.union(v.string(), v.null()),
-    pullNumber: v.union(v.number(), v.null()),
-    title: v.union(v.string(), v.null()),
-    detail: v.union(v.string(), v.null()),
-    url: v.union(v.string(), v.null()),
-    occurredAt: v.number(),
-  })
+  workbenchEvent: defineTable(workbenchEventFields)
     .index("by_eventId", ["eventId"])
     .index("by_occurredAt", ["occurredAt"])
-    .index("by_installation_and_occurredAt", ["installationId", "occurredAt"])
     .index("by_installation_and_repo_and_occurredAt", [
       "installationId",
       "owner",

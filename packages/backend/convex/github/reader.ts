@@ -1,6 +1,8 @@
 import { v } from "convex/values";
+import type { QueryCtx } from "../_generated/server";
 import { internalQuery, query } from "../_generated/server";
 import { toQueuePull, toRepoFlows } from "./readModel";
+import { repoKeyOf } from "./rows";
 import {
   pipelineValidator,
   queuePullValidator,
@@ -22,10 +24,7 @@ export const pullNumbersForHead = internalQuery({
   },
 });
 
-async function openPulls(
-  ctx: { db: import("../_generated/server").QueryCtx["db"] },
-  installationId: number,
-) {
+async function openPulls(ctx: QueryCtx, installationId: number) {
   return await ctx.db
     .query("reviewPull")
     .withIndex("by_installation_and_state", (q) =>
@@ -34,15 +33,10 @@ async function openPulls(
     .collect();
 }
 
-async function reposFor(
-  ctx: { db: import("../_generated/server").QueryCtx["db"] },
-  installationId: number,
-) {
+async function reposFor(ctx: QueryCtx, installationId: number) {
   return await ctx.db
     .query("reviewRepo")
-    .withIndex("by_installation", (q) =>
-      q.eq("installationId", installationId),
-    )
+    .withIndex("by_installation", (q) => q.eq("installationId", installationId))
     .collect();
 }
 
@@ -87,7 +81,7 @@ export const getRepoPulls = query({
   args: { installationId: v.number(), owner: v.string(), repo: v.string() },
   returns: v.array(queuePullValidator),
   handler: async (ctx, args) => {
-    const repoKey = `${args.installationId}:${args.owner.toLowerCase()}:${args.repo.toLowerCase()}`;
+    const repoKey = repoKeyOf(args.installationId, args.owner, args.repo);
     const pulls = await ctx.db
       .query("reviewPull")
       .withIndex("by_repo_and_state", (q) =>

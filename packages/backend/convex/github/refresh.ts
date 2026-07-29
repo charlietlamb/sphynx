@@ -6,7 +6,8 @@ const refreshKey = (
   owner: string,
   repo: string,
   number: number,
-) => `${installationId}:${owner}/${repo}#${number}`;
+) =>
+  `${installationId}:${owner.toLowerCase()}/${repo.toLowerCase()}#${number}`;
 
 /**
  * Claim a PR refresh, coalescing a burst. A CI matrix firing 50 check_run

@@ -1,20 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
-
-const workbenchEventInput = v.object({
-  eventId: v.string(),
-  installationId: v.number(),
-  owner: v.string(),
-  repo: v.string(),
-  kind: v.string(),
-  actor: v.union(v.string(), v.null()),
-  actorAvatarUrl: v.union(v.string(), v.null()),
-  pullNumber: v.union(v.number(), v.null()),
-  title: v.union(v.string(), v.null()),
-  detail: v.union(v.string(), v.null()),
-  url: v.union(v.string(), v.null()),
-  occurredAt: v.number(),
-});
+import { workbenchEventInput } from "./validators";
 
 /**
  * Append workbench feed events, idempotent on the delivery-scoped eventId, so a

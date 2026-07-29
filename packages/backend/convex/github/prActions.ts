@@ -1,10 +1,12 @@
 "use node";
 
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { Effect } from "effect";
-import { api, internal } from "../_generated/api";
+import { api } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import { action } from "../_generated/server";
+import { addConversationComment as addConversationCommentProgram } from "./conversationWrite";
+import { getInstallationToken } from "./installationToken";
 import {
   getCommentThreads,
   getConversation,
@@ -20,6 +22,7 @@ import {
   resolveThread,
   submitReview,
 } from "./reviews";
+import { listViewedFiles, setAllFilesViewed, setFileViewed } from "./viewer";
 import { userToken } from "./userToken";
 
 const refArgs = {
@@ -30,20 +33,10 @@ const refArgs = {
 
 const sideValidator = v.union(v.literal("additions"), v.literal("deletions"));
 
-async function installationToken(
-  ctx: ActionCtx,
-  installationId: number
-): Promise<string> {
-  return await ctx.runAction(internal.github.appAuth.installationToken, {
-    installationId,
-    now: Date.now(),
-  });
-}
-
 /**
  * The installation token for the app that owns the repo. Reads run as the
- * installation so they draw on its rate limit, mirroring the source server. A
- * repo with no installation in the read model cannot be read.
+ * installation so they draw on its rate limit. A repo with no installation in
+ * the read model cannot be read.
  */
 async function readToken(ctx: ActionCtx, owner: string): Promise<string> {
   const installationId = await ctx.runQuery(
@@ -51,9 +44,12 @@ async function readToken(ctx: ActionCtx, owner: string): Promise<string> {
     { owner }
   );
   if (installationId === null) {
-    throw new Error(`No installation for ${owner}`);
+    throw new ConvexError({
+      code: "NOT_FOUND",
+      message: `No installation for ${owner}`,
+    });
   }
-  return await installationToken(ctx, installationId);
+  return await getInstallationToken(ctx, installationId, Date.now());
 }
 
 export const getSummary = action({
@@ -212,5 +208,77 @@ export const discardPendingReview = action({
     const token = await userToken(ctx);
     await Effect.runPromise(discardReview(args, token));
     return null;
+  },
+});
+
+export const getViewedFiles = action({
+  args: refArgs,
+  returns: v.array(v.object({ path: v.string(), viewed: v.boolean() })),
+  handler: async (ctx, args) => {
+    const token = await userToken(ctx);
+    return await Effect.runPromise(
+      listViewedFiles(
+        { owner: args.owner, repo: args.repo, number: args.number },
+        token
+      )
+    );
+  },
+});
+
+export const setViewedFile = action({
+  args: { ...refArgs, path: v.string(), viewed: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const token = await userToken(ctx);
+    await Effect.runPromise(
+      setFileViewed(
+        { owner: args.owner, repo: args.repo, number: args.number },
+        args.path,
+        args.viewed,
+        token
+      )
+    );
+    return null;
+  },
+});
+
+export const setAllViewedFiles = action({
+  args: { ...refArgs, viewed: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const token = await userToken(ctx);
+    await Effect.runPromise(
+      setAllFilesViewed(
+        { owner: args.owner, repo: args.repo, number: args.number },
+        args.viewed,
+        token
+      )
+    );
+    return null;
+  },
+});
+
+export const addConversationComment = action({
+  args: { ...refArgs, body: v.string() },
+  returns: v.object({
+    id: v.string(),
+    author: v.union(
+      v.object({ login: v.string(), avatarUrl: v.string() }),
+      v.null()
+    ),
+    body: v.string(),
+    bodyHTML: v.union(v.string(), v.null()),
+    createdAt: v.string(),
+    githubUrl: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const token = await userToken(ctx);
+    return await Effect.runPromise(
+      addConversationCommentProgram(
+        { owner: args.owner, repo: args.repo, number: args.number },
+        args.body,
+        token
+      )
+    );
   },
 });

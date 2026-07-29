@@ -90,7 +90,14 @@ async function closeDeparted(
     .collect();
   for (const row of rows) {
     if (row.fetchedAt < snapshotAt && !open.has(row.number)) {
-      await ctx.db.patch(row._id, { state: "merged", fetchedAt: now });
+      /**
+       * A departed open PR was closed or merged — the build can't tell which
+       * without a per-PR fetch. Coarsen to `closed` (the truthful superset: a
+       * merged PR is also closed) rather than inventing a `merged` state with no
+       * mergedAt. The dashboard reads only open pulls, so either leaves the
+       * queue; a webhook later sets the exact terminal state.
+       */
+      await ctx.db.patch(row._id, { state: "closed", fetchedAt: now });
     }
   }
 }
