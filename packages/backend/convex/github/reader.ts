@@ -1,10 +1,13 @@
 import { v } from "convex/values";
-import { internalQuery } from "../_generated/server";
+import { internalQuery, query } from "../_generated/server";
+import { toQueuePull, toRepoFlows } from "./readModel";
+import {
+  pipelineValidator,
+  queuePullValidator,
+  repoFlowValidator,
+} from "./validators";
 
-/**
- * Open PR numbers whose head is a given commit sha — resolves a legacy commit
- * status (which names a sha, not a PR) to the PRs it should refresh.
- */
+/** Open PR numbers whose head is a given commit sha (status -> PR resolution). */
 export const pullNumbersForHead = internalQuery({
   args: { owner: v.string(), repo: v.string(), headSha: v.string() },
   returns: v.array(v.number()),
@@ -16,5 +19,135 @@ export const pullNumbersForHead = internalQuery({
       )
       .collect();
     return rows.map((row) => row.number);
+  },
+});
+
+async function openPulls(
+  ctx: { db: import("../_generated/server").QueryCtx["db"] },
+  installationId: number,
+) {
+  return await ctx.db
+    .query("reviewPull")
+    .withIndex("by_installation_and_state", (q) =>
+      q.eq("installationId", installationId).eq("state", "open"),
+    )
+    .collect();
+}
+
+async function reposFor(
+  ctx: { db: import("../_generated/server").QueryCtx["db"] },
+  installationId: number,
+) {
+  return await ctx.db
+    .query("reviewRepo")
+    .withIndex("by_installation", (q) =>
+      q.eq("installationId", installationId),
+    )
+    .collect();
+}
+
+/**
+ * The dashboard pipeline: open pulls grouped into repo flows with the promotion
+ * rail. Live-by-default — any write to the read model repaints subscribers. Pure
+ * Convex, never hits GitHub.
+ */
+export const getPipeline = query({
+  args: { installationId: v.number() },
+  returns: pipelineValidator,
+  handler: async (ctx, args) => {
+    const [pulls, repos, gaps] = await Promise.all([
+      openPulls(ctx, args.installationId),
+      reposFor(ctx, args.installationId),
+      ctx.db
+        .query("stageGap")
+        .withIndex("by_installation", (q) =>
+          q.eq("installationId", args.installationId),
+        )
+        .collect(),
+    ]);
+    return { repos: toRepoFlows(pulls, repos, gaps) };
+  },
+});
+
+/** The lighter queue read — open pulls per repo without the promotion rail. */
+export const getQueue = query({
+  args: { installationId: v.number() },
+  returns: v.object({ repos: v.array(repoFlowValidator) }),
+  handler: async (ctx, args) => {
+    const [pulls, repos] = await Promise.all([
+      openPulls(ctx, args.installationId),
+      reposFor(ctx, args.installationId),
+    ]);
+    return { repos: toRepoFlows(pulls, repos, []) };
+  },
+});
+
+/** One repo's open pulls (used when a quiet repo is selected). */
+export const getRepoPulls = query({
+  args: { installationId: v.number(), owner: v.string(), repo: v.string() },
+  returns: v.array(queuePullValidator),
+  handler: async (ctx, args) => {
+    const repoKey = `${args.installationId}:${args.owner.toLowerCase()}:${args.repo.toLowerCase()}`;
+    const pulls = await ctx.db
+      .query("reviewPull")
+      .withIndex("by_repo_and_state", (q) =>
+        q.eq("repoKey", repoKey).eq("state", "open"),
+      )
+      .collect();
+    return pulls.map(toQueuePull);
+  },
+});
+
+/** The installation that owns a repo, from the read model (no GitHub call). */
+export const installationForOwner = query({
+  args: { owner: v.string() },
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx, args) => {
+    const repo = await ctx.db
+      .query("reviewRepo")
+      .withIndex("by_owner", (q) => q.eq("owner", args.owner))
+      .first();
+    return repo?.installationId ?? null;
+  },
+});
+
+const workbenchEventValidator = v.object({
+  id: v.string(),
+  kind: v.string(),
+  actor: v.union(v.string(), v.null()),
+  actorAvatarUrl: v.union(v.string(), v.null()),
+  pullNumber: v.union(v.number(), v.null()),
+  title: v.union(v.string(), v.null()),
+  detail: v.union(v.string(), v.null()),
+  url: v.union(v.string(), v.null()),
+  occurredAt: v.number(),
+});
+
+/** The workbench feed for a repo — newest first, capped. */
+export const readWorkbench = query({
+  args: { installationId: v.number(), owner: v.string(), repo: v.string() },
+  returns: v.array(workbenchEventValidator),
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("workbenchEvent")
+      .withIndex("by_installation_and_repo_and_occurredAt", (q) =>
+        q
+          .eq("installationId", args.installationId)
+          .eq("owner", args.owner)
+          .eq("repo", args.repo),
+      )
+      .order("desc")
+      .take(100);
+    return rows.map((row) => ({
+      id: row.eventId,
+      kind: row.kind,
+      actor: row.actor,
+      actorAvatarUrl: row.actorAvatarUrl,
+      pullNumber: row.pullNumber,
+      title: row.title,
+      detail: row.detail,
+      url: row.url,
+      occurredAt: row.occurredAt,
+    }));
   },
 });
