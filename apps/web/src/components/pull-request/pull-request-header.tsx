@@ -5,6 +5,7 @@ import { GithubProfile } from "@/components/github/github-profile";
 import { AppHeader } from "@/components/layout/app-header";
 import { BranchChip } from "@/components/layout/branch-chip";
 import { DiffStat } from "@/components/pull-request/diff-stat";
+import { useDiffTrailSlot } from "@/components/pull-request/diff-trail-slot";
 import { PullRequestMergeButton } from "@/components/pull-request/pull-request-merge-button";
 import { PullRequestSwitcher } from "@/components/pull-request/pull-request-switcher";
 import { plural } from "@/lib/claims";
@@ -43,6 +44,7 @@ export function PullRequestHeader({
   const { repository, stats, author } = pullRequest;
   const label = pullRequest.draft ? "draft" : pullRequest.state;
   const tone = pullRequest.draft ? "neutral" : STATE_TONES[pullRequest.state];
+  const trailSlot = useDiffTrailSlot();
 
   return (
     <header className="flex flex-col">
@@ -96,7 +98,14 @@ export function PullRequestHeader({
         {progress ? <span className="ml-auto">{progress}</span> : null}
       </div>
       {tabs ? (
-        <div className="border-border border-t px-2 pt-1 pb-1">{tabs}</div>
+        <div className="flex items-center gap-2 border-border border-t px-2 pt-1 pb-1">
+          {tabs}
+          {trailSlot ? (
+            <div className="ml-auto flex min-w-0 items-center pr-1">
+              {trailSlot}
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </header>
   );

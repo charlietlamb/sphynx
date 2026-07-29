@@ -1,15 +1,14 @@
-import { XIcon } from "@phosphor-icons/react";
 import { getSingularPatch } from "@pierre/diffs";
 import { CodeView, type CodeViewHandle } from "@pierre/diffs/react";
 import type {
   PullRequestFile,
   PullRequestRef,
 } from "@sphynx/schema/pull-requests";
-import { Button } from "@sphynx/ui/components/ui/button";
 import { cn } from "@sphynx/ui/lib/utils";
 import { useCallback, useMemo } from "react";
 import { scrollToLine } from "@/components/pull-request/code-view-scroll";
 import { CARD_CLASSES } from "@/components/pull-request/diff-card-classes";
+import { DiffCardHeader } from "@/components/pull-request/diff-card-header";
 import {
   enrichWithContents,
   expandableFilePath,
@@ -24,9 +23,7 @@ import {
   useFileContents,
 } from "@/components/pull-request/pull-request-queries";
 import type { DefinitionRef } from "@/components/pull-request/pull-request-search";
-import { renderFileTypePrefix } from "@/components/pull-request/render-file-type-prefix";
 import { useDiffSymbolOptions } from "@/components/pull-request/use-diff-symbol-options";
-import { useViewedHeader } from "@/components/pull-request/use-viewed-header";
 
 const PANE_LAYOUT = { paddingTop: 0, paddingBottom: 8, gap: 0 };
 
@@ -82,26 +79,21 @@ export function DefinitionPane({
     [symbolOptions]
   );
 
-  const viewedHeader = useViewedHeader(viewedFiles, onSetViewed);
-  const renderHeaderMetadata = useCallback(
-    (item: { id: string }) => (
-      <span className="flex items-center gap-1.5">
-        {viewedHeader(item)}
-        <Button
-          aria-label="Close pane"
-          className="text-muted-foreground"
-          onClick={onClose}
-          size="icon-xs"
-          title="Close pane"
-          variant="ghost"
-        >
-          <XIcon />
-        </Button>
-      </span>
-    ),
-    [viewedHeader, onClose]
-  );
   const viewed = viewedFiles?.has(file.path) ?? false;
+  const renderCustomHeader = useCallback(
+    (item: { id: string }) => (
+      <DiffCardHeader
+        additions={file.additions}
+        deletions={file.deletions}
+        onClose={onClose}
+        onViewedChange={(next) => onSetViewed({ path: item.id, viewed: next })}
+        path={item.id}
+        viewed={viewedFiles?.has(item.id) ?? false}
+        viewedDisabled={viewedFiles === null}
+      />
+    ),
+    [file.additions, file.deletions, onClose, onSetViewed, viewedFiles]
+  );
 
   const contents = useFileContents(
     pullRequestRef,
@@ -155,8 +147,7 @@ export function DefinitionPane({
       items={items}
       options={options}
       ref={attachHandle}
-      renderHeaderMetadata={renderHeaderMetadata}
-      renderHeaderPrefix={renderFileTypePrefix}
+      renderCustomHeader={renderCustomHeader}
       selectedLines={selectedLines}
     />
   );

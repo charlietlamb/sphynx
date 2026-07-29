@@ -5,6 +5,7 @@ import type {
 import { useCallback, useMemo, useRef } from "react";
 import { DefinitionTrailBar } from "@/components/pull-request/definition-trail-bar";
 import { DiffColumns } from "@/components/pull-request/diff-columns";
+import { usePublishDiffTrail } from "@/components/pull-request/diff-trail-slot";
 import { DiffWorkerPool } from "@/components/pull-request/diff-worker-pool";
 import { DiffWorkspaceLayout } from "@/components/pull-request/diff-workspace-layout";
 import { FileList } from "@/components/pull-request/file-list";
@@ -251,31 +252,33 @@ export default function DiffWorkspace({
     />
   );
 
+  const { onPopTrail, onCloseTrail } = handlers;
+  const { setTrail: navSetTrail } = navigation;
+  const trailBar = useMemo(
+    () =>
+      trail.length > 0 ? (
+        <DefinitionTrailBar
+          onBack={onPopTrail}
+          onClose={onCloseTrail}
+          onTruncate={(index) => navSetTrail(trail.slice(0, index + 1))}
+          trail={trail}
+        />
+      ) : null,
+    [trail, onPopTrail, onCloseTrail, navSetTrail]
+  );
+  usePublishDiffTrail(trailBar);
+
   return (
     <DiffWorkerPool>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {trail.length > 0 || commenting.pendingReview.pendingId ? (
-          <div className="flex items-center gap-4 border-border border-b px-4 py-1.5">
-            <div className="min-w-0 flex-1">
-              {trail.length > 0 ? (
-                <DefinitionTrailBar
-                  onBack={handlers.onPopTrail}
-                  onClose={handlers.onCloseTrail}
-                  onTruncate={(index) =>
-                    navigation.setTrail(trail.slice(0, index + 1))
-                  }
-                  trail={trail}
-                />
-              ) : null}
-            </div>
-            {commenting.pendingReview.pendingId ? (
-              <ReviewSubmit
-                onDiscard={commenting.discardReview}
-                onSubmit={commenting.submitReview}
-                pendingReview={commenting.pendingReview}
-                submitting={commenting.submitting}
-              />
-            ) : null}
+        {commenting.pendingReview.pendingId ? (
+          <div className="flex items-center justify-end border-border border-b px-4 py-1.5">
+            <ReviewSubmit
+              onDiscard={commenting.discardReview}
+              onSubmit={commenting.submitReview}
+              pendingReview={commenting.pendingReview}
+              submitting={commenting.submitting}
+            />
           </div>
         ) : null}
         <div className="flex min-h-0 min-w-0 flex-1">

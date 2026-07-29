@@ -6,6 +6,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { CARD_SURFACE } from "@/components/layout/pane-card";
 import {
+  DiffTrailSlotProvider,
+  useDiffTrailSlot,
+} from "@/components/pull-request/diff-trail-slot";
+import {
   EMPTY_SYMBOLS,
   type PatchMap,
 } from "@/components/pull-request/patch-map";
@@ -73,25 +77,40 @@ const PATCHES: PatchMap = new Map([
   ],
 ]);
 
+function DevHeader() {
+  const trailSlot = useDiffTrailSlot();
+  return (
+    <div className={CARD_SURFACE}>
+      <PullRequestHeaderSkeleton pullRequestRef={REF} />
+      <div className="flex h-8 items-center border-border border-t px-4">
+        <span className="text-muted-foreground text-xs">
+          Diff · Conversation
+        </span>
+        <div className="ml-auto flex min-w-0 items-center">{trailSlot}</div>
+      </div>
+    </div>
+  );
+}
+
 function DevPr() {
   return (
     <main className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
-      <div className="flex min-h-0 flex-1 flex-col gap-2.5 p-2.5">
-        <div className={CARD_SURFACE}>
-          <PullRequestHeaderSkeleton pullRequestRef={REF} />
+      <DiffTrailSlotProvider>
+        <div className="flex min-h-0 flex-1 flex-col gap-2.5 p-2.5">
+          <DevHeader />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Suspense fallback={<WorkspaceSkeleton />}>
+              <DiffWorkspace
+                files={FILES}
+                headSha={"0".repeat(40)}
+                patches={PATCHES}
+                pullRequestRef={REF}
+                symbolIndex={EMPTY_SYMBOLS}
+              />
+            </Suspense>
+          </div>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col">
-          <Suspense fallback={<WorkspaceSkeleton />}>
-            <DiffWorkspace
-              files={FILES}
-              headSha={"0".repeat(40)}
-              patches={PATCHES}
-              pullRequestRef={REF}
-              symbolIndex={EMPTY_SYMBOLS}
-            />
-          </Suspense>
-        </div>
-      </div>
+      </DiffTrailSlotProvider>
     </main>
   );
 }

@@ -7,6 +7,7 @@ import { CARD_SURFACE } from "@/components/layout/pane-card";
 import { useAccessBlock } from "@/components/pull-request/access-block-store";
 import { ConversationSkeleton } from "@/components/pull-request/conversation-skeleton";
 import { DiffPanel } from "@/components/pull-request/diff-panel";
+import { DiffTrailSlotProvider } from "@/components/pull-request/diff-trail-slot";
 import {
   EMPTY_PATCHES,
   EMPTY_SYMBOLS,
@@ -122,55 +123,57 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
           title="Sphynx is better on desktop"
         />
       </div>
-      <div className="hidden min-h-0 flex-1 flex-col gap-2.5 p-2.5 md:flex">
-        <div className={CARD_SURFACE}>
-          {pullRequest.isPending ? (
-            <PullRequestHeaderSkeleton pullRequestRef={pullRequestRef} />
-          ) : (
-            <PullRequestHeader
-              canAct={Boolean(session?.user)}
-              progress={
-                viewedFiles && patches.data ? (
-                  <ViewedProgress
-                    total={patches.data.files.length}
-                    viewed={
-                      patches.data.files.filter((candidate) =>
-                        viewedFiles.has(candidate.path)
-                      ).length
+      <DiffTrailSlotProvider>
+        <div className="hidden min-h-0 flex-1 flex-col gap-2.5 p-2.5 md:flex">
+          <div className={CARD_SURFACE}>
+            {pullRequest.isPending ? (
+              <PullRequestHeaderSkeleton pullRequestRef={pullRequestRef} />
+            ) : (
+              <PullRequestHeader
+                canAct={Boolean(session?.user)}
+                progress={
+                  viewedFiles && patches.data ? (
+                    <ViewedProgress
+                      total={patches.data.files.length}
+                      viewed={
+                        patches.data.files.filter((candidate) =>
+                          viewedFiles.has(candidate.path)
+                        ).length
+                      }
+                    />
+                  ) : null
+                }
+                pullRequest={pullRequest.data}
+                refresh={
+                  freshness.hasNewChanges ? (
+                    <PullRequestRefresh
+                      onRefresh={freshness.refresh}
+                      refreshing={freshness.refreshing}
+                    />
+                  ) : null
+                }
+                tabs={
+                  <PullRequestTabs
+                    conversationCount={
+                      pullRequest.data.stats.comments +
+                      pullRequest.data.stats.reviewComments
                     }
+                    onTabChange={(next) => setSearch({ tab: next })}
+                    tab={tab}
                   />
-                ) : null
-              }
-              pullRequest={pullRequest.data}
-              refresh={
-                freshness.hasNewChanges ? (
-                  <PullRequestRefresh
-                    onRefresh={freshness.refresh}
-                    refreshing={freshness.refreshing}
-                  />
-                ) : null
-              }
-              tabs={
-                <PullRequestTabs
-                  conversationCount={
-                    pullRequest.data.stats.comments +
-                    pullRequest.data.stats.reviewComments
-                  }
-                  onTabChange={(next) => setSearch({ tab: next })}
-                  tab={tab}
-                />
-              }
-            />
-          )}
+                }
+              />
+            )}
+          </div>
+          <ReviewAccessBanner
+            blockedMessage={accessBlock}
+            owner={pullRequestRef.owner}
+          />
+          <div className="fade-in flex min-h-0 flex-1 animate-in flex-col duration-150">
+            {tab === "conversation" ? conversationContent : filesContent}
+          </div>
         </div>
-        <ReviewAccessBanner
-          blockedMessage={accessBlock}
-          owner={pullRequestRef.owner}
-        />
-        <div className="fade-in flex min-h-0 flex-1 animate-in flex-col duration-150">
-          {tab === "conversation" ? conversationContent : filesContent}
-        </div>
-      </div>
+      </DiffTrailSlotProvider>
     </main>
   );
 }
