@@ -94,7 +94,7 @@ export function MosaicDashboardShell({
   );
 
   return (
-    <main className="flex h-svh min-h-[640px] flex-col overflow-hidden bg-background text-foreground">
+    <main className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
       <div className="flex flex-1 flex-col overflow-y-auto p-2.5 md:hidden">
         <PaneCard className="mb-2.5 h-auto">
           <AppHeader githubUrl={githubUrl} switcher={switcher} />
