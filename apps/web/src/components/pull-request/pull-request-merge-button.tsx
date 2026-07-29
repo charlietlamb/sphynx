@@ -1,19 +1,9 @@
 import { GitMergeIcon } from "@phosphor-icons/react";
 import type { PullRequestSummary } from "@sphynx/schema/pull-requests";
 import { ShortcutButton } from "@sphynx/ui/components/shortcut-button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@sphynx/ui/components/ui/alert-dialog";
 import { useHotkey } from "@sphynx/ui/hooks/use-hotkey";
 import { useCallback, useState } from "react";
+import { ConfirmActionDialog } from "@/components/dashboard/confirm-action-dialog";
 import { useMergePullRequest } from "@/components/pull-request/pull-request-queries";
 
 interface PullRequestMergeButtonProps {
@@ -51,34 +41,27 @@ export function PullRequestMergeButton({
   };
 
   return (
-    <AlertDialog onOpenChange={setOpen} open={open}>
-      <AlertDialogTrigger
-        render={
-          <ShortcutButton
-            className="btn-primary-glow h-8 gap-1.5 text-xs"
-            disabled={!canAct || merging}
-            shortcut="M"
-            size="sm"
-            title={canAct ? undefined : "Sign in to merge"}
-          >
-            <GitMergeIcon className="size-3.5" weight="fill" />
-            Merge
-          </ShortcutButton>
-        }
+    <>
+      <ShortcutButton
+        className="btn-primary-glow h-8 gap-1.5 text-xs"
+        disabled={!canAct || merging}
+        onClick={() => setOpen(true)}
+        shortcut="M"
+        size="sm"
+        title={canAct ? undefined : "Sign in to merge"}
+      >
+        <GitMergeIcon className="size-3.5" weight="fill" />
+        Merge
+      </ShortcutButton>
+      <ConfirmActionDialog
+        confirmDisabled={merging}
+        confirmLabel={`Merge #${pullRequest.number}`}
+        description={`${pullRequest.head.ref} will be merged into ${pullRequest.base.ref}. This cannot be undone.`}
+        onConfirm={confirmMerge}
+        onOpenChange={setOpen}
+        open={open}
+        title={`Merge #${pullRequest.number}?`}
       />
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Merge #{pullRequest.number}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {pullRequest.head.ref} will be merged into {pullRequest.base.ref}.
-            This cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmMerge}>Merge</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    </>
   );
 }

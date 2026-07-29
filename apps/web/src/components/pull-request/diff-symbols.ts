@@ -22,11 +22,17 @@ export const DIFF_UNSAFE_CSS = `
   gap: 0.5rem;
   align-items: center;
 }
+/*
+ * The file header is sticky, so it can detach from the card's real (scrolled
+ * away) rounded top. Give it its own opaque rounded top with a hairline border
+ * via a ::before so a stuck header reads as the top of the card and masks the
+ * code scrolling behind it. At rest the header sits at the card's top where the
+ * radius already matches, so the treatment is invisible there.
+ */
 [data-diffs-header] {
   border-bottom: 1px solid var(--border);
-}
-[data-diffs-header][data-sticky] {
-  container-type: scroll-state;
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
 }
 [data-diffs-header]::before {
   content: "";
@@ -34,8 +40,10 @@ export const DIFF_UNSAFE_CSS = `
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  border: 0 solid var(--border);
-  border-radius: 0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
 }
 [data-diffs-header]::after {
   content: "";
@@ -43,18 +51,11 @@ export const DIFF_UNSAFE_CSS = `
   inset: 0 0 auto 0;
   height: 2px;
   background: transparent;
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
 }
 :host([data-active]) [data-diffs-header]::after {
   background: var(--primary);
-}
-@container scroll-state(stuck: top) {
-  [data-diffs-header]::before {
-    border-width: 1px 0 0 0;
-    border-radius: var(--radius) var(--radius) 0 0;
-  }
-  [data-diffs-header]::after {
-    border-radius: var(--radius) var(--radius) 0 0;
-  }
 }
 [data-separator="line-info"] [data-separator-wrapper] {
   width: 100cqi;
