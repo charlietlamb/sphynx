@@ -141,18 +141,26 @@ describe("buildBranchQueue", () => {
     expect(main?.nodes[0]?.children).toHaveLength(0);
   });
 
-  test("ranks contested before ready before drafts within a branch", () => {
-    const draft = pull({ number: 1, headRefName: "a", isDraft: true });
-    const ready = pull({ number: 2, headRefName: "b", decision: "ready" });
-    const contested = pull({
+  test("orders pulls newest first within a branch, like GitHub", () => {
+    const oldest = pull({
+      number: 1,
+      headRefName: "a",
+      updatedAt: "2026-06-01T00:00:00Z",
+    });
+    const newest = pull({
+      number: 2,
+      headRefName: "b",
+      updatedAt: "2026-07-15T00:00:00Z",
+    });
+    const middle = pull({
       number: 3,
       headRefName: "c",
-      decision: "contested",
+      updatedAt: "2026-06-20T00:00:00Z",
     });
-    const queue = buildBranchQueue(flow([draft, ready, contested]));
+    const queue = buildBranchQueue(flow([oldest, newest, middle]));
     expect(queue.order).toEqual([
-      "acme/widgets#3",
       "acme/widgets#2",
+      "acme/widgets#3",
       "acme/widgets#1",
     ]);
   });

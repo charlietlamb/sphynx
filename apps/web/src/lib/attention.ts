@@ -85,22 +85,8 @@ export interface BranchQueue {
   order: string[];
 }
 
-const DECISION_RANK: Record<QueuePull["decision"], number> = {
-  contested: 0,
-  ready: 1,
-  "needs-eyes": 2,
-  draft: 3,
-};
-
-function rankOf(pull: QueuePull) {
-  return pull.isDraft ? DECISION_RANK.draft : DECISION_RANK[pull.decision];
-}
-
-function byAttention(a: QueuePull, b: QueuePull) {
-  const rank = rankOf(a) - rankOf(b);
-  if (rank !== 0) {
-    return rank;
-  }
+/** Newest first, like GitHub's default pull-request ordering. */
+function byAge(a: QueuePull, b: QueuePull) {
   return b.updatedAt.localeCompare(a.updatedAt);
 }
 
@@ -109,7 +95,7 @@ function buildNode(
   childrenByBase: Map<string, QueuePull[]>
 ): StackNode {
   const children = (childrenByBase.get(pull.headRefName) ?? [])
-    .sort(byAttention)
+    .sort(byAge)
     .map((child) => buildNode(child, childrenByBase));
   return { pull, children };
 }
@@ -315,7 +301,7 @@ export function buildBranchQueue(flow: RepoFlow): BranchQueue {
 
   const groups: BranchGroup[] = branches.map((branch) => {
     const nodes = (rootsByBase.get(branch) ?? [])
-      .sort(byAttention)
+      .sort(byAge)
       .map((pull) => buildNode(pull, childrenByBase));
     const counts = countNodes(nodes);
     return {
