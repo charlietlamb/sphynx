@@ -71,6 +71,10 @@ export const materialize = internalAction({
   returns: v.object({ repoCount: v.number() }),
   handler: async (ctx, args): Promise<{ repoCount: number }> => {
     const snapshotAt = args.now;
+    await ctx.runMutation(internal.github.reconcile.markInstallation, {
+      installationId: args.installationId,
+      reconciledAt: args.now,
+    });
     const accessToken = await token(ctx, args.installationId, args.now);
     const pipeline = await Effect.runPromise(buildPipeline(accessToken));
     for (const flow of pipeline.repos) {

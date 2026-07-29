@@ -143,6 +143,11 @@ export default defineSchema({
     .index("by_deliveryId", ["deliveryId"])
     .index("by_receivedAt", ["receivedAt"]),
 
+  installation: defineTable({
+    installationId: v.number(),
+    reconciledAt: v.union(v.number(), v.null()),
+  }).index("by_installationId", ["installationId"]),
+
   installationToken: defineTable({
     installationId: v.number(),
     token: v.string(),

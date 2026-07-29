@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as crons from "../crons.js";
 import type * as github_appAuth from "../github/appAuth.js";
 import type * as github_appJwt from "../github/appJwt.js";
 import type * as github_domain from "../github/domain.js";
@@ -24,6 +25,7 @@ import type * as github_prune from "../github/prune.js";
 import type * as github_queueDecision from "../github/queueDecision.js";
 import type * as github_queueMappers from "../github/queueMappers.js";
 import type * as github_reader from "../github/reader.js";
+import type * as github_reconcile from "../github/reconcile.js";
 import type * as github_refresh from "../github/refresh.js";
 import type * as github_reviewQueue from "../github/reviewQueue.js";
 import type * as github_rows from "../github/rows.js";
@@ -46,6 +48,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  crons: typeof crons;
   "github/appAuth": typeof github_appAuth;
   "github/appJwt": typeof github_appJwt;
   "github/domain": typeof github_domain;
@@ -62,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   "github/queueDecision": typeof github_queueDecision;
   "github/queueMappers": typeof github_queueMappers;
   "github/reader": typeof github_reader;
+  "github/reconcile": typeof github_reconcile;
   "github/refresh": typeof github_refresh;
   "github/reviewQueue": typeof github_reviewQueue;
   "github/rows": typeof github_rows;
