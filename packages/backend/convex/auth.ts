@@ -9,6 +9,13 @@ import type { DataModel } from "./_generated/dataModel";
 
 const siteUrl = process.env.SITE_URL ?? "http://localhost:3006";
 
+/**
+ * The public origin Better Auth builds OAuth redirects against. In production
+ * this is the deployment's own CONVEX_SITE_URL; in tunneled local dev, set
+ * AUTH_PUBLIC_URL to the ngrok URL so the GitHub callback matches.
+ */
+const authBaseUrl = process.env.AUTH_PUBLIC_URL ?? process.env.CONVEX_SITE_URL;
+
 export const authComponent = createClient<DataModel, typeof authSchema>(
   components.betterAuth,
   { local: { schema: authSchema } },
@@ -25,7 +32,7 @@ function githubProvider() {
 
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
   ({
-    baseURL: process.env.CONVEX_SITE_URL,
+    baseURL: authBaseUrl,
     trustedOrigins: [siteUrl],
     database: authComponent.adapter(ctx),
     session: {
