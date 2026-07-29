@@ -11,7 +11,7 @@ export const readToken = internalQuery({
     const row = await ctx.db
       .query("installationToken")
       .withIndex("by_installationId", (q) =>
-        q.eq("installationId", args.installationId),
+        q.eq("installationId", args.installationId)
       )
       .unique();
     if (row === null || row.expiresAt - TOKEN_SKEW_MS <= args.now) {
@@ -32,7 +32,7 @@ export const storeToken = internalMutation({
     const row = await ctx.db
       .query("installationToken")
       .withIndex("by_installationId", (q) =>
-        q.eq("installationId", args.installationId),
+        q.eq("installationId", args.installationId)
       )
       .unique();
     if (row === null) {

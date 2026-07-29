@@ -1,9 +1,9 @@
 import { Effect, Schema } from "effect";
 import {
+  type GitHubError,
   GitHubRateLimited,
   GitHubTimeout,
   GitHubUnavailable,
-  type GitHubError,
   honorRateLimit,
   pullRequestNotFound,
   RetryableGitHubError,
@@ -33,13 +33,13 @@ export const configFromEnv = (): GitHubConfig => ({
  * read. Headers are case-insensitive on `fetch`, so a plain lookup by lower-case
  * name is sufficient, matching the Effect HttpClient's normalized `headers`.
  */
-interface RawResponse {
-  readonly status: number;
+export interface RawResponse {
   readonly header: (name: string) => string | null;
   readonly json: () => Promise<unknown>;
+  readonly status: number;
 }
 
-export const resetAt = (response: RawResponse) => {
+const resetAt = (response: RawResponse) => {
   const reset = response.header("x-ratelimit-reset");
   if (!reset) {
     return null;
@@ -48,13 +48,13 @@ export const resetAt = (response: RawResponse) => {
   return Number.isNaN(seconds) ? null : new Date(seconds * 1000).toISOString();
 };
 
-export const retryAfter = (response: RawResponse) => {
+const retryAfter = (response: RawResponse) => {
   const value = response.header("retry-after");
   const seconds = value ? Number(value) : Number.NaN;
   return Number.isNaN(seconds) ? null : seconds;
 };
 
-export const isRateLimited = (response: RawResponse) =>
+const isRateLimited = (response: RawResponse) =>
   response.status === 429 ||
   (response.status === 403 &&
     (response.header("x-ratelimit-remaining") === "0" ||
@@ -69,10 +69,11 @@ const RATE_LIMIT_MESSAGE = /rate limit/i;
  * 403, so status-based detection misses it. Classifying it as GitHubRateLimited
  * lets `honorRateLimit` back off instead of the reconcile loop hammering GitHub.
  */
-const isRateLimitMessage = (message: string) => RATE_LIMIT_MESSAGE.test(message);
+const isRateLimitMessage = (message: string) =>
+  RATE_LIMIT_MESSAGE.test(message);
 
 const GraphQLErrors = Schema.optional(
-  Schema.Array(Schema.Struct({ message: Schema.String })),
+  Schema.Array(Schema.Struct({ message: Schema.String }))
 );
 
 /**
@@ -91,7 +92,7 @@ const doFetch = (
     body?: Record<string, unknown>;
     ifNoneMatch?: string | null;
     authScheme?: "Bearer" | "token";
-  } = {},
+  } = {}
 ): Effect.Effect<RawResponse, RetryableGitHubError> =>
   Effect.tryPromise({
     try: async () => {
@@ -121,7 +122,7 @@ const doFetch = (
   });
 
 const rejectFailedRest = (
-  response: RawResponse,
+  response: RawResponse
 ): Effect.Effect<void, GitHubError | RetryableGitHubError> =>
   Effect.gen(function* () {
     if (isRateLimited(response)) {
@@ -130,12 +131,12 @@ const rejectFailedRest = (
           message: "GitHub rate limit exceeded",
           retryAfterSeconds: retryAfter(response),
           resetAt: resetAt(response),
-        }),
+        })
       );
     }
     if (response.status === 401 || response.status === 403) {
       return yield* Effect.fail(
-        new Unauthorized({ message: "GitHub rejected the request" }),
+        new Unauthorized({ message: "GitHub rejected the request" })
       );
     }
     if (response.status === 404) {
@@ -145,7 +146,7 @@ const rejectFailedRest = (
       return yield* Effect.fail(
         new RetryableGitHubError({
           message: `GitHub returned ${response.status}`,
-        }),
+        })
       );
     }
     if (response.status >= 400) {
@@ -164,7 +165,7 @@ const rejectFailedRest = (
   });
 
 const rejectFailedGraphql = (
-  response: RawResponse,
+  response: RawResponse
 ): Effect.Effect<
   void,
   Unauthorized | RetryableGitHubError | GitHubUnavailable | GitHubRateLimited
@@ -176,33 +177,33 @@ const rejectFailedGraphql = (
         message: "GitHub GraphQL rate limit exceeded",
         retryAfterSeconds: retryAfter(response),
         resetAt: resetAt(response),
-      }),
+      })
     );
   }
   if (status === 401 || status === 403) {
     return Effect.fail(
-      new Unauthorized({ message: "GitHub rejected the request" }),
+      new Unauthorized({ message: "GitHub rejected the request" })
     );
   }
   if (status >= 500) {
     return Effect.fail(
-      new RetryableGitHubError({ message: `GitHub returned ${status}` }),
+      new RetryableGitHubError({ message: `GitHub returned ${status}` })
     );
   }
   if (status >= 400) {
     return Effect.fail(
       new GitHubUnavailable({
         message: `GitHub rejected the request with ${status}`,
-      }),
+      })
     );
   }
   return Effect.void;
 };
 
-const decodeBody = <A, I>(
+export const decodeBody = <A, I>(
   response: RawResponse,
   schema: Schema.Schema<A, I, never>,
-  onError: string,
+  onError: string
 ): Effect.Effect<A, GitHubUnavailable> =>
   Effect.tryPromise({
     try: () => response.json(),
@@ -210,9 +211,9 @@ const decodeBody = <A, I>(
   }).pipe(
     Effect.flatMap((body) =>
       Schema.decodeUnknown(schema)(body).pipe(
-        Effect.mapError(() => new GitHubUnavailable({ message: onError })),
-      ),
-    ),
+        Effect.mapError(() => new GitHubUnavailable({ message: onError }))
+      )
+    )
   );
 
 /**
@@ -234,11 +235,11 @@ export const makeGitHubClient = (config: GitHubConfig) => {
     method: RestMethod,
     path: string,
     body?: Record<string, unknown>,
-    ifNoneMatch?: string | null,
+    ifNoneMatch?: string | null
   ): Effect.Effect<RawResponse, GitHubError> =>
     doFetch(config, token, method, path, { body, ifNoneMatch }).pipe(
       Effect.flatMap((response) =>
-        rejectFailedRest(response).pipe(Effect.as(response)),
+        rejectFailedRest(response).pipe(Effect.as(response))
       ),
       Effect.retry({
         schedule: retryPolicy,
@@ -248,14 +249,14 @@ export const makeGitHubClient = (config: GitHubConfig) => {
       Effect.mapError((error) =>
         error._tag === "RetryableGitHubError"
           ? new GitHubUnavailable({ message: error.message })
-          : error,
+          : error
       ),
       Effect.timeoutFail({
         duration: config.timeoutMillis,
         onTimeout: () =>
           new GitHubTimeout({ message: "GitHub request timed out" }),
       }),
-      honorRateLimit(),
+      honorRateLimit()
     );
 
   /**
@@ -266,25 +267,25 @@ export const makeGitHubClient = (config: GitHubConfig) => {
     token: string,
     path: string,
     schema: Schema.Schema<A, I, never>,
-    onError: string,
+    onError: string
   ): Effect.Effect<A, GitHubError> =>
     rest(token, "GET", path).pipe(
-      Effect.flatMap((response) => decodeBody(response, schema, onError)),
+      Effect.flatMap((response) => decodeBody(response, schema, onError))
     );
 
   const query = <A, I>(
     token: string,
     dataSchema: Schema.Schema<A, I, never>,
     document: string,
-    variables: Record<string, unknown>,
+    variables: Record<string, unknown>
   ): Effect.Effect<A, GitHubError> =>
     Effect.gen(function* () {
       const response = yield* doFetch(config, token, "POST", "/graphql", {
         body: { query: document, variables },
       }).pipe(
         Effect.mapError(
-          () => new GitHubUnavailable({ message: "GitHub is unreachable" }),
-        ),
+          () => new GitHubUnavailable({ message: "GitHub is unreachable" })
+        )
       );
       yield* rejectFailedGraphql(response);
       const envelope = yield* decodeBody(
@@ -293,7 +294,7 @@ export const makeGitHubClient = (config: GitHubConfig) => {
           data: Schema.NullishOr(dataSchema),
           errors: GraphQLErrors,
         }),
-        "Invalid GitHub response",
+        "Invalid GitHub response"
       );
       const firstError = envelope.errors?.[0];
       if (envelope.data === null || envelope.data === undefined) {
@@ -303,18 +304,18 @@ export const makeGitHubClient = (config: GitHubConfig) => {
               message: firstError.message,
               retryAfterSeconds: retryAfter(response),
               resetAt: resetAt(response),
-            }),
+            })
           );
         }
         return yield* Effect.fail(
           new GitHubUnavailable({
             message: firstError ? firstError.message : "Empty GitHub response",
-          }),
+          })
         );
       }
       if (firstError) {
         yield* Effect.logWarning("GitHub returned partial data").pipe(
-          Effect.annotateLogs({ "github.graphql_error": firstError.message }),
+          Effect.annotateLogs({ "github.graphql_error": firstError.message })
         );
       }
       return envelope.data;
@@ -326,14 +327,14 @@ export const makeGitHubClient = (config: GitHubConfig) => {
       }),
       Effect.catchTag(
         "RetryableGitHubError",
-        (error) => new GitHubUnavailable({ message: error.message }),
+        (error) => new GitHubUnavailable({ message: error.message })
       ),
       Effect.timeoutFail({
         duration: config.timeoutMillis,
         onTimeout: () =>
           new GitHubTimeout({ message: "GitHub request timed out" }),
       }),
-      honorRateLimit(),
+      honorRateLimit()
     );
 
   return { rest, restJson, query } as const;

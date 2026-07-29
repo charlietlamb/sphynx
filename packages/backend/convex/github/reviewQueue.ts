@@ -1,7 +1,7 @@
 import { Array as Arr, Effect, Schema } from "effect";
 import type { QueuePull } from "./domain";
-import type { GitHubClient } from "./githubClient";
-import { GitHubUnavailable, type GitHubError } from "./githubErrors";
+import { decodeBody, type GitHubClient } from "./githubClient";
+import type { GitHubError } from "./githubErrors";
 import {
   BatchedPullsSchema,
   PULL_FIELDS_FRAGMENT,
@@ -22,7 +22,7 @@ ${PULL_FIELDS_FRAGMENT}`;
 
 const SinglePullSchema = Schema.Struct({
   repository: Schema.NullOr(
-    Schema.Struct({ pullRequest: Schema.NullOr(RawPullSchema) }),
+    Schema.Struct({ pullRequest: Schema.NullOr(RawPullSchema) })
   ),
 });
 
@@ -80,7 +80,7 @@ export function repoKey(entry: { owner: string; repo: string }) {
 export const makeReviewQueue = (client: GitHubClient) => {
   const openPullsChunk = (
     repos: readonly { owner: string; repo: string }[],
-    token: string,
+    token: string
   ): Effect.Effect<Map<string, QueuePull[]>, GitHubError> => {
     const selections = repos
       .map(
@@ -89,7 +89,7 @@ export const makeReviewQueue = (client: GitHubClient) => {
     pullRequests(states: [OPEN], first: ${OPEN_PULLS_PER_REPO}, orderBy: { field: UPDATED_AT, direction: DESC }) {
       nodes { ...PullFields }
     }
-  }`,
+  }`
       )
       .join("\n");
     const document = `query {\n${selections}\n}\n${PULL_FIELDS_FRAGMENT}`;
@@ -102,19 +102,19 @@ export const makeReviewQueue = (client: GitHubClient) => {
             byRepo.set(
               repoKey(entry),
               node.pullRequests.nodes.map((pull) =>
-                toQueuePull(entry.owner, entry.repo, pull),
-              ),
+                toQueuePull(entry.owner, entry.repo, pull)
+              )
             );
           }
         });
         return byRepo;
-      }),
+      })
     );
   };
 
   const openPullsForRepos = (
     repos: readonly { owner: string; repo: string }[],
-    token: string,
+    token: string
   ): Effect.Effect<Map<string, QueuePull[]>, GitHubError> => {
     if (repos.length === 0) {
       return Effect.succeed(new Map());
@@ -127,13 +127,13 @@ export const makeReviewQueue = (client: GitHubClient) => {
     }).pipe(
       Effect.map((maps) => new Map(maps.flatMap((entries) => [...entries]))),
       Effect.withSpan("GitHubReviewQueue.openPullsForRepos"),
-      Effect.annotateLogs({ repoCount: repos.length }),
+      Effect.annotateLogs({ repoCount: repos.length })
     );
   };
 
   const reposPage = (
     token: string,
-    page: number,
+    page: number
   ): Effect.Effect<
     { repositories: readonly InstallationRepo[]; nextPage: number | null },
     GitHubError
@@ -142,33 +142,21 @@ export const makeReviewQueue = (client: GitHubClient) => {
       .rest(
         token,
         "GET",
-        `/installation/repositories?per_page=100&page=${page}`,
+        `/installation/repositories?per_page=100&page=${page}`
       )
       .pipe(
         Effect.flatMap((response) =>
-          Effect.tryPromise({
-            try: () => response.json(),
-            catch: () =>
-              new GitHubUnavailable({
-                message: "Invalid installation repositories response",
-              }),
-          }).pipe(
-            Effect.flatMap((body) =>
-              Schema.decodeUnknown(InstallationReposSchema)(body).pipe(
-                Effect.mapError(
-                  () =>
-                    new GitHubUnavailable({
-                      message: "Invalid installation repositories response",
-                    }),
-                ),
-              ),
-            ),
+          decodeBody(
+            response,
+            InstallationReposSchema,
+            "Invalid installation repositories response"
+          ).pipe(
             Effect.map((decoded) => ({
               repositories: decoded.repositories,
               nextPage: nextInstallationPage(response.header("link")),
-            })),
-          ),
-        ),
+            }))
+          )
+        )
       );
 
   /**
@@ -178,7 +166,7 @@ export const makeReviewQueue = (client: GitHubClient) => {
    * later page and would otherwise never surface in the switcher.
    */
   const discoverRepos = (
-    token: string,
+    token: string
   ): Effect.Effect<{ owner: string; repo: string }[], GitHubError> =>
     Effect.gen(function* () {
       const repositories: InstallationRepo[] = [];
@@ -208,31 +196,24 @@ export const makeReviewQueue = (client: GitHubClient) => {
    */
   const repoEvents = (
     entry: { owner: string; repo: string },
-    token: string,
+    token: string
   ): Effect.Effect<readonly unknown[], GitHubError> =>
     client
-      .rest(token, "GET", `/repos/${entry.owner}/${entry.repo}/events?per_page=100`)
+      .rest(
+        token,
+        "GET",
+        `/repos/${entry.owner}/${entry.repo}/events?per_page=100`
+      )
       .pipe(
         Effect.flatMap((response) =>
-          Effect.tryPromise({
-            try: () => response.json(),
-            catch: () =>
-              new GitHubUnavailable({ message: "Invalid events response" }),
-          }).pipe(
-            Effect.flatMap((body) =>
-              Schema.decodeUnknown(Schema.Array(Schema.Unknown))(body).pipe(
-                Effect.mapError(
-                  () =>
-                    new GitHubUnavailable({
-                      message: "Invalid events response",
-                    }),
-                ),
-              ),
-            ),
-          ),
+          decodeBody(
+            response,
+            Schema.Array(Schema.Unknown),
+            "Invalid events response"
+          )
         ),
         Effect.withSpan("GitHubReviewQueue.repoEvents"),
-        Effect.annotateLogs({ "github.repo": repoKey(entry) }),
+        Effect.annotateLogs({ "github.repo": repoKey(entry) })
       );
 
   /**
@@ -242,7 +223,7 @@ export const makeReviewQueue = (client: GitHubClient) => {
    */
   const refreshPull = (
     ref: { owner: string; repo: string; number: number },
-    token: string,
+    token: string
   ): Effect.Effect<QueuePull | null, GitHubError> =>
     client
       .query(token, SinglePullSchema, SINGLE_PULL_QUERY, {
@@ -255,7 +236,7 @@ export const makeReviewQueue = (client: GitHubClient) => {
           const pull = data.repository?.pullRequest ?? null;
           return pull === null ? null : toQueuePull(ref.owner, ref.repo, pull);
         }),
-        Effect.withSpan("GitHubReviewQueue.refreshPull"),
+        Effect.withSpan("GitHubReviewQueue.refreshPull")
       );
 
   return {

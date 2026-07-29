@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import { internalQuery, query } from "../_generated/server";
-import { toQueuePull, toRepoFlows } from "./readModel";
+import { queuePullFromDoc, toRepoFlows } from "./readModel";
 import { repoKeyOf } from "./rows";
 import {
   pipelineValidator,
@@ -17,7 +17,10 @@ export const pullNumbersForHead = internalQuery({
     const rows = await ctx.db
       .query("pullHead")
       .withIndex("by_owner_and_repo_and_headSha", (q) =>
-        q.eq("owner", args.owner).eq("repo", args.repo).eq("headSha", args.headSha),
+        q
+          .eq("owner", args.owner)
+          .eq("repo", args.repo)
+          .eq("headSha", args.headSha)
       )
       .collect();
     return rows.map((row) => row.number);
@@ -28,7 +31,7 @@ async function openPulls(ctx: QueryCtx, installationId: number) {
   return await ctx.db
     .query("reviewPull")
     .withIndex("by_installation_and_state", (q) =>
-      q.eq("installationId", installationId).eq("state", "open"),
+      q.eq("installationId", installationId).eq("state", "open")
     )
     .collect();
 }
@@ -55,7 +58,7 @@ export const getPipeline = query({
       ctx.db
         .query("stageGap")
         .withIndex("by_installation", (q) =>
-          q.eq("installationId", args.installationId),
+          q.eq("installationId", args.installationId)
         )
         .collect(),
     ]);
@@ -85,10 +88,10 @@ export const getRepoPulls = query({
     const pulls = await ctx.db
       .query("reviewPull")
       .withIndex("by_repo_and_state", (q) =>
-        q.eq("repoKey", repoKey).eq("state", "open"),
+        q.eq("repoKey", repoKey).eq("state", "open")
       )
       .collect();
-    return pulls.map(toQueuePull);
+    return pulls.map(queuePullFromDoc);
   },
 });
 
@@ -112,7 +115,7 @@ const workbenchEventValidator = v.object({
   kind: v.string(),
   pull: v.union(
     v.object({ number: v.number(), title: v.union(v.string(), v.null()) }),
-    v.null(),
+    v.null()
   ),
   detail: v.union(v.string(), v.null()),
   url: v.union(v.string(), v.null()),
@@ -129,7 +132,7 @@ export const readWorkbench = query({
         q
           .eq("installationId", args.installationId)
           .eq("owner", args.owner)
-          .eq("repo", args.repo),
+          .eq("repo", args.repo)
       )
       .order("desc")
       .take(100);

@@ -1,7 +1,7 @@
 "use node";
 
-import { Effect } from "effect";
 import { v } from "convex/values";
+import { Effect } from "effect";
 import { action } from "../_generated/server";
 import { getInstallationToken } from "./installationToken";
 import { queuePullValidator } from "./validators";
@@ -22,29 +22,34 @@ export const search = action({
     const token = await getInstallationToken(
       ctx,
       args.installationId,
-      Date.now(),
+      Date.now()
     );
     return await Effect.runPromise(
-      searchPulls(args.query, args.limit ?? 30, token),
+      searchPulls(args.query, args.limit ?? 30, token)
     );
   },
 });
 
 /** A pull request's rendered body HTML, for the dossier. */
 export const getPullBody = action({
-  args: { installationId: v.number(), owner: v.string(), repo: v.string(), number: v.number() },
+  args: {
+    installationId: v.number(),
+    owner: v.string(),
+    repo: v.string(),
+    number: v.number(),
+  },
   returns: v.object({ body: v.union(v.string(), v.null()) }),
   handler: async (ctx, args) => {
     const token = await getInstallationToken(
       ctx,
       args.installationId,
-      Date.now(),
+      Date.now()
     );
     return await Effect.runPromise(
       pullBody(
         { owner: args.owner, repo: args.repo, number: args.number },
-        token,
-      ),
+        token
+      )
     );
   },
 });

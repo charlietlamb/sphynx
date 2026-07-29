@@ -6,7 +6,7 @@ import { internalAction } from "../_generated/server";
 import { verifySignature } from "./verifyWebhook";
 
 function parsePayload(
-  body: string,
+  body: string
 ): { installation?: { id?: number } } & Record<string, unknown> {
   try {
     return JSON.parse(body);
@@ -33,7 +33,7 @@ export const ingestWebhook = internalAction({
     v.literal("accepted"),
     v.literal("duplicate"),
     v.literal("ping"),
-    v.literal("rejected"),
+    v.literal("rejected")
   ),
   handler: async (ctx, args) => {
     if (!verifySignature(args.body, args.signature)) {
@@ -53,7 +53,7 @@ export const ingestWebhook = internalAction({
         eventType: args.eventType,
         installationId: payload.installation?.id ?? null,
         receivedAt: args.now,
-      },
+      }
     );
     if (!inserted) {
       return "duplicate";

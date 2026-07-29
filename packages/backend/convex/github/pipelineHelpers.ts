@@ -43,7 +43,7 @@ const STALE_STAGE_THRESHOLD = 300;
 
 export function dropStaleMiddleStages(
   stages: readonly string[],
-  aheadOfMiddle: number | null,
+  aheadOfMiddle: number | null
 ) {
   if (
     stages.length === 3 &&

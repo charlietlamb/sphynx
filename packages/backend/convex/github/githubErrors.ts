@@ -5,7 +5,7 @@ export class Unauthorized extends Data.TaggedError("Unauthorized")<{
 }> {}
 
 export class PullRequestNotFound extends Data.TaggedError(
-  "PullRequestNotFound",
+  "PullRequestNotFound"
 )<{
   message: string;
 }> {}
@@ -25,7 +25,7 @@ export class GitHubRateLimited extends Data.TaggedError("GitHubRateLimited")<{
 }> {}
 
 export class RetryableGitHubError extends Data.TaggedError(
-  "RetryableGitHubError",
+  "RetryableGitHubError"
 )<{
   message: string;
 }> {}
@@ -47,7 +47,7 @@ export const pullRequestNotFound = () =>
  */
 export const retryPolicy = Schedule.exponential("100 millis").pipe(
   Schedule.jittered,
-  Schedule.either(Schedule.spaced("5 seconds")),
+  Schedule.either(Schedule.spaced("5 seconds"))
 );
 
 const RATE_LIMIT_MAX_WAIT = Duration.seconds(60);
@@ -62,7 +62,7 @@ const RATE_LIMIT_MAX_ATTEMPTS = 3;
  */
 export const rateLimitWait = (
   error: GitHubRateLimited,
-  now: number,
+  now: number
 ): Duration.Duration => {
   const fromRetryAfter =
     error.retryAfterSeconds === null
@@ -88,7 +88,7 @@ export const rateLimitWait = (
 export const honorRateLimit =
   (maxAttempts = RATE_LIMIT_MAX_ATTEMPTS) =>
   <A, E extends { readonly _tag: string }, R>(
-    effect: Effect.Effect<A, E, R>,
+    effect: Effect.Effect<A, E, R>
   ): Effect.Effect<A, E, R> => {
     const loop = (attempt: number): Effect.Effect<A, E, R> =>
       effect.pipe(
@@ -99,21 +99,21 @@ export const honorRateLimit =
             Effect.flatMap(Effect.clock, (clock) =>
               clock.currentTimeMillis.pipe(
                 Effect.map((now) =>
-                  rateLimitWait(error as unknown as GitHubRateLimited, now),
+                  rateLimitWait(error as unknown as GitHubRateLimited, now)
                 ),
                 Effect.tap((wait) =>
                   Effect.logWarning("github rate limited; backing off").pipe(
                     Effect.annotateLogs({
                       "github.retry_wait_ms": Duration.toMillis(wait),
                       "github.rate_limit_attempt": attempt + 1,
-                    }),
-                  ),
+                    })
+                  )
                 ),
                 Effect.flatMap(Effect.sleep),
-                Effect.zipRight(loop(attempt + 1)),
-              ),
-            ),
-        ),
+                Effect.zipRight(loop(attempt + 1))
+              )
+            )
+        )
       );
     return loop(0);
   };

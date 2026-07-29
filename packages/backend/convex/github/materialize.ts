@@ -1,7 +1,7 @@
 "use node";
 
-import { Effect } from "effect";
 import { v } from "convex/values";
+import { Effect } from "effect";
 import { internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import { internalAction } from "../_generated/server";
@@ -20,7 +20,7 @@ async function seedWorkbench(
   ctx: ActionCtx,
   installationId: number,
   repos: readonly { owner: string; repo: string }[],
-  accessToken: string,
+  accessToken: string
 ) {
   for (const entry of repos.slice(0, SEED_REPOS)) {
     try {
@@ -46,7 +46,10 @@ async function seedWorkbench(
       }
     } catch (error) {
       /** A repo that fails to seed still gets live events going forward. */
-      console.warn(`workbench seed failed for ${entry.owner}/${entry.repo}`, error);
+      console.warn(
+        `workbench seed failed for ${entry.owner}/${entry.repo}`,
+        error
+      );
     }
   }
 }
@@ -73,7 +76,7 @@ export const materialize = internalAction({
     const accessToken = await getInstallationToken(
       ctx,
       args.installationId,
-      args.now,
+      args.now
     );
     const pipeline = await Effect.runPromise(buildPipeline(accessToken));
     for (const flow of pipeline.repos) {

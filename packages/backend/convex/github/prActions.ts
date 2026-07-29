@@ -22,8 +22,8 @@ import {
   resolveThread,
   submitReview,
 } from "./reviews";
-import { listViewedFiles, setAllFilesViewed, setFileViewed } from "./viewer";
 import { userToken } from "./userToken";
+import { listViewedFiles, setAllFilesViewed, setFileViewed } from "./viewer";
 
 const refArgs = {
   owner: v.string(),

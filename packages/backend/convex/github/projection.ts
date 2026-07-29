@@ -1,10 +1,5 @@
 import { Option, Schema } from "effect";
-
-export interface PullRequestRef {
-  readonly owner: string;
-  readonly repo: string;
-  readonly number: number;
-}
+import type { PullRequestRef } from "./refs";
 
 const RepoSchema = Schema.Struct({
   name: Schema.String,
@@ -172,7 +167,9 @@ interface WorkbenchTarget {
 }
 
 /** The installation + repo a delivery belongs to, if the envelope carries both. */
-export const workbenchTargetFor = (payload: unknown): WorkbenchTarget | null => {
+export const workbenchTargetFor = (
+  payload: unknown
+): WorkbenchTarget | null => {
   const decoded = decodeEnvelope(payload);
   if (Option.isNone(decoded)) {
     return null;

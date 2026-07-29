@@ -8,8 +8,8 @@ const API_URL = process.env.GITHUB_API_URL ?? "https://api.github.com";
 const API_VERSION = process.env.GITHUB_API_VERSION ?? "2022-11-28";
 
 interface RawInstallation {
-  id: number;
   account: { login: string; type: string; avatar_url: string } | null;
+  id: number;
   repository_selection: string;
 }
 
@@ -28,7 +28,7 @@ export const listInstallations = action({
         accountType: v.string(),
         avatarUrl: v.union(v.string(), v.null()),
         repositorySelection: v.string(),
-      }),
+      })
     ),
   }),
   handler: async (ctx) => {

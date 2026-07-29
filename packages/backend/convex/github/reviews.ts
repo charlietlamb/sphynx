@@ -4,17 +4,17 @@ import {
   type GitHubClient,
   makeGitHubClient,
 } from "./githubClient";
-import { GitHubUnavailable, type GitHubError } from "./githubErrors";
-import type { PullRequestRef } from "./writeQueue";
+import { type GitHubError, GitHubUnavailable } from "./githubErrors";
+import { type PullRequestRef, pullPath } from "./refs";
 
 export interface CreateReviewComment {
   readonly body: string;
   readonly commitSha: string;
-  readonly path: string;
   readonly line: number;
+  readonly path: string;
+  readonly pending: boolean;
   readonly side: "additions" | "deletions";
   readonly startLine: number | null;
-  readonly pending: boolean;
 }
 
 export interface ReplyPayload {
@@ -23,22 +23,19 @@ export interface ReplyPayload {
 }
 
 export interface ResolveThread {
-  readonly threadId: string;
   readonly resolved: boolean;
+  readonly threadId: string;
 }
 
 export interface PendingReview {
-  readonly pendingId: string | null;
   readonly commentCount: number;
+  readonly pendingId: string | null;
 }
 
 export interface SubmitReview {
   readonly body: string | null;
   readonly event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT";
 }
-
-const pullPath = (ref: PullRequestRef, suffix = "") =>
-  `/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}${suffix}`;
 
 const PULL_REQUEST_ID_QUERY = `
 query($owner: String!, $name: String!, $number: Int!) {
@@ -58,12 +55,12 @@ const PendingReviewsData = Schema.Struct({
                 id: Schema.String,
                 viewerDidAuthor: Schema.Boolean,
                 comments: Schema.Struct({ totalCount: Schema.Number }),
-              }),
+              })
             ),
           }),
-        }),
+        })
       ),
-    }),
+    })
   ),
 });
 
@@ -71,7 +68,7 @@ const PendingReviewData = Schema.Struct({
   repository: Schema.NullishOr(
     Schema.Struct({
       pullRequest: Schema.NullishOr(Schema.Struct({ id: Schema.String })),
-    }),
+    })
   ),
 });
 
@@ -126,17 +123,17 @@ const StartReviewSchema = Schema.Struct({
   addPullRequestReview: Schema.NullishOr(
     Schema.Struct({
       pullRequestReview: Schema.NullishOr(Schema.Struct({ id: Schema.String })),
-    }),
+    })
   ),
 });
 
 const githubSide = (side: CreateReviewComment["side"]) =>
   side === "deletions" ? "LEFT" : "RIGHT";
 
-export const makeReviews = (client: GitHubClient) => {
+const makeReviews = (client: GitHubClient) => {
   const pullRequestId = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<string, GitHubError> =>
     client
       .query(token, PendingReviewData, PULL_REQUEST_ID_QUERY, {
@@ -150,14 +147,14 @@ export const makeReviews = (client: GitHubClient) => {
           return id
             ? Effect.succeed(id)
             : Effect.fail(
-                new GitHubUnavailable({ message: "Pull request not found" }),
+                new GitHubUnavailable({ message: "Pull request not found" })
               );
-        }),
+        })
       );
 
   const pendingReview = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<PendingReview, GitHubError> =>
     client
       .query(token, PendingReviewsData, PENDING_REVIEW_QUERY, {
@@ -171,12 +168,12 @@ export const makeReviews = (client: GitHubClient) => {
           return pullRequest
             ? Effect.succeed(pullRequest)
             : Effect.fail(
-                new GitHubUnavailable({ message: "Pull request not found" }),
+                new GitHubUnavailable({ message: "Pull request not found" })
               );
         }),
         Effect.map((pullRequest) => {
           const mine = pullRequest.reviews.nodes.find(
-            (node) => node.viewerDidAuthor,
+            (node) => node.viewerDidAuthor
           );
           return {
             pendingId: mine?.id ?? null,
@@ -184,12 +181,12 @@ export const makeReviews = (client: GitHubClient) => {
           };
         }),
         Effect.withSpan("GitHubReviews.pendingReview"),
-        Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` }),
+        Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` })
       );
 
   const ensurePendingReview = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<string, GitHubError> =>
     Effect.gen(function* () {
       const current = yield* pendingReview(ref, token);
@@ -201,12 +198,12 @@ export const makeReviews = (client: GitHubClient) => {
         token,
         StartReviewSchema,
         START_REVIEW_MUTATION,
-        { id },
+        { id }
       );
       const reviewId = started.addPullRequestReview?.pullRequestReview?.id;
       if (!reviewId) {
         return yield* Effect.fail(
-          new GitHubUnavailable({ message: "Could not start a review" }),
+          new GitHubUnavailable({ message: "Could not start a review" })
         );
       }
       return reviewId;
@@ -215,7 +212,7 @@ export const makeReviews = (client: GitHubClient) => {
   const createPendingComment = (
     ref: PullRequestRef,
     payload: CreateReviewComment,
-    token: string,
+    token: string
   ): Effect.Effect<void, GitHubError> =>
     Effect.gen(function* () {
       const reviewId = yield* ensurePendingReview(ref, token);
@@ -239,7 +236,7 @@ export const makeReviews = (client: GitHubClient) => {
   const createImmediateComment = (
     ref: PullRequestRef,
     payload: CreateReviewComment,
-    token: string,
+    token: string
   ): Effect.Effect<void, GitHubError> =>
     client
       .rest(token, "POST", pullPath(ref, "/comments"), {
@@ -260,7 +257,7 @@ export const makeReviews = (client: GitHubClient) => {
   const createComment = (
     ref: PullRequestRef,
     payload: CreateReviewComment,
-    token: string,
+    token: string
   ): Effect.Effect<void, GitHubError> =>
     (payload.pending
       ? createPendingComment(ref, payload, token)
@@ -270,20 +267,20 @@ export const makeReviews = (client: GitHubClient) => {
       Effect.annotateLogs({
         "github.repo": `${ref.owner}/${ref.repo}`,
         "github.pending": payload.pending,
-      }),
+      })
     );
 
   const replyToComment = (
     ref: PullRequestRef,
     payload: ReplyPayload,
-    token: string,
+    token: string
   ): Effect.Effect<void, GitHubError> =>
     client
       .rest(
         token,
         "POST",
         pullPath(ref, `/comments/${payload.commentId}/replies`),
-        { body: payload.body },
+        { body: payload.body }
       )
       .pipe(
         Effect.asVoid,
@@ -291,19 +288,19 @@ export const makeReviews = (client: GitHubClient) => {
         Effect.annotateLogs({
           "github.repo": `${ref.owner}/${ref.repo}`,
           "github.comment_id": payload.commentId,
-        }),
+        })
       );
 
   const resolveThread = (
     payload: ResolveThread,
-    token: string,
+    token: string
   ): Effect.Effect<void, GitHubError> =>
     client
       .query(
         token,
         Schema.Unknown,
         payload.resolved ? RESOLVE_MUTATION : UNRESOLVE_MUTATION,
-        { id: payload.threadId },
+        { id: payload.threadId }
       )
       .pipe(
         Effect.asVoid,
@@ -311,13 +308,13 @@ export const makeReviews = (client: GitHubClient) => {
         Effect.annotateLogs({
           "github.thread_id": payload.threadId,
           "github.resolved": payload.resolved,
-        }),
+        })
       );
 
   const submitReview = (
     ref: PullRequestRef,
     payload: SubmitReview,
-    token: string,
+    token: string
   ): Effect.Effect<void, GitHubError> =>
     Effect.gen(function* () {
       const reviewId = yield* ensurePendingReview(ref, token);
@@ -331,12 +328,12 @@ export const makeReviews = (client: GitHubClient) => {
       Effect.annotateLogs({
         "github.repo": `${ref.owner}/${ref.repo}`,
         "github.event": payload.event,
-      }),
+      })
     );
 
   const discardReview = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<void, GitHubError> =>
     Effect.gen(function* () {
       const current = yield* pendingReview(ref, token);
@@ -348,7 +345,7 @@ export const makeReviews = (client: GitHubClient) => {
       });
     }).pipe(
       Effect.withSpan("GitHubReviews.discardReview"),
-      Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` }),
+      Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` })
     );
 
   return {
@@ -361,55 +358,53 @@ export const makeReviews = (client: GitHubClient) => {
   } as const;
 };
 
-export type Reviews = ReturnType<typeof makeReviews>;
-
 export const pendingReview = (
   ref: PullRequestRef,
-  token: string,
+  token: string
 ): Effect.Effect<PendingReview, GitHubError> =>
   makeReviews(makeGitHubClient(configFromEnv())).pendingReview(ref, token);
 
 export const createComment = (
   ref: PullRequestRef,
   payload: CreateReviewComment,
-  token: string,
+  token: string
 ): Effect.Effect<void, GitHubError> =>
   makeReviews(makeGitHubClient(configFromEnv())).createComment(
     ref,
     payload,
-    token,
+    token
   );
 
 export const replyToComment = (
   ref: PullRequestRef,
   payload: ReplyPayload,
-  token: string,
+  token: string
 ): Effect.Effect<void, GitHubError> =>
   makeReviews(makeGitHubClient(configFromEnv())).replyToComment(
     ref,
     payload,
-    token,
+    token
   );
 
 export const resolveThread = (
   payload: ResolveThread,
-  token: string,
+  token: string
 ): Effect.Effect<void, GitHubError> =>
   makeReviews(makeGitHubClient(configFromEnv())).resolveThread(payload, token);
 
 export const submitReview = (
   ref: PullRequestRef,
   payload: SubmitReview,
-  token: string,
+  token: string
 ): Effect.Effect<void, GitHubError> =>
   makeReviews(makeGitHubClient(configFromEnv())).submitReview(
     ref,
     payload,
-    token,
+    token
   );
 
 export const discardReview = (
   ref: PullRequestRef,
-  token: string,
+  token: string
 ): Effect.Effect<void, GitHubError> =>
   makeReviews(makeGitHubClient(configFromEnv())).discardReview(ref, token);

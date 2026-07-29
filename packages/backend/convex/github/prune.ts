@@ -43,7 +43,7 @@ export const pruneOnce = internalMutation({
       const stale = await ctx.db
         .query("reviewPull")
         .withIndex("by_state_and_fetchedAt", (q) =>
-          q.eq("state", state).lt("fetchedAt", historyCutoff),
+          q.eq("state", state).lt("fetchedAt", historyCutoff)
         )
         .take(BATCH);
       await Promise.all(stale.map((row) => ctx.db.delete(row._id)));

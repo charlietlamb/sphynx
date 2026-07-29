@@ -1,17 +1,17 @@
 "use node";
 
-import { Effect } from "effect";
 import { v } from "convex/values";
+import { Effect } from "effect";
 import { api, internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import { action } from "../_generated/server";
-import { blockPull, createPull, mergePull } from "./writeQueue";
 import { userToken } from "./userToken";
+import { blockPull, createPull, mergePull } from "./writeQueue";
 
 /** Resolve the installation that owns a repo from the read model. */
 async function installationFor(
   ctx: ActionCtx,
-  owner: string,
+  owner: string
 ): Promise<number | null> {
   return await ctx.runQuery(api.github.reader.installationForOwner, { owner });
 }
@@ -24,7 +24,7 @@ async function afterWrite(
   ctx: ActionCtx,
   owner: string,
   repo: string,
-  number: number,
+  number: number
 ) {
   const installationId = await installationFor(ctx, owner);
   if (installationId !== null) {
@@ -63,8 +63,8 @@ export const block = action({
       blockPull(
         { owner: args.owner, repo: args.repo, number: args.number },
         args.body,
-        token,
-      ),
+        token
+      )
     );
     await afterWrite(ctx, args.owner, args.repo, args.number);
     return null;
@@ -83,7 +83,7 @@ export const promote = action({
   handler: async (ctx, args) => {
     const token = await userToken(ctx);
     const number = await Effect.runPromise(
-      createPull(args.owner, args.repo, args.from, args.to, args.title, token),
+      createPull(args.owner, args.repo, args.from, args.to, args.title, token)
     );
     await afterWrite(ctx, args.owner, args.repo, number);
     return { number };

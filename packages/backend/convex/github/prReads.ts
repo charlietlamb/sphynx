@@ -4,35 +4,32 @@ import {
   type GitHubClient,
   makeGitHubClient,
 } from "./githubClient";
-import { GitHubUnavailable, type GitHubError } from "./githubErrors";
+import { type GitHubError, GitHubUnavailable } from "./githubErrors";
+import { type PullRequestRef, pullPath } from "./refs";
 import { buildSymbolIndex, type SymbolIndexPayload } from "./symbolIndex";
 
-export interface PullRequestRef {
-  readonly owner: string;
-  readonly repo: string;
-  readonly number: number;
-}
-
 export interface GitHubUser {
-  readonly login: string;
   readonly avatarUrl: string;
+  readonly login: string;
 }
 
 export interface PullRequestSummary {
+  readonly author: GitHubUser | null;
+  readonly base: { readonly ref: string; readonly sha: string };
+  readonly body: string | null;
+  readonly createdAt: string;
+  readonly draft: boolean;
+  readonly githubUrl: string;
+  readonly head: { readonly ref: string; readonly sha: string };
+  readonly mergedAt: string | null;
+  readonly number: number;
   readonly repository: {
     readonly id: number;
     readonly owner: string;
     readonly name: string;
     readonly url: string;
   };
-  readonly number: number;
-  readonly title: string;
-  readonly body: string | null;
   readonly state: "open" | "closed" | "merged";
-  readonly draft: boolean;
-  readonly author: GitHubUser | null;
-  readonly base: { readonly ref: string; readonly sha: string };
-  readonly head: { readonly ref: string; readonly sha: string };
   readonly stats: {
     readonly commits: number;
     readonly changedFiles: number;
@@ -41,15 +38,18 @@ export interface PullRequestSummary {
     readonly comments: number;
     readonly reviewComments: number;
   };
-  readonly createdAt: string;
+  readonly title: string;
   readonly updatedAt: string;
-  readonly mergedAt: string | null;
-  readonly githubUrl: string;
 }
 
 export interface PullRequestFile {
+  readonly additions: number;
+  readonly changes: number;
+  readonly deletions: number;
+  readonly githubUrl: string;
   readonly path: string;
   readonly previousPath: string | null;
+  readonly renderability: "patch" | "binary-or-large";
   readonly sha: string;
   readonly status:
     | "added"
@@ -58,11 +58,6 @@ export interface PullRequestFile {
     | "renamed"
     | "copied"
     | "unknown";
-  readonly additions: number;
-  readonly deletions: number;
-  readonly changes: number;
-  readonly renderability: "patch" | "binary-or-large";
-  readonly githubUrl: string;
 }
 
 export interface PullRequestPatches {
@@ -72,24 +67,24 @@ export interface PullRequestPatches {
 }
 
 export interface ReviewComment {
-  readonly id: number;
-  readonly body: string;
   readonly author: GitHubUser | null;
+  readonly body: string;
   readonly createdAt: string;
   readonly githubUrl: string;
+  readonly id: number;
   readonly pending: boolean;
 }
 
 export interface ReviewThread {
+  readonly comments: readonly ReviewComment[];
   readonly id: string | null;
-  readonly path: string;
+  readonly isOutdated: boolean;
+  readonly isResolved: boolean;
   readonly line: number;
+  readonly path: string;
   readonly side: "additions" | "deletions";
   readonly startLine: number | null;
-  readonly isResolved: boolean;
-  readonly isOutdated: boolean;
   readonly viewerCanResolve: boolean;
-  readonly comments: readonly ReviewComment[];
 }
 
 export type ConversationVerdict =
@@ -99,24 +94,24 @@ export type ConversationVerdict =
   | "dismissed";
 
 export interface ConversationComment {
-  readonly id: string;
   readonly author: GitHubUser | null;
   readonly body: string;
   readonly bodyHTML: string | null;
   readonly createdAt: string;
   readonly githubUrl: string;
+  readonly id: string;
 }
 
 export interface ConversationReview {
-  readonly id: string;
   readonly author: GitHubUser | null;
-  readonly isBot: boolean;
-  readonly verdict: ConversationVerdict;
   readonly body: string;
   readonly bodyHTML: string | null;
-  readonly submittedAt: string;
-  readonly githubUrl: string;
   readonly commentCount: number;
+  readonly githubUrl: string;
+  readonly id: string;
+  readonly isBot: boolean;
+  readonly submittedAt: string;
+  readonly verdict: ConversationVerdict;
 }
 
 export type ConversationEventKind =
@@ -132,20 +127,20 @@ export type ConversationEventKind =
   | "renamed";
 
 export interface ConversationEvent {
+  readonly actor: GitHubUser | null;
+  readonly at: string;
+  readonly detail: string | null;
   readonly id: string;
   readonly kind: ConversationEventKind;
-  readonly at: string;
-  readonly actor: GitHubUser | null;
-  readonly detail: string | null;
   readonly ref: string | null;
   readonly url: string | null;
 }
 
 export interface Conversation {
-  readonly descriptionHTML: string | null;
   readonly comments: readonly ConversationComment[];
-  readonly reviews: readonly ConversationReview[];
+  readonly descriptionHTML: string | null;
   readonly events: readonly ConversationEvent[];
+  readonly reviews: readonly ConversationReview[];
 }
 
 const MAX_FILE_PAGES = 30;
@@ -207,25 +202,25 @@ const RawPullRequestFilesSchema = Schema.Array(
     changes: Schema.Number,
     patch: Schema.optional(Schema.String),
     blob_url: Schema.NullishOr(Schema.String),
-  }),
+  })
 );
 
 type FilesPage = typeof RawPullRequestFilesSchema.Type;
 
 const RawFileContentsSchema = Schema.Union(
   Schema.Struct({ content: Schema.optional(Schema.String) }),
-  Schema.Array(Schema.Unknown),
+  Schema.Array(Schema.Unknown)
 );
 
 const fileContentOf = (
-  value: typeof RawFileContentsSchema.Type,
+  value: typeof RawFileContentsSchema.Type
 ): string | null =>
   "content" in value && typeof value.content === "string"
     ? value.content
     : null;
 
 const pullRequestState = (
-  pull: RawPullRequest,
+  pull: RawPullRequest
 ): PullRequestSummary["state"] => {
   if (pull.merged_at) {
     return "merged";
@@ -286,7 +281,7 @@ const normalizeStatus = (status: string): PullRequestFile["status"] => {
  */
 const toFile = (
   ref: PullRequestRef,
-  file: FilesPage[number],
+  file: FilesPage[number]
 ): PullRequestFile => ({
   path: file.filename,
   previousPath: file.previous_filename ?? null,
@@ -320,9 +315,6 @@ const pageFrom = (link: string | null, rel: string) => {
 
 const nextPageFrom = (link: string | null) => pageFrom(link, "next");
 const lastPageFrom = (link: string | null) => pageFrom(link, "last");
-
-const pullPath = (ref: PullRequestRef, suffix = "") =>
-  `/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}${suffix}`;
 
 const CONVERSATION_QUERY = `
 query($owner: String!, $name: String!, $number: Int!) {
@@ -446,7 +438,7 @@ const ConversationDataSchema = Schema.Struct({
   repository: Schema.NullishOr(
     Schema.Struct({
       pullRequest: Schema.NullishOr(ConversationNodesSchema),
-    }),
+    })
   ),
 });
 
@@ -470,7 +462,7 @@ const RawForcePushNodeSchema = Schema.Struct({
   createdAt: Schema.String,
   actor: eventActor,
   afterCommit: Schema.NullishOr(
-    Schema.Struct({ abbreviatedOid: Schema.String }),
+    Schema.Struct({ abbreviatedOid: Schema.String })
   ),
 });
 
@@ -491,7 +483,7 @@ const RawReviewRequestNodeSchema = Schema.Struct({
     Schema.Struct({
       login: Schema.optional(Schema.String),
       name: Schema.optional(Schema.String),
-    }),
+    })
   ),
 });
 
@@ -501,7 +493,7 @@ const RawAssignedNodeSchema = Schema.Struct({
   createdAt: Schema.String,
   actor: eventActor,
   assignee: Schema.NullishOr(
-    Schema.Struct({ login: Schema.optional(Schema.String) }),
+    Schema.Struct({ login: Schema.optional(Schema.String) })
   ),
 });
 
@@ -532,7 +524,7 @@ const decodeCommitNode = Schema.decodeUnknownOption(RawCommitNodeSchema);
 const decodeForcePushNode = Schema.decodeUnknownOption(RawForcePushNodeSchema);
 const decodeLabelNode = Schema.decodeUnknownOption(RawLabelNodeSchema);
 const decodeReviewRequestNode = Schema.decodeUnknownOption(
-  RawReviewRequestNodeSchema,
+  RawReviewRequestNodeSchema
 );
 const decodeAssignedNode = Schema.decodeUnknownOption(RawAssignedNodeSchema);
 const decodeMergedNode = Schema.decodeUnknownOption(RawMergedNodeSchema);
@@ -548,7 +540,7 @@ const baseEvent = {
 const mapNode =
   <T>(
     decode: (node: unknown) => Option.Option<T>,
-    map: (value: T) => ConversationEvent,
+    map: (value: T) => ConversationEvent
   ) =>
   (node: unknown): ConversationEvent | null =>
     Option.match(decode(node), { onNone: () => null, onSome: map });
@@ -642,7 +634,7 @@ const VERDICTS: Record<string, ConversationVerdict> = {
 };
 
 function toGraphqlComment(
-  node: RawConversationComment | null | undefined,
+  node: RawConversationComment | null | undefined
 ): ConversationComment | null {
   if (!node) {
     return null;
@@ -658,7 +650,7 @@ function toGraphqlComment(
 }
 
 function toGraphqlReview(
-  node: RawConversationReview | null | undefined,
+  node: RawConversationReview | null | undefined
 ): ConversationReview | null {
   if (!node) {
     return null;
@@ -764,7 +756,7 @@ const ReviewThreadsDataSchema = Schema.Struct({
   repository: Schema.NullishOr(
     Schema.Struct({
       pullRequest: Schema.NullishOr(ReviewThreadsNodesSchema),
-    }),
+    })
   ),
 });
 
@@ -794,64 +786,73 @@ const toThread = (node: ThreadNode): ReviewThread | null => {
   };
 };
 
+const mapThreadNodes = (nodes: readonly ThreadNode[]): ReviewThread[] =>
+  nodes
+    .map(toThread)
+    .filter((thread): thread is ReviewThread => thread !== null);
+
 const MAX_CONNECTION_PAGES = 20;
 
-export const makePrReads = (client: GitHubClient) => {
+const makePrReads = (client: GitHubClient) => {
   const getPullSummary = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<PullRequestSummary, GitHubError> =>
     client
       .restJson(
         token,
         pullPath(ref),
         RawPullRequestSchema,
-        "Invalid GitHub response",
+        "Invalid GitHub response"
       )
       .pipe(
         Effect.map(normalizePullRequest),
-        Effect.withSpan("GitHubPrReads.getPullSummary"),
+        Effect.withSpan("GitHubPrReads.getPullSummary")
       );
 
   const filesPage = (
     token: string,
     ref: PullRequestRef,
-    page: number,
+    page: number
   ): Effect.Effect<{ files: FilesPage; link: string | null }, GitHubError> =>
-    client.rest(token, "GET", pullPath(ref, `/files?per_page=100&page=${page}`)).pipe(
-      Effect.flatMap((response) =>
-        Effect.tryPromise({
-          try: () => response.json(),
-          catch: () =>
-            new GitHubUnavailable({ message: "Invalid GitHub response" }),
-        }).pipe(
-          Effect.flatMap((body) =>
-            Schema.decodeUnknown(RawPullRequestFilesSchema)(body).pipe(
-              Effect.mapError(
-                () =>
-                  new GitHubUnavailable({ message: "Invalid GitHub response" }),
-              ),
+    client
+      .rest(token, "GET", pullPath(ref, `/files?per_page=100&page=${page}`))
+      .pipe(
+        Effect.flatMap((response) =>
+          Effect.tryPromise({
+            try: () => response.json(),
+            catch: () =>
+              new GitHubUnavailable({ message: "Invalid GitHub response" }),
+          }).pipe(
+            Effect.flatMap((body) =>
+              Schema.decodeUnknown(RawPullRequestFilesSchema)(body).pipe(
+                Effect.mapError(
+                  () =>
+                    new GitHubUnavailable({
+                      message: "Invalid GitHub response",
+                    })
+                )
+              )
             ),
-          ),
-          Effect.map((files) => ({ files, link: response.header("link") })),
-        ),
-      ),
-    );
+            Effect.map((files) => ({ files, link: response.header("link") }))
+          )
+        )
+      );
 
   const parallelRest = (token: string, ref: PullRequestRef, last: number) =>
     Effect.forEach(
       Array.from(
         { length: Math.min(last, MAX_FILE_PAGES) - 1 },
-        (_, i) => i + 2,
+        (_, i) => i + 2
       ),
       (page) => filesPage(token, ref, page),
-      { concurrency: 6 },
+      { concurrency: 6 }
     ).pipe(Effect.map((results) => results.map((result) => result.files)));
 
   const serialRest = (
     token: string,
     ref: PullRequestRef,
-    from: number | null,
+    from: number | null
   ) =>
     Effect.gen(function* () {
       const pages: FilesPage[] = [];
@@ -866,7 +867,7 @@ export const makePrReads = (client: GitHubClient) => {
 
   const assemblePatches = (
     ref: PullRequestRef,
-    pages: readonly FilesPage[],
+    pages: readonly FilesPage[]
   ) => {
     const patches = new Map<string, string>();
     const files: PullRequestFile[] = [];
@@ -900,7 +901,7 @@ export const makePrReads = (client: GitHubClient) => {
 
   const listPatches = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<PullRequestPatches, GitHubError> =>
     collectPatches(token, ref).pipe(
       Effect.map(({ files, patches }) => ({
@@ -908,34 +909,36 @@ export const makePrReads = (client: GitHubClient) => {
         patches: Object.fromEntries(patches),
         symbols: buildSymbolIndex(patches),
       })),
-      Effect.withSpan("GitHubPrReads.listPatches"),
+      Effect.withSpan("GitHubPrReads.listPatches")
     );
 
   const getFileContents = (
     ref: PullRequestRef,
     path: string,
     sha: string,
-    token: string,
+    token: string
   ): Effect.Effect<string | null, GitHubError> =>
     client
       .restJson(
         token,
         `/repos/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/contents/${encodeFilePath(path)}?ref=${encodeURIComponent(sha)}`,
         RawFileContentsSchema,
-        "Invalid GitHub response",
+        "Invalid GitHub response"
       )
       .pipe(
         Effect.map((value) => {
           const content = fileContentOf(value);
-          return content ? Buffer.from(content, "base64").toString("utf8") : null;
+          return content
+            ? Buffer.from(content, "base64").toString("utf8")
+            : null;
         }),
         Effect.catchTag("PullRequestNotFound", () => Effect.succeed(null)),
-        Effect.withSpan("GitHubPrReads.getFileContents"),
+        Effect.withSpan("GitHubPrReads.getFileContents")
       );
 
   const getConversation = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<Conversation, GitHubError> =>
     client
       .query(token, ConversationDataSchema, CONVERSATION_QUERY, {
@@ -955,12 +958,12 @@ export const makePrReads = (client: GitHubClient) => {
                 events: [],
               };
         }),
-        Effect.withSpan("GitHubPrReads.getConversation"),
+        Effect.withSpan("GitHubPrReads.getConversation")
       );
 
   const getCommentThreads = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<ReviewThread[], GitHubError> =>
     Effect.gen(function* () {
       const threads: ReviewThread[] = [];
@@ -975,19 +978,16 @@ export const makePrReads = (client: GitHubClient) => {
             name: ref.repo,
             number: ref.number,
             after,
-          },
+          }
         );
         const connection = data.repository?.pullRequest?.reviewThreads ?? null;
         if (connection === null) {
           return threads;
         }
-        for (const node of connection.nodes) {
-          const thread = toThread(node);
-          if (thread !== null) {
-            threads.push(thread);
-          }
-        }
-        if (!(connection.pageInfo.hasNextPage && connection.pageInfo.endCursor)) {
+        threads.push(...mapThreadNodes(connection.nodes));
+        if (
+          !(connection.pageInfo.hasNextPage && connection.pageInfo.endCursor)
+        ) {
           return threads;
         }
         after = connection.pageInfo.endCursor;
@@ -1004,11 +1004,9 @@ export const makePrReads = (client: GitHubClient) => {
   } as const;
 };
 
-export type PrReads = ReturnType<typeof makePrReads>;
-
 export const getPullSummary = (
   ref: PullRequestRef,
-  token: string,
+  token: string
 ): Effect.Effect<PullRequestSummary, GitHubError> => {
   const client = makeGitHubClient(configFromEnv());
   return makePrReads(client).getPullSummary(ref, token);
@@ -1016,7 +1014,7 @@ export const getPullSummary = (
 
 export const listPatches = (
   ref: PullRequestRef,
-  token: string,
+  token: string
 ): Effect.Effect<PullRequestPatches, GitHubError> => {
   const client = makeGitHubClient(configFromEnv());
   return makePrReads(client).listPatches(ref, token);
@@ -1026,7 +1024,7 @@ export const getFileContents = (
   ref: PullRequestRef,
   path: string,
   sha: string,
-  token: string,
+  token: string
 ): Effect.Effect<string | null, GitHubError> => {
   const client = makeGitHubClient(configFromEnv());
   return makePrReads(client).getFileContents(ref, path, sha, token);
@@ -1034,7 +1032,7 @@ export const getFileContents = (
 
 export const getConversation = (
   ref: PullRequestRef,
-  token: string,
+  token: string
 ): Effect.Effect<Conversation, GitHubError> => {
   const client = makeGitHubClient(configFromEnv());
   return makePrReads(client).getConversation(ref, token);
@@ -1042,7 +1040,7 @@ export const getConversation = (
 
 export const getCommentThreads = (
   ref: PullRequestRef,
-  token: string,
+  token: string
 ): Effect.Effect<ReviewThread[], GitHubError> => {
   const client = makeGitHubClient(configFromEnv());
   return makePrReads(client).getCommentThreads(ref, token);

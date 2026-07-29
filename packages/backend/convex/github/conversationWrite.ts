@@ -4,8 +4,9 @@ import {
   type GitHubClient,
   makeGitHubClient,
 } from "./githubClient";
-import { GitHubUnavailable, type GitHubError } from "./githubErrors";
-import type { ConversationComment, PullRequestRef } from "./prReads";
+import { type GitHubError, GitHubUnavailable } from "./githubErrors";
+import type { ConversationComment } from "./prReads";
+import type { PullRequestRef } from "./refs";
 
 const RawUserSchema = Schema.Struct({
   login: Schema.String,
@@ -36,48 +37,44 @@ const toRestComment = (row: RawIssueComment): ConversationComment => ({
   githubUrl: row.html_url,
 });
 
-export const makeConversationWrite = (client: GitHubClient) => {
+const makeConversationWrite = (client: GitHubClient) => {
   const addComment = (
     ref: PullRequestRef,
     body: string,
-    token: string,
+    token: string
   ): Effect.Effect<ConversationComment, GitHubError> =>
-    client
-      .rest(token, "POST", issueCommentsPath(ref), { body })
-      .pipe(
-        Effect.flatMap((response) =>
-          Effect.tryPromise({
-            try: () => response.json(),
-            catch: () =>
-              new GitHubUnavailable({ message: "Invalid GitHub response" }),
-          }).pipe(
-            Effect.flatMap((payload) =>
-              Schema.decodeUnknown(RawIssueCommentSchema)(payload).pipe(
-                Effect.mapError(
-                  () =>
-                    new GitHubUnavailable({ message: "Invalid GitHub response" }),
-                ),
-              ),
-            ),
-          ),
-        ),
-        Effect.map(toRestComment),
-        Effect.withSpan("GitHubConversationWrite.addComment"),
-        Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` }),
-      );
+    client.rest(token, "POST", issueCommentsPath(ref), { body }).pipe(
+      Effect.flatMap((response) =>
+        Effect.tryPromise({
+          try: () => response.json(),
+          catch: () =>
+            new GitHubUnavailable({ message: "Invalid GitHub response" }),
+        }).pipe(
+          Effect.flatMap((payload) =>
+            Schema.decodeUnknown(RawIssueCommentSchema)(payload).pipe(
+              Effect.mapError(
+                () =>
+                  new GitHubUnavailable({ message: "Invalid GitHub response" })
+              )
+            )
+          )
+        )
+      ),
+      Effect.map(toRestComment),
+      Effect.withSpan("GitHubConversationWrite.addComment"),
+      Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` })
+    );
 
   return { addComment } as const;
 };
 
-export type ConversationWrite = ReturnType<typeof makeConversationWrite>;
-
 export const addConversationComment = (
   ref: PullRequestRef,
   body: string,
-  token: string,
+  token: string
 ): Effect.Effect<ConversationComment, GitHubError> =>
   makeConversationWrite(makeGitHubClient(configFromEnv())).addComment(
     ref,
     body,
-    token,
+    token
   );

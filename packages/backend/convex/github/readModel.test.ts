@@ -1,11 +1,10 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { internal } from "../_generated/api";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { testModules as modules } from "../test.helpers";
 import type { QueuePull } from "./domain";
 import { repoKeyOf } from "./rows";
-import { testModules as modules } from "../test.helpers";
 
 const setup = () => convexTest(schema, modules);
 type T = ReturnType<typeof setup>;

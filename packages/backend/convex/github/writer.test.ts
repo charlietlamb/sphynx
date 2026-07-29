@@ -2,8 +2,8 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
-import type { QueuePull } from "./domain";
 import { testModules as modules } from "../test.helpers";
+import type { QueuePull } from "./domain";
 import { repoKeyOf } from "./rows";
 
 const INSTALLATION = 990_001;
@@ -61,7 +61,7 @@ const readPull = (t: T, number: number) =>
     ctx.db
       .query("reviewPull")
       .withIndex("by_key", (q) => q.eq("key", `${REPO_KEY}:${number}`))
-      .unique(),
+      .unique()
   );
 
 describe("writePull monotonicity gate", () => {
@@ -96,7 +96,7 @@ describe("writePull monotonicity gate", () => {
           },
         ],
       }),
-      "2026-07-01T00:00:00Z",
+      "2026-07-01T00:00:00Z"
     );
     expect(applied).toBe(true);
     const row = await readPull(t, 7);
@@ -109,11 +109,15 @@ describe("writePull monotonicity gate", () => {
 
   test("a stale rewrite does not clobber a newer row", async () => {
     const t = setup();
-    await writeOne(t, pull({ number: 7, title: "FRESH" }), "2026-07-01T00:00:00Z");
+    await writeOne(
+      t,
+      pull({ number: 7, title: "FRESH" }),
+      "2026-07-01T00:00:00Z"
+    );
     const applied = await writeOne(
       t,
       pull({ number: 7, title: "STALE", updatedAt: "2020-01-01T00:00:00Z" }),
-      "2026-07-01T00:00:01Z",
+      "2026-07-01T00:00:01Z"
     );
     expect(applied).toBe(false);
     const row = await readPull(t, 7);
@@ -126,12 +130,12 @@ describe("writePull monotonicity gate", () => {
     await writeOne(
       t,
       pull({ number: 21, state: "merged", mergedAt, updatedAt: mergedAt }),
-      mergedAt,
+      mergedAt
     );
     await writeOne(
       t,
       pull({ number: 21, state: "open", mergedAt: null, updatedAt: mergedAt }),
-      "2026-07-05T06:00:00Z",
+      "2026-07-05T06:00:00Z"
     );
     const row = await readPull(t, 21);
     expect(row?.state).toBe("merged");
@@ -142,7 +146,7 @@ describe("writePull monotonicity gate", () => {
     await writeOne(
       t,
       pull({ number: 22, state: "closed", updatedAt: "2026-07-05T00:00:00Z" }),
-      "2026-07-05T00:00:00Z",
+      "2026-07-05T00:00:00Z"
     );
     await writeOne(
       t,
@@ -152,7 +156,7 @@ describe("writePull monotonicity gate", () => {
         mergedAt: null,
         updatedAt: "2026-07-06T00:00:00Z",
       }),
-      "2026-07-06T00:00:00Z",
+      "2026-07-06T00:00:00Z"
     );
     const row = await readPull(t, 22);
     expect(row?.state).toBe("open");
@@ -168,7 +172,7 @@ describe("writePull monotonicity gate", () => {
         updatedAt: sameTs,
         ciCounts: { failed: 0, passed: 3, pending: 0 },
       }),
-      "2026-07-07T13:00:00Z",
+      "2026-07-07T13:00:00Z"
     );
     await t.mutation(internal.github.writer.writePull, {
       installationId: INSTALLATION,
@@ -235,7 +239,7 @@ describe("writePull monotonicity gate", () => {
       ctx.db
         .query("stageGap")
         .withIndex("by_repo", (q) => q.eq("repoKey", REPO_KEY))
-        .collect(),
+        .collect()
     );
     expect(gaps[0]?.promotionPull).toBe(40);
   });

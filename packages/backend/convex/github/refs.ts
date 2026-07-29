@@ -1,7 +1,7 @@
 export interface PullRequestRef {
+  readonly number: number;
   readonly owner: string;
   readonly repo: string;
-  readonly number: number;
 }
 
 /** The REST path for a pull request, optionally with a sub-resource suffix. */

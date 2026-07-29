@@ -11,7 +11,7 @@ const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 
 function walkPatchNewLines(
   patch: string,
-  visit: (lineNumber: number, content: string) => void,
+  visit: (lineNumber: number, content: string) => void
 ) {
   const rows = patch.split("\n");
   if (rows.at(-1) === "") {
@@ -102,7 +102,7 @@ function symbolFrom(line: string) {
 function collectDefinitions(
   path: string,
   patch: string,
-  register: (symbol: string, definition: SymbolDefinition) => void,
+  register: (symbol: string, definition: SymbolDefinition) => void
 ) {
   if (!INDEXABLE_EXTENSIONS.test(path)) {
     return;
@@ -127,7 +127,7 @@ function collectDefinitions(
  * pull request — which is why it is built here rather than on the client.
  */
 export function buildSymbolIndex(
-  patches: ReadonlyMap<string, string>,
+  patches: ReadonlyMap<string, string>
 ): SymbolIndexPayload {
   const definitions = new Map<string, SymbolDefinition>();
   const ambiguous = new Set<string>();

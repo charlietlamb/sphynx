@@ -8,7 +8,7 @@ import type { ActionCtx } from "../_generated/server";
 export async function getInstallationToken(
   ctx: ActionCtx,
   installationId: number,
-  now: number,
+  now: number
 ): Promise<string> {
   return await ctx.runAction(internal.github.appAuth.installationToken, {
     installationId,

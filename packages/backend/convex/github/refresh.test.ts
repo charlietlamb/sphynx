@@ -4,7 +4,12 @@ import { internal } from "../_generated/api";
 import schema from "../schema";
 import { testModules as modules } from "../test.helpers";
 
-const ref = { installationId: 990_001, owner: "acme", repo: "widgets", number: 7 };
+const ref = {
+  installationId: 990_001,
+  owner: "acme",
+  repo: "widgets",
+  number: 7,
+};
 
 const setup = () => convexTest(schema, modules);
 type T = ReturnType<typeof setup>;
@@ -37,7 +42,12 @@ describe("pullRefresh debounce", () => {
 
   test("a burst of N claims collapses to one run plus one rerun", async () => {
     const t = setup();
-    const claims = [await claim(t), await claim(t), await claim(t), await claim(t)];
+    const claims = [
+      await claim(t),
+      await claim(t),
+      await claim(t),
+      await claim(t),
+    ];
     expect(claims).toEqual(["run", "queued", "queued", "queued"]);
     expect(await complete(t)).toBe("rerun");
     expect(await complete(t)).toBe("done");

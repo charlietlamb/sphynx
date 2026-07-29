@@ -1,7 +1,10 @@
 import type { QueuePull, RepoFlow } from "./domain";
 
-export const repoKeyOf = (installationId: number, owner: string, repo: string) =>
-  `${installationId}:${owner.toLowerCase()}:${repo.toLowerCase()}`;
+export const repoKeyOf = (
+  installationId: number,
+  owner: string,
+  repo: string
+) => `${installationId}:${owner.toLowerCase()}:${repo.toLowerCase()}`;
 
 export const pullKeyOf = (repoKey: string, number: number) =>
   `${repoKey}:${number}`;
@@ -11,7 +14,7 @@ export const pullDocFrom = (
   repoKey: string,
   owner: string,
   repo: string,
-  pull: QueuePull,
+  pull: QueuePull
 ) => ({
   key: pullKeyOf(repoKey, pull.number),
   repoKey,
@@ -44,7 +47,7 @@ export const pullDocFrom = (
 export const gapDocsFrom = (
   installationId: number,
   repoKey: string,
-  flow: RepoFlow,
+  flow: RepoFlow
 ) =>
   flow.gaps.map((gap) => ({
     repoKey,

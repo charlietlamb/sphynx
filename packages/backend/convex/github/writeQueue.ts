@@ -2,29 +2,22 @@ import { Effect, Schema } from "effect";
 import type { QueuePull } from "./domain";
 import {
   configFromEnv,
+  decodeBody,
   type GitHubClient,
   makeGitHubClient,
 } from "./githubClient";
-import { GitHubUnavailable, type GitHubError } from "./githubErrors";
+import type { GitHubError } from "./githubErrors";
 import {
   PULL_FIELDS_FRAGMENT,
   RawPullSchema,
   toQueuePull,
 } from "./queueMappers";
+import { type PullRequestRef, pullPath } from "./refs";
 
-export interface PullRequestRef {
-  readonly owner: string;
-  readonly repo: string;
-  readonly number: number;
-}
-
-export interface SearchResults {
+interface SearchResults {
   readonly pulls: QueuePull[];
   readonly totalCount: number;
 }
-
-const pullPath = (ref: PullRequestRef, suffix = "") =>
-  `/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}${suffix}`;
 
 const CreatedPullSchema = Schema.Struct({ number: Schema.Number });
 
@@ -38,9 +31,9 @@ const PullBodySchema = Schema.Struct({
   repository: Schema.NullOr(
     Schema.Struct({
       pullRequest: Schema.NullOr(
-        Schema.Struct({ bodyHTML: Schema.NullishOr(Schema.String) }),
+        Schema.Struct({ bodyHTML: Schema.NullishOr(Schema.String) })
       ),
-    }),
+    })
   ),
 });
 
@@ -68,7 +61,7 @@ const SearchPullNodeSchema = Schema.extend(
       owner: Schema.Struct({ login: Schema.String }),
     }),
   }),
-  RawPullSchema,
+  RawPullSchema
 );
 
 const SearchPullsSchema = Schema.Struct({
@@ -86,23 +79,23 @@ function isPullNode(node: unknown): node is typeof SearchPullNodeSchema.Type {
   );
 }
 
-export const makeWriteQueue = (client: GitHubClient) => {
+const makeWriteQueue = (client: GitHubClient) => {
   const mergePull = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<void, GitHubError> =>
     client
       .rest(token, "PUT", pullPath(ref, "/merge"), { merge_method: "squash" })
       .pipe(
         Effect.asVoid,
         Effect.withSpan("GitHubWriteQueue.mergePull"),
-        Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` }),
+        Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` })
       );
 
   const blockPull = (
     ref: PullRequestRef,
     body: string,
-    token: string,
+    token: string
   ): Effect.Effect<void, GitHubError> =>
     client
       .rest(token, "POST", pullPath(ref, "/reviews"), {
@@ -112,7 +105,7 @@ export const makeWriteQueue = (client: GitHubClient) => {
       .pipe(
         Effect.asVoid,
         Effect.withSpan("GitHubWriteQueue.blockPull"),
-        Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` }),
+        Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` })
       );
 
   const createPull = (
@@ -121,7 +114,7 @@ export const makeWriteQueue = (client: GitHubClient) => {
     head: string,
     base: string,
     title: string,
-    token: string,
+    token: string
   ): Effect.Effect<number, GitHubError> =>
     client
       .rest(token, "POST", `/repos/${owner}/${repo}/pulls`, {
@@ -131,32 +124,17 @@ export const makeWriteQueue = (client: GitHubClient) => {
       })
       .pipe(
         Effect.flatMap((response) =>
-          Effect.tryPromise({
-            try: () => response.json(),
-            catch: () =>
-              new GitHubUnavailable({ message: "Invalid create response" }),
-          }).pipe(
-            Effect.flatMap((body) =>
-              Schema.decodeUnknown(CreatedPullSchema)(body).pipe(
-                Effect.mapError(
-                  () =>
-                    new GitHubUnavailable({
-                      message: "Invalid create response",
-                    }),
-                ),
-              ),
-            ),
-          ),
+          decodeBody(response, CreatedPullSchema, "Invalid create response")
         ),
         Effect.map((created) => created.number),
         Effect.withSpan("GitHubWriteQueue.createPull"),
-        Effect.annotateLogs({ owner, repo, head, base }),
+        Effect.annotateLogs({ owner, repo, head, base })
       );
 
   const searchPulls = (
     query: string,
     limit: number,
-    token: string,
+    token: string
   ): Effect.Effect<SearchResults, GitHubError> =>
     client
       .query(token, SearchPullsSchema, SEARCH_PULLS_QUERY, {
@@ -172,19 +150,19 @@ export const makeWriteQueue = (client: GitHubClient) => {
                   toQueuePull(
                     node.repository.owner.login,
                     node.repository.name,
-                    node,
+                    node
                   ),
                 ]
-              : [],
+              : []
           ),
         })),
         Effect.withSpan("GitHubWriteQueue.searchPulls"),
-        Effect.annotateLogs({ "github.search": query }),
+        Effect.annotateLogs({ "github.search": query })
       );
 
   const pullBody = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<{ body: string | null }, GitHubError> =>
     client
       .query(token, PullBodySchema, PULL_BODY_QUERY, {
@@ -197,24 +175,22 @@ export const makeWriteQueue = (client: GitHubClient) => {
           body: data.repository?.pullRequest?.bodyHTML?.trim() || null,
         })),
         Effect.withSpan("GitHubWriteQueue.pullBody"),
-        Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` }),
+        Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` })
       );
 
   return { mergePull, blockPull, createPull, searchPulls, pullBody } as const;
 };
 
-export type WriteQueue = ReturnType<typeof makeWriteQueue>;
-
 export const mergePull = (
   ref: PullRequestRef,
-  token: string,
+  token: string
 ): Effect.Effect<void, GitHubError> =>
   makeWriteQueue(makeGitHubClient(configFromEnv())).mergePull(ref, token);
 
 export const blockPull = (
   ref: PullRequestRef,
   body: string,
-  token: string,
+  token: string
 ): Effect.Effect<void, GitHubError> =>
   makeWriteQueue(makeGitHubClient(configFromEnv())).blockPull(ref, body, token);
 
@@ -224,7 +200,7 @@ export const createPull = (
   head: string,
   base: string,
   title: string,
-  token: string,
+  token: string
 ): Effect.Effect<number, GitHubError> =>
   makeWriteQueue(makeGitHubClient(configFromEnv())).createPull(
     owner,
@@ -232,22 +208,22 @@ export const createPull = (
     head,
     base,
     title,
-    token,
+    token
   );
 
 export const searchPulls = (
   query: string,
   limit: number,
-  token: string,
+  token: string
 ): Effect.Effect<SearchResults, GitHubError> =>
   makeWriteQueue(makeGitHubClient(configFromEnv())).searchPulls(
     query,
     limit,
-    token,
+    token
   );
 
 export const pullBody = (
   ref: PullRequestRef,
-  token: string,
+  token: string
 ): Effect.Effect<{ body: string | null }, GitHubError> =>
   makeWriteQueue(makeGitHubClient(configFromEnv())).pullBody(ref, token);

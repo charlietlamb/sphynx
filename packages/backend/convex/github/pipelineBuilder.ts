@@ -46,7 +46,7 @@ const CompareSchema = Schema.Struct({
   commits: Schema.Array(
     Schema.Struct({
       commit: Schema.Struct({ message: Schema.String }),
-    }),
+    })
   ),
 });
 
@@ -66,9 +66,9 @@ const LookupPullSchema = Schema.NullOr(
       Schema.Struct({
         login: Schema.String,
         avatarUrl: Schema.String,
-      }),
+      })
     ),
-  }),
+  })
 );
 
 type LookupPull = NonNullable<typeof LookupPullSchema.Type>;
@@ -111,20 +111,20 @@ const makePipelineBuilder = (client: GitHubClient, queue: ReviewQueue) => {
     owner: string,
     repo: string,
     upper: string,
-    lower: string,
+    lower: string
   ) =>
     client.restJson(
       token,
       `/repos/${owner}/${repo}/compare/${encodeURIComponent(upper)}...${encodeURIComponent(lower)}?per_page=100`,
       CompareSchema,
-      "Invalid compare response",
+      "Invalid compare response"
     );
 
   const lookupPulls = (
     token: string,
     owner: string,
     repo: string,
-    numbers: readonly number[],
+    numbers: readonly number[]
   ): Effect.Effect<PromotedPull[], GitHubError> => {
     if (numbers.length === 0) {
       return Effect.succeed([]);
@@ -132,7 +132,7 @@ const makePipelineBuilder = (client: GitHubClient, queue: ReviewQueue) => {
     const selections = numbers
       .map(
         (number, index) =>
-          `pr${index}: pullRequest(number: ${number}) { number title mergedAt author { login avatarUrl } }`,
+          `pr${index}: pullRequest(number: ${number}) { number title mergedAt author { login avatarUrl } }`
       )
       .join("\n");
     const document = `
@@ -146,7 +146,7 @@ query($owner: String!, $name: String!) {
         Schema.Record({
           key: Schema.String,
           value: LookupPullSchema,
-        }),
+        })
       ),
     });
     return client.query(token, schema, document, { owner, name: repo }).pipe(
@@ -154,8 +154,8 @@ query($owner: String!, $name: String!) {
         Object.values(data.repository ?? {})
           .filter((node): node is LookupPull => node !== null)
           .map(toPromotedPull)
-          .sort((a, b) => (b.mergedAt ?? "").localeCompare(a.mergedAt ?? "")),
-      ),
+          .sort((a, b) => (b.mergedAt ?? "").localeCompare(a.mergedAt ?? ""))
+      )
     );
   };
 
@@ -165,21 +165,21 @@ query($owner: String!, $name: String!) {
     repo: string,
     lower: string,
     upper: string,
-    openPulls: readonly QueuePull[],
+    openPulls: readonly QueuePull[]
   ): Effect.Effect<StageGap, GitHubError> =>
     restCompare(token, owner, repo, upper, lower).pipe(
       Effect.flatMap((compare) => {
         const { numbers, direct } = commitPullNumbers(
-          compare.commits.map((entry) => entry.commit.message),
+          compare.commits.map((entry) => entry.commit.message)
         );
         const promotion = openPulls.find(
-          (pull) => pull.headRefName === lower && pull.baseRefName === upper,
+          (pull) => pull.headRefName === lower && pull.baseRefName === upper
         );
         return lookupPulls(
           token,
           owner,
           repo,
-          numbers.slice(0, MAX_GAP_PULLS),
+          numbers.slice(0, MAX_GAP_PULLS)
         ).pipe(
           Effect.map((pulls) => ({
             from: lower,
@@ -188,14 +188,14 @@ query($owner: String!, $name: String!) {
             pulls,
             directCommits: direct,
             promotionPull: promotion?.number ?? null,
-          })),
+          }))
         );
-      }),
+      })
     );
 
   const refsForRepos = (
     repos: readonly { owner: string; repo: string }[],
-    token: string,
+    token: string
   ): Effect.Effect<Map<string, RepoRefs>, GitHubError> => {
     if (repos.length === 0) {
       return Effect.succeed(new Map());
@@ -203,7 +203,7 @@ query($owner: String!, $name: String!) {
     const selections = repos
       .map(
         (entry, index) =>
-          `r${index}: repository(owner: ${JSON.stringify(entry.owner)}, name: ${JSON.stringify(entry.repo)}) { ...RepoRefs }`,
+          `r${index}: repository(owner: ${JSON.stringify(entry.owner)}, name: ${JSON.stringify(entry.repo)}) { ...RepoRefs }`
       )
       .join("\n");
     const document = `query {\n${selections}\n}\n${REFS_FRAGMENT}`;
@@ -219,14 +219,14 @@ query($owner: String!, $name: String!) {
         return byRepo;
       }),
       Effect.withSpan("GitHubPipeline.refsForRepos"),
-      Effect.annotateLogs({ repoCount: repos.length }),
+      Effect.annotateLogs({ repoCount: repos.length })
     );
   };
 
   const flowFromRefs = (
     entry: { owner: string; repo: string; pulls: readonly QueuePull[] },
     refs: RepoRefs,
-    token: string,
+    token: string
   ): Effect.Effect<RepoFlow, GitHubError> => {
     const initial = initialChain(refs);
     const middleCheck =
@@ -236,18 +236,18 @@ query($owner: String!, $name: String!) {
             entry.owner,
             entry.repo,
             initial[1] ?? "",
-            initial[0] ?? "",
+            initial[0] ?? ""
           ).pipe(
             Effect.map((compare) => compare.ahead_by),
             Effect.tapErrorCause((cause) =>
-              Effect.logWarning("middle stage check failed", cause),
+              Effect.logWarning("middle stage check failed", cause)
             ),
-            Effect.orElseSucceed(() => null),
+            Effect.orElseSucceed(() => null)
           )
         : Effect.succeed(null);
     return middleCheck.pipe(
       Effect.map((aheadOfMiddle) =>
-        dropStaleMiddleStages(initial, aheadOfMiddle),
+        dropStaleMiddleStages(initial, aheadOfMiddle)
       ),
       Effect.flatMap((stages) => {
         const pairs = stages
@@ -262,10 +262,10 @@ query($owner: String!, $name: String!) {
               entry.repo,
               lower,
               upper,
-              entry.pulls,
+              entry.pulls
             ).pipe(
               Effect.tapErrorCause((cause) =>
-                Effect.logWarning("gap computation failed", cause),
+                Effect.logWarning("gap computation failed", cause)
               ),
               Effect.orElseSucceed(
                 (): StageGap => ({
@@ -275,10 +275,10 @@ query($owner: String!, $name: String!) {
                   pulls: [],
                   directCommits: 0,
                   promotionPull: null,
-                }),
-              ),
+                })
+              )
             ),
-          { concurrency: GAP_CONCURRENCY },
+          { concurrency: GAP_CONCURRENCY }
         ).pipe(
           Effect.map((gaps) => ({
             owner: entry.owner,
@@ -286,9 +286,9 @@ query($owner: String!, $name: String!) {
             stages: [...stages],
             openPulls: [...entry.pulls],
             gaps,
-          })),
+          }))
         );
-      }),
+      })
     );
   };
 
@@ -298,7 +298,7 @@ query($owner: String!, $name: String!) {
       repo: string;
       pulls: readonly QueuePull[];
     }[],
-    token: string,
+    token: string
   ): Effect.Effect<RepoFlow[], GitHubError> =>
     refsForRepos(entries, token).pipe(
       Effect.flatMap((refsByRepo) =>
@@ -309,25 +309,25 @@ query($owner: String!, $name: String!) {
             return refs
               ? flowFromRefs(entry, refs, token).pipe(
                   Effect.tapErrorCause((cause) =>
-                    Effect.logWarning("repo flow failed", cause),
+                    Effect.logWarning("repo flow failed", cause)
                   ),
-                  Effect.orElseSucceed(() => null),
+                  Effect.orElseSucceed(() => null)
                 )
               : Effect.succeed(null);
           },
-          { concurrency: REPO_CONCURRENCY },
-        ),
+          { concurrency: REPO_CONCURRENCY }
+        )
       ),
       Effect.map((flows) =>
-        flows.filter((flow): flow is RepoFlow => flow !== null),
+        flows.filter((flow): flow is RepoFlow => flow !== null)
       ),
       Effect.withSpan("GitHubPipeline.flowsFor"),
-      Effect.annotateLogs({ repoCount: entries.length }),
+      Effect.annotateLogs({ repoCount: entries.length })
     );
 
   const buildFrom = (
     discovered: readonly { owner: string; repo: string }[],
-    token: string,
+    token: string
   ): Effect.Effect<RepoFlow[], GitHubError> =>
     Effect.gen(function* () {
       const pullsByRepo = yield* queue.openPullsForRepos(discovered, token);
@@ -352,7 +352,7 @@ query($owner: String!, $name: String!) {
  * the active set is capped, matching the server's `refresh` trimming.
  */
 export const buildPipeline = (
-  token: string,
+  token: string
 ): Effect.Effect<{ repos: RepoFlow[] }, GitHubError> =>
   Effect.gen(function* () {
     const client = makeGitHubClient(configFromEnv());
@@ -373,7 +373,7 @@ export const buildPipeline = (
  * recently pushed first.
  */
 export const discoverRepos = (
-  token: string,
+  token: string
 ): Effect.Effect<{ owner: string; repo: string }[], GitHubError> => {
   const client = makeGitHubClient(configFromEnv());
   return makeReviewQueue(client).discoverRepos(token);
@@ -382,7 +382,7 @@ export const discoverRepos = (
 /** Re-derive one pull request — the projector's per-PR webhook refresh. */
 export const refreshPull = (
   ref: { owner: string; repo: string; number: number },
-  token: string,
+  token: string
 ) => {
   const client = makeGitHubClient(configFromEnv());
   return makeReviewQueue(client).refreshPull(ref, token);
@@ -394,7 +394,7 @@ export const refreshPull = (
  */
 export const repoEvents = (
   entry: { owner: string; repo: string },
-  token: string,
+  token: string
 ): Effect.Effect<readonly unknown[], GitHubError> => {
   const client = makeGitHubClient(configFromEnv());
   return makeReviewQueue(client).repoEvents(entry, token);

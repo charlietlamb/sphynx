@@ -10,7 +10,7 @@ type GapDoc = Doc<"stageGap">;
  * counters (reviewerCount, botReviewerCount, approvals, changesRequested) derive
  * on read from the embedded reviewers — a single source of truth.
  */
-export function toQueuePull(doc: PullDoc): QueuePull {
+export function queuePullFromDoc(doc: PullDoc): QueuePull {
   const reviewers = doc.reviewers;
   return {
     owner: doc.owner,
@@ -44,7 +44,7 @@ export function toQueuePull(doc: PullDoc): QueuePull {
   };
 }
 
-export function toStageGap(gap: GapDoc): StageGap {
+export function stageGapFromDoc(gap: GapDoc): StageGap {
   return {
     from: gap.fromStage,
     to: gap.toStage,
@@ -63,7 +63,7 @@ export function toStageGap(gap: GapDoc): StageGap {
 export function toRepoFlows(
   pulls: readonly PullDoc[],
   repos: readonly RepoDoc[],
-  gaps: readonly GapDoc[],
+  gaps: readonly GapDoc[]
 ): RepoFlow[] {
   const repoByKey = new Map(repos.map((repo) => [repo.key, repo]));
   const gapsByRepo = new Map<string, GapDoc[]>();
@@ -88,8 +88,8 @@ export function toRepoFlows(
       owner: repo.owner,
       repo: repo.repo,
       stages: repo.stages,
-      openPulls: repoPulls.map(toQueuePull),
-      gaps: (gapsByRepo.get(repoKey) ?? []).map(toStageGap),
+      openPulls: repoPulls.map(queuePullFromDoc),
+      gaps: (gapsByRepo.get(repoKey) ?? []).map(stageGapFromDoc),
     });
   }
   return flows;

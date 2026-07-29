@@ -1,10 +1,10 @@
+import { Schema } from "effect";
 import type {
   FailingCheck,
   QueuePull,
   ReviewerVerdict,
   ThreadPreview,
 } from "./domain";
-import { Schema } from "effect";
 import {
   blockerFor,
   decide,

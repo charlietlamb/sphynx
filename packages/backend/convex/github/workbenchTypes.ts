@@ -32,19 +32,19 @@ export type WorkbenchEventKind =
   | "release";
 
 export interface GitHubUser {
-  login: string;
   avatarUrl: string;
+  login: string;
 }
 
 export interface WorkbenchEvent {
-  id: string;
-  at: string;
   actor: GitHubUser;
+  at: string;
+  detail: string | null;
+  id: string;
   kind: WorkbenchEventKind;
   pull: {
     number: number;
     title: string | null;
   } | null;
-  detail: string | null;
   url: string | null;
 }

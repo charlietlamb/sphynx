@@ -1,12 +1,12 @@
 interface Watermark {
-  readonly state: string;
-  readonly ghUpdatedAt: number;
   readonly fetchedAt: number;
+  readonly ghUpdatedAt: number;
+  readonly state: string;
 }
 
 interface Incoming {
-  readonly state: string;
   readonly ghUpdatedAt: number;
+  readonly state: string;
 }
 
 /**
@@ -33,7 +33,7 @@ interface Incoming {
 export function shouldApplyPullWrite(
   current: Watermark | null,
   incoming: Incoming,
-  snapshotAt: number,
+  snapshotAt: number
 ): boolean {
   if (current === null) {
     return true;
@@ -47,7 +47,7 @@ export function shouldApplyPullWrite(
   }
   return lessThan(
     [current.ghUpdatedAt, current.fetchedAt],
-    [incoming.ghUpdatedAt, snapshotAt],
+    [incoming.ghUpdatedAt, snapshotAt]
   );
 }
 

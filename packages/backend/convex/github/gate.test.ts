@@ -9,8 +9,8 @@ describe("shouldApplyPullWrite", () => {
       shouldApplyPullWrite(
         null,
         { state: "open", ghUpdatedAt: ts("2026-07-01T00:00:00Z") },
-        ts("2026-07-01T00:00:00Z"),
-      ),
+        ts("2026-07-01T00:00:00Z")
+      )
     ).toBe(true);
   });
 
@@ -24,8 +24,8 @@ describe("shouldApplyPullWrite", () => {
       shouldApplyPullWrite(
         current,
         { state: "open", ghUpdatedAt: ts("2020-01-01T00:00:00Z") },
-        ts("2026-07-05T12:00:00Z"),
-      ),
+        ts("2026-07-05T12:00:00Z")
+      )
     ).toBe(false);
   });
 
@@ -40,8 +40,8 @@ describe("shouldApplyPullWrite", () => {
       shouldApplyPullWrite(
         current,
         { state: "open", ghUpdatedAt: ts(merged) },
-        ts("2026-07-05T12:00:00Z"),
-      ),
+        ts("2026-07-05T12:00:00Z")
+      )
     ).toBe(false);
   });
 
@@ -55,8 +55,8 @@ describe("shouldApplyPullWrite", () => {
       shouldApplyPullWrite(
         current,
         { state: "open", ghUpdatedAt: ts("2026-07-06T00:00:00Z") },
-        ts("2026-07-06T12:00:00Z"),
-      ),
+        ts("2026-07-06T12:00:00Z")
+      )
     ).toBe(true);
   });
 
@@ -71,8 +71,8 @@ describe("shouldApplyPullWrite", () => {
       shouldApplyPullWrite(
         current,
         { state: "open", ghUpdatedAt: ts(same) },
-        ts("2026-07-07T12:00:00Z"),
-      ),
+        ts("2026-07-07T12:00:00Z")
+      )
     ).toBe(true);
   });
 
@@ -87,8 +87,8 @@ describe("shouldApplyPullWrite", () => {
       shouldApplyPullWrite(
         current,
         { state: "open", ghUpdatedAt: ts(same) },
-        ts("2026-07-07T12:00:00Z"),
-      ),
+        ts("2026-07-07T12:00:00Z")
+      )
     ).toBe(false);
   });
 });

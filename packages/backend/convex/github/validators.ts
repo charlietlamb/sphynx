@@ -4,28 +4,31 @@ export const ciStateValidator = v.union(
   v.literal("success"),
   v.literal("failure"),
   v.literal("pending"),
-  v.literal("none"),
+  v.literal("none")
 );
 
 export const decisionValidator = v.union(
   v.literal("ready"),
   v.literal("contested"),
   v.literal("needs-eyes"),
-  v.literal("draft"),
+  v.literal("draft")
 );
 
 export const pullStateValidator = v.union(
   v.literal("open"),
   v.literal("merged"),
-  v.literal("closed"),
+  v.literal("closed")
 );
 
-export const sourceKindValidator = v.union(v.literal("bot"), v.literal("human"));
+export const sourceKindValidator = v.union(
+  v.literal("bot"),
+  v.literal("human")
+);
 
 export const reviewerStateValidator = v.union(
   v.literal("approved"),
   v.literal("changes-requested"),
-  v.literal("commented"),
+  v.literal("commented")
 );
 
 export const githubUserValidator = v.object({

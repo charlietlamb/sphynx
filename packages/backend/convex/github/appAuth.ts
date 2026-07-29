@@ -19,7 +19,7 @@ function appCredentials() {
 
 async function mintInstallationToken(
   installationId: number,
-  now: number,
+  now: number
 ): Promise<{ token: string; expiresAt: number }> {
   const { clientId, privateKey } = appCredentials();
   const jwt = signAppJwt(clientId, privateKey, Math.floor(now / 1000));
@@ -32,11 +32,11 @@ async function mintInstallationToken(
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": API_VERSION,
       },
-    },
+    }
   );
   if (!res.ok) {
     throw new Error(
-      `mint installation token failed: ${res.status} ${await res.text()}`,
+      `mint installation token failed: ${res.status} ${await res.text()}`
     );
   }
   const body = (await res.json()) as { token: string; expires_at: string };

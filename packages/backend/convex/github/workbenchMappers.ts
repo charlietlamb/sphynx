@@ -1,9 +1,7 @@
-import type {
-  WorkbenchEvent,
-  WorkbenchEventKind,
-} from "./workbenchTypes";
 import { Option, Schema } from "effect";
+import { BOT_SUFFIX } from "./queueDecision";
 import { previewBody } from "./queueMappers";
+import type { WorkbenchEvent, WorkbenchEventKind } from "./workbenchTypes";
 
 const RawEventSchema = Schema.Struct({
   id: Schema.String,
@@ -104,8 +102,6 @@ const decodeRefPayload = Schema.decodeUnknownOption(RawRefPayloadSchema);
 const decodeReleasePayload = Schema.decodeUnknownOption(
   RawReleasePayloadSchema
 );
-
-const BOT_SUFFIX = /\[bot\]$/;
 
 interface EventBase {
   actor: { login: string; avatarUrl: string };
@@ -350,7 +346,7 @@ function dispatchByType(
   }
 }
 
-export function toWorkbenchEvent(
+function toWorkbenchEvent(
   owner: string,
   repo: string,
   raw: unknown

@@ -1,7 +1,7 @@
 "use node";
 
-import { Effect } from "effect";
 import { v } from "convex/values";
+import { Effect } from "effect";
 import { internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import { internalAction } from "../_generated/server";
@@ -27,7 +27,7 @@ async function projectPull(
   ctx: ActionCtx,
   installationId: number,
   ref: { owner: string; repo: string; number: number },
-  now: number,
+  now: number
 ) {
   const claim = await ctx.runMutation(internal.github.refresh.claimRefresh, {
     installationId,
@@ -50,10 +50,13 @@ async function projectPull(
         fetchedAt: Date.now(),
       });
     }
-    const next = await ctx.runMutation(internal.github.refresh.completeRefresh, {
-      installationId,
-      ...ref,
-    });
+    const next = await ctx.runMutation(
+      internal.github.refresh.completeRefresh,
+      {
+        installationId,
+        ...ref,
+      }
+    );
     go = next === "rerun";
   }
 }
@@ -61,7 +64,7 @@ async function projectPull(
 async function projectHead(
   ctx: ActionCtx,
   eventType: string,
-  payload: unknown,
+  payload: unknown
 ) {
   if (eventType !== "pull_request") {
     return;
@@ -81,7 +84,7 @@ async function projectStatus(
   ctx: ActionCtx,
   eventType: string,
   payload: unknown,
-  now: number,
+  now: number
 ) {
   if (eventType !== "status") {
     return;
@@ -90,17 +93,20 @@ async function projectStatus(
   if (target === null) {
     return;
   }
-  const numbers = await ctx.runQuery(internal.github.reader.pullNumbersForHead, {
-    owner: target.owner,
-    repo: target.repo,
-    headSha: target.sha,
-  });
+  const numbers = await ctx.runQuery(
+    internal.github.reader.pullNumbersForHead,
+    {
+      owner: target.owner,
+      repo: target.repo,
+      headSha: target.sha,
+    }
+  );
   for (const number of numbers) {
     await projectPull(
       ctx,
       target.installationId,
       { owner: target.owner, repo: target.repo, number },
-      now,
+      now
     );
   }
 }
@@ -110,7 +116,7 @@ async function projectWorkbench(
   eventType: string,
   deliveryId: string,
   payload: unknown,
-  now: number,
+  now: number
 ) {
   const target = workbenchTargetFor(payload);
   if (target === null) {
@@ -122,7 +128,7 @@ async function projectWorkbench(
     eventType,
     deliveryId,
     new Date(now).toISOString(),
-    payload,
+    payload
   );
   if (event) {
     await ctx.runMutation(internal.github.workbench.writeWorkbenchEvents, {
@@ -166,7 +172,7 @@ export const refreshPull = internalAction({
         ctx,
         args.installationId,
         { owner: args.owner, repo: args.repo, number: args.number },
-        args.now,
+        args.now
       );
     } catch (error) {
       console.error("post-write refresh failed", error);
@@ -197,7 +203,7 @@ export const project = internalAction({
           ctx,
           projection.installationId,
           projection.ref,
-          args.now,
+          args.now
         );
       } else if (projection._tag === "Install") {
         await ctx.runAction(internal.github.materialize.materialize, {
@@ -213,7 +219,7 @@ export const project = internalAction({
         args.eventType,
         args.deliveryId,
         args.payload,
-        args.now,
+        args.now
       );
     } catch (error) {
       console.error("webhook projection failed", error);

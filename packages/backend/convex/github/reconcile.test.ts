@@ -12,7 +12,7 @@ const WINDOW_MS = 20 * 60 * 1000;
 
 const addInstall = (t: T, installationId: number) =>
   t.run((ctx) =>
-    ctx.db.insert("installation", { installationId, reconciledAt: null }),
+    ctx.db.insert("installation", { installationId, reconciledAt: null })
   );
 
 const addDelivery = (t: T, installationId: number | null, receivedAt: number) =>
@@ -22,7 +22,7 @@ const addDelivery = (t: T, installationId: number | null, receivedAt: number) =>
       eventType: "pull_request",
       installationId,
       receivedAt,
-    }),
+    })
   );
 
 const stale = (t: T) =>

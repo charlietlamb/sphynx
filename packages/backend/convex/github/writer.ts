@@ -17,7 +17,7 @@ async function applyPull(
   ctx: MutationCtx,
   doc: PullDoc,
   snapshotAt: number,
-  fetchedAt: number,
+  fetchedAt: number
 ): Promise<boolean> {
   const existing = await ctx.db
     .query("reviewPull")
@@ -32,7 +32,7 @@ async function applyPull(
           fetchedAt: existing.fetchedAt,
         },
     { state: doc.state, ghUpdatedAt: doc.ghUpdatedAt },
-    snapshotAt,
+    snapshotAt
   );
   if (!applies) {
     return false;
@@ -52,7 +52,7 @@ async function ensureRepoRow(
   owner: string,
   repo: string,
   repoKey: string,
-  stages?: readonly string[],
+  stages?: readonly string[]
 ) {
   const existing = await ctx.db
     .query("reviewRepo")
@@ -79,13 +79,13 @@ async function closeDeparted(
   repoKey: string,
   openNumbers: number[],
   snapshotAt: number,
-  now: number,
+  now: number
 ) {
   const open = new Set(openNumbers);
   const rows = await ctx.db
     .query("reviewPull")
     .withIndex("by_repo_and_state", (q) =>
-      q.eq("repoKey", repoKey).eq("state", "open"),
+      q.eq("repoKey", repoKey).eq("state", "open")
     )
     .collect();
   for (const row of rows) {
@@ -106,7 +106,7 @@ async function rewriteGaps(
   ctx: MutationCtx,
   repoKey: string,
   installationId: number,
-  flow: Parameters<typeof gapDocsFrom>[2],
+  flow: Parameters<typeof gapDocsFrom>[2]
 ) {
   const existing = await ctx.db
     .query("stageGap")
@@ -140,7 +140,7 @@ export const writeRepoFlow = internalMutation({
       flow.owner,
       flow.repo,
       repoKey,
-      flow.stages,
+      flow.stages
     );
     for (const pull of flow.openPulls) {
       const doc = pullDocFrom(
@@ -148,7 +148,7 @@ export const writeRepoFlow = internalMutation({
         repoKey,
         flow.owner,
         flow.repo,
-        pull,
+        pull
       );
       await applyPull(ctx, doc, args.snapshotAt, args.now);
     }
@@ -157,7 +157,7 @@ export const writeRepoFlow = internalMutation({
       repoKey,
       flow.openPulls.map((pull) => pull.number),
       args.snapshotAt,
-      args.now,
+      args.now
     );
     await rewriteGaps(ctx, repoKey, args.installationId, flow);
     return null;
@@ -187,14 +187,14 @@ export const writePull = internalMutation({
       args.installationId,
       args.owner,
       args.repo,
-      repoKey,
+      repoKey
     );
     const doc = pullDocFrom(
       args.installationId,
       repoKey,
       args.owner,
       args.repo,
-      args.pull,
+      args.pull
     );
     return await applyPull(ctx, doc, args.snapshotAt, args.fetchedAt);
   },
@@ -214,7 +214,10 @@ export const writePullHead = internalMutation({
     const existing = await ctx.db
       .query("pullHead")
       .withIndex("by_owner_and_repo_and_number", (q) =>
-        q.eq("owner", args.owner).eq("repo", args.repo).eq("number", args.number),
+        q
+          .eq("owner", args.owner)
+          .eq("repo", args.repo)
+          .eq("number", args.number)
       )
       .unique();
     if (existing === null) {
@@ -245,7 +248,10 @@ export const deletePullHead = internalMutation({
     const existing = await ctx.db
       .query("pullHead")
       .withIndex("by_owner_and_repo_and_number", (q) =>
-        q.eq("owner", args.owner).eq("repo", args.repo).eq("number", args.number),
+        q
+          .eq("owner", args.owner)
+          .eq("repo", args.repo)
+          .eq("number", args.number)
       )
       .unique();
     if (existing !== null) {

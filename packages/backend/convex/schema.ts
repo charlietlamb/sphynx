@@ -77,7 +77,7 @@ export default defineSchema({
         body: v.union(v.string(), v.null()),
         author: v.union(githubUserValidator, v.null()),
         mergedAt: v.union(v.string(), v.null()),
-      }),
+      })
     ),
   })
     .index("by_repo", ["repoKey"])

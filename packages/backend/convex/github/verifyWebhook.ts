@@ -16,20 +16,23 @@ function webhookSecrets(): string[] {
  * constant time, accepting either the current or a previous secret so the secret
  * can rotate with zero downtime.
  */
-export function verifySignature(body: string, signature: string | null): boolean {
+export function verifySignature(
+  body: string,
+  signature: string | null
+): boolean {
   const secrets = webhookSecrets();
   if (secrets.length === 0 || !signature?.startsWith(SIGNATURE_PREFIX)) {
     return false;
   }
   const provided = Uint8Array.from(
-    Buffer.from(signature.slice(SIGNATURE_PREFIX.length), "hex"),
+    Buffer.from(signature.slice(SIGNATURE_PREFIX.length), "hex")
   );
   if (provided.length === 0) {
     return false;
   }
   return secrets.some((secret) => {
     const expected = Uint8Array.from(
-      createHmac("sha256", secret).update(body).digest(),
+      createHmac("sha256", secret).update(body).digest()
     );
     return (
       expected.length === provided.length && timingSafeEqual(expected, provided)

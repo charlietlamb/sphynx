@@ -4,10 +4,10 @@ import {
   type GitHubClient,
   makeGitHubClient,
 } from "./githubClient";
-import { GitHubUnavailable, type GitHubError } from "./githubErrors";
-import type { PullRequestRef } from "./prReads";
+import { type GitHubError, GitHubUnavailable } from "./githubErrors";
+import type { PullRequestRef } from "./refs";
 
-export interface ViewedFile {
+interface ViewedFile {
   readonly path: string;
   readonly viewed: boolean;
 }
@@ -49,7 +49,7 @@ const PullRequestIdSchema = Schema.Struct({
   repository: Schema.NullishOr(
     Schema.Struct({
       pullRequest: Schema.NullishOr(Schema.Struct({ id: Schema.String })),
-    }),
+    })
   ),
 });
 
@@ -69,12 +69,12 @@ const ViewedFilesSchema = Schema.Struct({
               Schema.Struct({
                 path: Schema.String,
                 viewerViewedState: Schema.String,
-              }),
+              })
             ),
           }),
-        }),
+        })
       ),
-    }),
+    })
   ),
 });
 
@@ -82,10 +82,10 @@ const BATCH_SIZE = 25;
 
 const MAX_CONNECTION_PAGES = 20;
 
-export const makeViewer = (client: GitHubClient) => {
+const makeViewer = (client: GitHubClient) => {
   const pullRequestId = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<string, GitHubError> =>
     client
       .query(token, PullRequestIdSchema, PULL_REQUEST_ID_QUERY, {
@@ -99,14 +99,14 @@ export const makeViewer = (client: GitHubClient) => {
           return id
             ? Effect.succeed(id)
             : Effect.fail(
-                new GitHubUnavailable({ message: "Pull request not found" }),
+                new GitHubUnavailable({ message: "Pull request not found" })
               );
-        }),
+        })
       );
 
   const listViewedFiles = (
     ref: PullRequestRef,
-    token: string,
+    token: string
   ): Effect.Effect<ViewedFile[], GitHubError> =>
     Effect.gen(function* () {
       const files: ViewedFile[] = [];
@@ -121,7 +121,7 @@ export const makeViewer = (client: GitHubClient) => {
             name: ref.repo,
             number: ref.number,
             after,
-          },
+          }
         );
         const connection = data.repository?.pullRequest?.files ?? null;
         if (connection === null) {
@@ -143,14 +143,14 @@ export const makeViewer = (client: GitHubClient) => {
       return files;
     }).pipe(
       Effect.withSpan("GitHubViewer.listViewedFiles"),
-      Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` }),
+      Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` })
     );
 
   const setFileViewed = (
     ref: PullRequestRef,
     path: string,
     viewed: boolean,
-    token: string,
+    token: string
   ): Effect.Effect<void, GitHubError> =>
     Effect.gen(function* () {
       const id = yield* pullRequestId(ref, token);
@@ -158,20 +158,20 @@ export const makeViewer = (client: GitHubClient) => {
         token,
         Schema.Unknown,
         viewed ? MARK_VIEWED_MUTATION : UNMARK_VIEWED_MUTATION,
-        { id, path },
+        { id, path }
       );
     }).pipe(
       Effect.withSpan("GitHubViewer.setFileViewed"),
       Effect.annotateLogs({
         "github.repo": `${ref.owner}/${ref.repo}`,
         "github.viewed": viewed,
-      }),
+      })
     );
 
   const setAllFilesViewed = (
     ref: PullRequestRef,
     viewed: boolean,
-    token: string,
+    token: string
   ): Effect.Effect<void, GitHubError> =>
     Effect.gen(function* () {
       const files = yield* listViewedFiles(ref, token);
@@ -187,34 +187,32 @@ export const makeViewer = (client: GitHubClient) => {
           const aliased = chunk
             .map(
               (file, index) =>
-                `m${index}: ${field}(input: { pullRequestId: $id, path: ${JSON.stringify(file.path)} }) { clientMutationId }`,
+                `m${index}: ${field}(input: { pullRequestId: $id, path: ${JSON.stringify(file.path)} }) { clientMutationId }`
             )
             .join("\n");
           return client.query(
             token,
             Schema.Unknown,
             `mutation($id: ID!) {\n${aliased}\n}`,
-            { id },
+            { id }
           );
         },
-        { discard: true },
+        { discard: true }
       );
     }).pipe(
       Effect.withSpan("GitHubViewer.setAllFilesViewed"),
       Effect.annotateLogs({
         "github.repo": `${ref.owner}/${ref.repo}`,
         "github.viewed": viewed,
-      }),
+      })
     );
 
   return { listViewedFiles, setFileViewed, setAllFilesViewed } as const;
 };
 
-export type Viewer = ReturnType<typeof makeViewer>;
-
 export const listViewedFiles = (
   ref: PullRequestRef,
-  token: string,
+  token: string
 ): Effect.Effect<ViewedFile[], GitHubError> =>
   makeViewer(makeGitHubClient(configFromEnv())).listViewedFiles(ref, token);
 
@@ -222,22 +220,22 @@ export const setFileViewed = (
   ref: PullRequestRef,
   path: string,
   viewed: boolean,
-  token: string,
+  token: string
 ): Effect.Effect<void, GitHubError> =>
   makeViewer(makeGitHubClient(configFromEnv())).setFileViewed(
     ref,
     path,
     viewed,
-    token,
+    token
   );
 
 export const setAllFilesViewed = (
   ref: PullRequestRef,
   viewed: boolean,
-  token: string,
+  token: string
 ): Effect.Effect<void, GitHubError> =>
   makeViewer(makeGitHubClient(configFromEnv())).setAllFilesViewed(
     ref,
     viewed,
-    token,
+    token
   );

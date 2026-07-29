@@ -62,10 +62,10 @@ describe("recordDelivery dedup", () => {
       receivedAt: 1_700_000_000_000,
     };
     expect(await t.mutation(internal.github.ingest.recordDelivery, args)).toBe(
-      true,
+      true
     );
     expect(await t.mutation(internal.github.ingest.recordDelivery, args)).toBe(
-      false,
+      false
     );
   });
 });

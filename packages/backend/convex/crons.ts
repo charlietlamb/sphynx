@@ -7,7 +7,7 @@ crons.interval(
   "reconcile read model",
   { minutes: 15 },
   internal.github.reconcile.reconcile,
-  {},
+  {}
 );
 
 export default crons;

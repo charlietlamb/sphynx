@@ -26,7 +26,7 @@ export const markInstallation = internalMutation({
     const existing = await ctx.db
       .query("installation")
       .withIndex("by_installationId", (q) =>
-        q.eq("installationId", args.installationId),
+        q.eq("installationId", args.installationId)
       )
       .unique();
     if (existing === null) {
@@ -88,14 +88,14 @@ export const reconcile = internalAction({
     }
     const ids = await ctx.runQuery(
       internal.github.reconcile.staleInstallationIds,
-      { now },
+      { now }
     );
     for (const installationId of ids) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.github.materialize.materialize,
-        { installationId, now, seed: false },
-      );
+      await ctx.scheduler.runAfter(0, internal.github.materialize.materialize, {
+        installationId,
+        now,
+        seed: false,
+      });
     }
     return null;
   },

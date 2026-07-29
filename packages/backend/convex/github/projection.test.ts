@@ -19,7 +19,7 @@ describe("projectionFor", () => {
   test("pull_request -> Pull with the PR number", () => {
     const p = projectionFor(
       "pull_request",
-      envelope({ pull_request: { number: 42, head: { sha: "abc" } } }),
+      envelope({ pull_request: { number: 42, head: { sha: "abc" } } })
     );
     expect(p._tag).toBe("Pull");
     if (p._tag === "Pull") {
@@ -31,7 +31,7 @@ describe("projectionFor", () => {
   test("pull_request_review -> Pull", () => {
     const p = projectionFor(
       "pull_request_review",
-      envelope({ pull_request: { number: 7 }, review: { state: "approved" } }),
+      envelope({ pull_request: { number: 7 }, review: { state: "approved" } })
     );
     expect(p._tag).toBe("Pull");
   });
@@ -39,7 +39,7 @@ describe("projectionFor", () => {
   test("pull_request_review_thread -> Pull", () => {
     const p = projectionFor(
       "pull_request_review_thread",
-      envelope({ pull_request: { number: 9 } }),
+      envelope({ pull_request: { number: 9 } })
     );
     expect(p._tag).toBe("Pull");
   });
@@ -47,7 +47,7 @@ describe("projectionFor", () => {
   test("issue_comment on a PR -> Pull", () => {
     const p = projectionFor(
       "issue_comment",
-      envelope({ issue: { number: 5, pull_request: { url: "x" } } }),
+      envelope({ issue: { number: 5, pull_request: { url: "x" } } })
     );
     expect(p._tag).toBe("Pull");
     if (p._tag === "Pull") {
@@ -58,7 +58,7 @@ describe("projectionFor", () => {
   test("issue_comment on a plain issue -> None", () => {
     const p = projectionFor(
       "issue_comment",
-      envelope({ issue: { number: 5 } }),
+      envelope({ issue: { number: 5 } })
     );
     expect(p._tag).toBe("None");
   });
@@ -66,7 +66,9 @@ describe("projectionFor", () => {
   test("check_run -> Pull from the first associated PR", () => {
     const p = projectionFor(
       "check_run",
-      envelope({ check_run: { pull_requests: [{ number: 11 }, { number: 12 }] } }),
+      envelope({
+        check_run: { pull_requests: [{ number: 11 }, { number: 12 }] },
+      })
     );
     expect(p._tag).toBe("Pull");
     if (p._tag === "Pull") {
@@ -77,7 +79,7 @@ describe("projectionFor", () => {
   test("check_suite with no associated PR -> None", () => {
     const p = projectionFor(
       "check_suite",
-      envelope({ check_suite: { pull_requests: [] } }),
+      envelope({ check_suite: { pull_requests: [] } })
     );
     expect(p._tag).toBe("None");
   });
@@ -116,7 +118,7 @@ describe("headMoveFor / headCloseFor", () => {
       envelope({
         action: "synchronize",
         pull_request: { number: 3, state: "open", head: { sha: "deadbeef" } },
-      }),
+      })
     );
     expect(move).toEqual({
       installationId: INSTALL,
@@ -132,7 +134,7 @@ describe("headMoveFor / headCloseFor", () => {
       envelope({
         action: "closed",
         pull_request: { number: 3, state: "closed", head: { sha: "x" } },
-      }),
+      })
     );
     expect(close).toEqual({ owner: "useautumn", repo: "autumn", number: 3 });
   });
@@ -141,7 +143,7 @@ describe("headMoveFor / headCloseFor", () => {
 describe("statusTargetFor", () => {
   test("a status event yields the commit sha target", () => {
     const target = statusTargetFor(
-      envelope({ sha: "c0ffee", state: "success" }),
+      envelope({ sha: "c0ffee", state: "success" })
     );
     expect(target).toEqual({
       installationId: INSTALL,

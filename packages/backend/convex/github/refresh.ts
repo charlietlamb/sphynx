@@ -5,9 +5,8 @@ const refreshKey = (
   installationId: number,
   owner: string,
   repo: string,
-  number: number,
-) =>
-  `${installationId}:${owner.toLowerCase()}/${repo.toLowerCase()}#${number}`;
+  number: number
+) => `${installationId}:${owner.toLowerCase()}/${repo.toLowerCase()}#${number}`;
 
 /**
  * Claim a PR refresh, coalescing a burst. A CI matrix firing 50 check_run
@@ -30,7 +29,7 @@ export const claimRefresh = internalMutation({
       args.installationId,
       args.owner,
       args.repo,
-      args.number,
+      args.number
     );
     const existing = await ctx.db
       .query("pullRefresh")
@@ -72,7 +71,7 @@ export const completeRefresh = internalMutation({
       args.installationId,
       args.owner,
       args.repo,
-      args.number,
+      args.number
     );
     const existing = await ctx.db
       .query("pullRefresh")

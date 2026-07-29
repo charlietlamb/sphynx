@@ -1,11 +1,11 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
-import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
+import { type BetterAuthOptions, betterAuth } from "better-auth/minimal";
 import { organization } from "better-auth/plugins";
-import authConfig from "./auth.config";
-import authSchema from "./betterAuth/schema";
 import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
+import authConfig from "./auth.config";
+import authSchema from "./betterAuth/schema";
 
 const siteUrl = process.env.SITE_URL ?? "http://localhost:3006";
 
@@ -24,7 +24,7 @@ const authBaseUrl = process.env.AUTH_PUBLIC_URL ?? process.env.CONVEX_SITE_URL;
 
 export const authComponent = createClient<DataModel, typeof authSchema>(
   components.betterAuth,
-  { local: { schema: authSchema } },
+  { local: { schema: authSchema } }
 );
 
 function githubProvider() {
@@ -50,11 +50,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       cookieCache: { enabled: true, maxAge: 300 },
     },
     socialProviders: githubProvider(),
-    plugins: [
-      crossDomain({ siteUrl }),
-      organization(),
-      convex({ authConfig }),
-    ],
+    plugins: [crossDomain({ siteUrl }), organization(), convex({ authConfig })],
   }) satisfies BetterAuthOptions;
 
 export const createAuth = (ctx: GenericCtx<DataModel>) =>

@@ -14,7 +14,7 @@ const KNOWN_BOTS = new Set([
   "sourcery-ai",
 ]);
 
-const BOT_SUFFIX = /\[bot\]$/;
+export const BOT_SUFFIX = /\[bot\]$/;
 
 export function isBotLogin(login: string, typename?: string) {
   return (

@@ -6,7 +6,7 @@ const JWT_TTL_SECONDS = 540;
 const JWT_CLOCK_SKEW_SECONDS = 60;
 
 /** Normalize the `\n`-escaped env form of a PEM back into real newlines. */
-export function pemFrom(value: string) {
+function pemFrom(value: string) {
   return value.replace(/\\n/g, "\n").trim();
 }
 
@@ -21,7 +21,7 @@ function base64url(value: string) {
 export function signAppJwt(
   clientId: string,
   privateKey: string,
-  nowSeconds: number,
+  nowSeconds: number
 ) {
   const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const payload = base64url(
@@ -29,7 +29,7 @@ export function signAppJwt(
       iat: nowSeconds - JWT_CLOCK_SKEW_SECONDS,
       exp: nowSeconds + JWT_TTL_SECONDS,
       iss: clientId,
-    }),
+    })
   );
   const body = `${header}.${payload}`;
   const signer = createSign("RSA-SHA256");
