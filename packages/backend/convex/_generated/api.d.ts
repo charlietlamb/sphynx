@@ -8,6 +8,13 @@
  * @module
  */
 
+import type * as github_domain from "../github/domain.js";
+import type * as github_gate from "../github/gate.js";
+import type * as github_queueDecision from "../github/queueDecision.js";
+import type * as github_queueMappers from "../github/queueMappers.js";
+import type * as github_rows from "../github/rows.js";
+import type * as github_validators from "../github/validators.js";
+import type * as github_writer from "../github/writer.js";
 import type * as spikes_effectSpike from "../spikes/effectSpike.js";
 import type * as spikes_githubAppSpike from "../spikes/githubAppSpike.js";
 
@@ -18,6 +25,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "github/domain": typeof github_domain;
+  "github/gate": typeof github_gate;
+  "github/queueDecision": typeof github_queueDecision;
+  "github/queueMappers": typeof github_queueMappers;
+  "github/rows": typeof github_rows;
+  "github/validators": typeof github_validators;
+  "github/writer": typeof github_writer;
   "spikes/effectSpike": typeof spikes_effectSpike;
   "spikes/githubAppSpike": typeof spikes_githubAppSpike;
 }>;

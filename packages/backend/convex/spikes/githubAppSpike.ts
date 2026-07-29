@@ -12,7 +12,7 @@ function pemFrom(value: string) {
 }
 
 function base64url(input: Buffer | string) {
-  return Buffer.from(input)
+  return (typeof input === "string" ? Buffer.from(input) : input)
     .toString("base64")
     .replace(/=/g, "")
     .replace(/\+/g, "-")
