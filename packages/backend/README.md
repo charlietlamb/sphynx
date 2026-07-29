@@ -1,17 +1,14 @@
 # @sphynx/backend
 
-Convex backend for Sphynx. Holds the read model, webhook ingest, materializer,
-reconcile cron, auth (Better Auth Local Install), and writes — the whole server,
-replacing the deleted Neon + Effect/Bun stack.
+Convex backend for Sphynx. Holds the GitHub read model, webhook ingest,
+materializer, reconciliation, Better Auth, and writes.
 
 ## Node requirement
 
-Convex `"use node"` actions (RS256 signing, HMAC verify, GitHub fetches) need a
-supported system Node (18/20/22/24). This machine's default `node` is v26, which
-the local backend rejects. Use nvm's Node 22 for every Convex command:
+Use the repository's Node 22 version for Convex CLI commands and Node actions:
 
 ```bash
-nvm use            # reads .nvmrc -> 22
+nvm use
 bunx convex dev    # or: convex run / convex env ...
 ```
 
@@ -22,11 +19,10 @@ bunx convex dev    # or: convex run / convex env ...
 - `convex/http.ts` — webhook receiver + Better Auth routes.
 - `convex/crons.ts` — reconcile.
 - `convex/betterAuth/` — Better Auth Local Install (self-owned auth schema).
-- `convex/spikes/` — Stage-A proof-of-concept probes (Effect-in-Convex, App JWT).
 
 ## Conventions
 
 All functions follow `@convex-dev/eslint-plugin` (object syntax, `args`+`returns`
 validators, `withIndex` not `.filter()`, `internal.*` for scheduled targets, Node
-APIs only in `"use node"` files). Domain logic runs as Effect programs inside
-handler bodies via `Effect.runPromise(program.pipe(Effect.provide(...)))`.
+APIs only in `"use node"` files). GitHub payloads are decoded with Effect Schema
+at the boundary.

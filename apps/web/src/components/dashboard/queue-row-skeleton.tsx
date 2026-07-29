@@ -1,4 +1,5 @@
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
+import { cn } from "@sphynx/ui/lib/utils";
 
 interface QueueRowSkeletonProps {
   titleWidth: string;
@@ -21,7 +22,7 @@ export function QueueRowSkeleton({ titleWidth }: QueueRowSkeletonProps) {
       <span className="flex shrink-0 items-end gap-px">
         {TICK_HEIGHTS.map((height) => (
           <Skeleton
-            className={`w-[3px] rounded-[1px] ${height}`}
+            className={cn("w-[3px] rounded-[1px]", height)}
             key={height}
           />
         ))}

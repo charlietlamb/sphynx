@@ -24,6 +24,19 @@ export const recordAccessBlock = (ref: PullRequestRef, message: string) => {
   emit();
 };
 
+export const clearAccessBlock = (ref: PullRequestRef) => {
+  if (blocked.delete(keyOf(ref))) {
+    emit();
+  }
+};
+
+export const clearAccessBlocks = () => {
+  if (blocked.size > 0) {
+    blocked.clear();
+    emit();
+  }
+};
+
 export function useAccessBlock(ref: PullRequestRef) {
   return useSyncExternalStore(
     (listener) => {

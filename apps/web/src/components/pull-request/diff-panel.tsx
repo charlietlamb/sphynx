@@ -10,7 +10,10 @@ import type {
   PatchMap,
   SymbolIndex,
 } from "@/components/pull-request/patch-map";
-import { toErrorCardProps } from "@/components/pull-request/pull-request-queries";
+import {
+  toErrorCardProps,
+  type ViewedFilesState,
+} from "@/components/pull-request/pull-request-queries";
 import { WorkspaceSkeleton } from "@/components/pull-request/workspace-skeleton";
 
 const loadDiffWorkspace = () =>
@@ -42,6 +45,7 @@ interface DiffPanelProps {
   pullRequestRef: PullRequestRef;
   refetch: () => void;
   symbolIndex: SymbolIndex;
+  viewed: ViewedFilesState;
 }
 
 /**
@@ -58,6 +62,7 @@ export function DiffPanel({
   pullRequestRef,
   refetch,
   symbolIndex,
+  viewed,
 }: DiffPanelProps): ReactNode {
   if (isError) {
     const card = toErrorCardProps(error, refetch);
@@ -98,6 +103,7 @@ export function DiffPanel({
         patches={patches}
         pullRequestRef={pullRequestRef}
         symbolIndex={symbolIndex}
+        viewed={viewed}
       />
     </Suspense>
   );

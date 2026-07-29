@@ -37,7 +37,7 @@ const GitRefSchema = Schema.Struct({
   sha: Schema.String,
 });
 
-export const PullRequestSummarySchema = Schema.Struct({
+const PullRequestSummarySchema = Schema.Struct({
   repository: Schema.Struct({
     id: Schema.Number,
     owner: Schema.String,
@@ -68,7 +68,7 @@ export const PullRequestSummarySchema = Schema.Struct({
 
 export type PullRequestSummary = typeof PullRequestSummarySchema.Type;
 
-export const PullRequestFileSchema = Schema.Struct({
+const PullRequestFileSchema = Schema.Struct({
   path: Schema.String,
   previousPath: Schema.NullOr(Schema.String),
   sha: Schema.String,
@@ -94,7 +94,7 @@ export type PullRequestFile = typeof PullRequestFileSchema.Type;
  * patches the file list is derived from, so the client never has to parse
  * every patch to power go-to-definition.
  */
-export const SymbolDefinitionSchema = Schema.Struct({
+const SymbolDefinitionSchema = Schema.Struct({
   kind: Schema.Literal("member", "top"),
   lineNumber: Schema.Number,
   path: Schema.String,
@@ -103,7 +103,7 @@ export const SymbolDefinitionSchema = Schema.Struct({
 
 export type SymbolDefinition = typeof SymbolDefinitionSchema.Type;
 
-export const SymbolIndexSchema = Schema.Record({
+const SymbolIndexSchema = Schema.Record({
   key: Schema.String,
   value: SymbolDefinitionSchema,
 });
@@ -115,7 +115,7 @@ export type SymbolIndexPayload = typeof SymbolIndexSchema.Type;
  * first paint doesn't wait on the diff text, which is ~90% of the payload.
  * Navigation needs all of them synchronously, so this stays one request.
  */
-export const PullRequestPatchesSchema = Schema.Struct({
+const PullRequestPatchesSchema = Schema.Struct({
   /**
    * The file list is returned alongside the patches because both come from the
    * same GitHub pages. Fetching them separately walked those pages twice.

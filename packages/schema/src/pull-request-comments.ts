@@ -2,8 +2,8 @@ import { Schema } from "effect";
 
 const CommentSideSchema = Schema.Literal("additions", "deletions");
 
-export const ReviewCommentSchema = Schema.Struct({
-  id: Schema.Number,
+const ReviewCommentSchema = Schema.Struct({
+  id: Schema.String,
   body: Schema.String,
   author: Schema.NullOr(
     Schema.Struct({ login: Schema.String, avatarUrl: Schema.String })
@@ -15,7 +15,7 @@ export const ReviewCommentSchema = Schema.Struct({
 
 export type ReviewComment = typeof ReviewCommentSchema.Type;
 
-export const ReviewThreadSchema = Schema.Struct({
+const ReviewThreadSchema = Schema.Struct({
   id: Schema.NullOr(Schema.String),
   path: Schema.String,
   line: Schema.Number,
@@ -29,7 +29,7 @@ export const ReviewThreadSchema = Schema.Struct({
 
 export type ReviewThread = typeof ReviewThreadSchema.Type;
 
-export const CreateReviewCommentSchema = Schema.Struct({
+const CreateReviewCommentSchema = Schema.Struct({
   body: Schema.String.pipe(Schema.minLength(1)),
   commitSha: Schema.String,
   path: Schema.String,
@@ -41,28 +41,28 @@ export const CreateReviewCommentSchema = Schema.Struct({
 
 export type CreateReviewComment = typeof CreateReviewCommentSchema.Type;
 
-export const ReplyPayloadSchema = Schema.Struct({
+const ReplyPayloadSchema = Schema.Struct({
   body: Schema.String.pipe(Schema.minLength(1)),
-  commentId: Schema.Number,
+  commentId: Schema.String,
 });
 
 export type ReplyPayload = typeof ReplyPayloadSchema.Type;
 
-export const ResolveThreadSchema = Schema.Struct({
+const ResolveThreadSchema = Schema.Struct({
   threadId: Schema.String,
   resolved: Schema.Boolean,
 });
 
 export type ResolveThread = typeof ResolveThreadSchema.Type;
 
-export const PendingReviewSchema = Schema.Struct({
+const PendingReviewSchema = Schema.Struct({
   pendingId: Schema.NullOr(Schema.String),
   commentCount: Schema.Number,
 });
 
 export type PendingReview = typeof PendingReviewSchema.Type;
 
-export const ReviewEventSchema = Schema.Literal(
+const ReviewEventSchema = Schema.Literal(
   "APPROVE",
   "REQUEST_CHANGES",
   "COMMENT"
@@ -70,7 +70,7 @@ export const ReviewEventSchema = Schema.Literal(
 
 export type ReviewEvent = typeof ReviewEventSchema.Type;
 
-export const SubmitReviewSchema = Schema.Struct({
+const SubmitReviewSchema = Schema.Struct({
   body: Schema.NullOr(Schema.String),
   event: ReviewEventSchema,
 });

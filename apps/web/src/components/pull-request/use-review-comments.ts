@@ -17,10 +17,10 @@ function draftFromRange(path: string, range: SelectedLineRange): CommentDraft {
   const forward = range.end >= range.start;
   const start = forward ? range.start : range.end;
   const end = forward ? range.end : range.start;
+  const endSide = range.endSide ?? range.side;
   const side: CommentSide =
-    ((forward ? (range.endSide ?? range.side) : range.side) as
-      | CommentSide
-      | undefined) ?? "additions";
+    ((forward ? endSide : range.side) as CommentSide | undefined) ??
+    "additions";
   return { path, line: end, startLine: start === end ? null : start, side };
 }
 

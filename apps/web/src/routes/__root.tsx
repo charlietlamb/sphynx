@@ -4,6 +4,7 @@ import type { ConvexQueryClient } from "@convex-dev/react-query";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import type { ComponentProps } from "react";
 import { RootDocument } from "@/components/layout/root-document";
 import { RootErrorComponent } from "@/components/layout/root-error";
 import { RootNotFound } from "@/components/layout/root-not-found";
@@ -18,6 +19,9 @@ import "@fontsource-variable/funnel-display";
 import "../styles/globals.css";
 
 const fetchToken = createServerFn({ method: "GET" }).handler(() => getToken());
+const providerAuthClient = authClient as unknown as ComponentProps<
+  typeof ConvexBetterAuthProvider
+>["authClient"];
 
 interface RouterContext {
   convexQueryClient: ConvexQueryClient;
@@ -65,7 +69,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ConvexBetterAuthProvider
-        authClient={authClient}
+        authClient={providerAuthClient}
         client={convexQueryClient.convexClient}
         initialToken={token}
       >

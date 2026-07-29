@@ -20,6 +20,7 @@ fragment PullFields on PullRequest {
   statusCheckRollup {
     state
     contexts(first: 20) {
+      totalCount
       nodes {
         __typename
         ... on CheckRun { name conclusion detailsUrl }
@@ -28,9 +29,11 @@ fragment PullFields on PullRequest {
     }
   }
   reviews(last: 20) {
+    totalCount
     nodes { state body submittedAt author { __typename login avatarUrl } }
   }
   reviewThreads(first: 20) {
+    totalCount
     nodes {
       id
       isResolved
@@ -41,6 +44,7 @@ fragment PullFields on PullRequest {
     }
   }
   comments(last: 5) {
+    totalCount
     nodes { body author { __typename login avatarUrl } }
   }
 }`;
@@ -107,12 +111,22 @@ export const RawPullSchema = Schema.Struct({
   statusCheckRollup: Schema.NullOr(
     Schema.Struct({
       state: Schema.String,
-      contexts: Schema.Struct({ nodes: Schema.Array(RawContextSchema) }),
+      contexts: Schema.Struct({
+        totalCount: Schema.Number,
+        nodes: Schema.Array(RawContextSchema),
+      }),
     })
   ),
-  reviews: Schema.Struct({ nodes: Schema.Array(RawReviewSchema) }),
-  reviewThreads: Schema.Struct({ nodes: Schema.Array(RawThreadSchema) }),
+  reviews: Schema.Struct({
+    totalCount: Schema.Number,
+    nodes: Schema.Array(RawReviewSchema),
+  }),
+  reviewThreads: Schema.Struct({
+    totalCount: Schema.Number,
+    nodes: Schema.Array(RawThreadSchema),
+  }),
   comments: Schema.Struct({
+    totalCount: Schema.Number,
     nodes: Schema.Array(
       Schema.Struct({ body: Schema.String, author: ActorSchema })
     ),
@@ -176,8 +190,12 @@ function ciCounts(contexts: readonly RawContext[]): QueuePull["ciCounts"] {
   return counts;
 }
 const MAX_CI_FAILURES = 6;
-const MAX_THREAD_PREVIEWS = 20;
+const MAX_THREAD_PREVIEWS = 10;
 const MAX_PREVIEW_BODY = 400;
+const MAX_WIRE_STRING = 512;
+
+const wireString = (value: string | null) =>
+  value === null ? null : value.slice(0, MAX_WIRE_STRING);
 
 export function failingChecks(contexts: readonly RawContext[]): FailingCheck[] {
   const checks: FailingCheck[] = [];
@@ -185,7 +203,10 @@ export function failingChecks(contexts: readonly RawContext[]): FailingCheck[] {
   const push = (name: string, url: string | null) => {
     if (!seen.has(name) && checks.length < MAX_CI_FAILURES) {
       seen.add(name);
-      checks.push({ name, url });
+      checks.push({
+        name: name.slice(0, MAX_WIRE_STRING),
+        url: wireString(url),
+      });
     }
   };
   for (const context of contexts) {
@@ -254,15 +275,18 @@ function threadPreviews(threads: readonly RawThread[]) {
     if (!body) {
       continue;
     }
-    const rootCommentId = Number(first.fullDatabaseId ?? 0);
+    const rootCommentId = first.fullDatabaseId ?? null;
     previews.push({
       author: first.author
-        ? { login: first.author.login, avatarUrl: first.author.avatarUrl }
+        ? {
+            login: first.author.login,
+            avatarUrl: wireString(first.author.avatarUrl),
+          }
         : null,
       body,
       id: thread.id,
-      path: thread.path,
-      rootCommentId: rootCommentId > 0 ? rootCommentId : null,
+      path: wireString(thread.path),
+      rootCommentId,
     });
   }
   return previews;
@@ -361,7 +385,7 @@ function toVerdicts(
     verdicts.push({
       name: author.login,
       kind,
-      avatarUrl: author.avatarUrl,
+      avatarUrl: wireString(author.avatarUrl),
       state: effectiveState,
       score,
       submittedAt: review.submittedAt ?? "",
@@ -402,6 +426,12 @@ export function toQueuePull(
     reviewerCount: verdicts.length,
     unresolvedThreads,
   };
+  const incomplete =
+    (pull.statusCheckRollup?.contexts.totalCount ?? 0) >
+      (pull.statusCheckRollup?.contexts.nodes.length ?? 0) ||
+    pull.reviews.totalCount > pull.reviews.nodes.length ||
+    pull.reviewThreads.totalCount > pull.reviewThreads.nodes.length ||
+    pull.comments.totalCount > pull.comments.nodes.length;
   return {
     owner,
     repo,
@@ -409,7 +439,10 @@ export function toQueuePull(
     title: pull.title,
     hasBody: descriptionBody(pull.bodyHTML) !== null,
     author: pull.author
-      ? { login: pull.author.login, avatarUrl: pull.author.avatarUrl }
+      ? {
+          login: pull.author.login,
+          avatarUrl: wireString(pull.author.avatarUrl),
+        }
       : null,
     isDraft: pull.isDraft,
     state: pullState(pull.state),
@@ -431,7 +464,9 @@ export function toQueuePull(
     ciFailures: failingChecks(pull.statusCheckRollup?.contexts.nodes ?? []),
     ciCounts: ciCounts(pull.statusCheckRollup?.contexts.nodes ?? []),
     threadPreviews: threadPreviews(pull.reviewThreads.nodes),
-    decision: decide(signals),
-    blocker: blockerFor(signals),
+    decision: incomplete ? "needs-eyes" : decide(signals),
+    blocker: incomplete
+      ? "GitHub details exceed queue limits"
+      : blockerFor(signals),
   };
 }

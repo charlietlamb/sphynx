@@ -117,11 +117,16 @@ const makeWriteQueue = (client: GitHubClient) => {
     token: string
   ): Effect.Effect<number, GitHubError> =>
     client
-      .rest(token, "POST", `/repos/${owner}/${repo}/pulls`, {
-        title,
-        head,
-        base,
-      })
+      .rest(
+        token,
+        "POST",
+        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls`,
+        {
+          title,
+          head,
+          base,
+        }
+      )
       .pipe(
         Effect.flatMap((response) =>
           decodeBody(response, CreatedPullSchema, "Invalid create response")

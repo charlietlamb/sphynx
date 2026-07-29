@@ -6,9 +6,8 @@ interface RepoRef {
 }
 
 /**
- * Query keys nest identity outward-in: installation, then repo, then pull, then
- * entity. Every level is a prefix of the one below, so invalidating a repo or a
- * pull is a prefix match rather than a predicate.
+ * Action-backed query keys nest identity outward-in so invalidation can use a
+ * prefix. Convex subscriptions bring their own generated keys.
  *
  * Keys carry identity only. A freshness signal must never become part of a key:
  * it mints a new cache entry on every change, which is what made
@@ -20,12 +19,6 @@ export const keys = {
   installations: () => [...keys.all, "installations"] as const,
   installation: (id: number | null) =>
     [...keys.all, "installation", id] as const,
-  pipeline: (id: number | null) =>
-    [...keys.installation(id), "pipeline"] as const,
-  queue: (id: number | null) => [...keys.installation(id), "queue"] as const,
-  repos: (id: number | null) => [...keys.installation(id), "repos"] as const,
-  repoFlow: (id: number | null, owner: string | null, repo: string | null) =>
-    [...keys.installation(id), "repo-flow", owner, repo] as const,
   search: (id: number | null, query: string) =>
     [...keys.installation(id), "search", query] as const,
 

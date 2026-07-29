@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "PORT=3006 bun --env-file=../../.env vite dev",
+    "dev": "bun --env-file=../../.env vite dev",
     "build": "vite build",
-    "start": "node dist/server/server.js",
+    "start": "node .output/server/index.mjs",
     "typecheck": "tsc --noEmit",
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
-    "@convex-dev/better-auth": "^0.12.5",
+    "@convex-dev/better-auth": "catalog:",
     "@convex-dev/react-query": "^0.1.0",
     "@databuddy/sdk": "^2.6.0",
     "@fontsource-variable/funnel-display": "^5.2.8",
@@ -30,7 +30,7 @@
     "@tanstack/react-start": "catalog:",
     "@tanstack/start-server-core": "1.169.14",
     "better-auth": "catalog:",
-    "convex": "^1.42.3",
+    "convex": "catalog:",
     "dnd-core": "16.0.1",
     "dompurify": "catalog:",
     "effect": "catalog:",
@@ -44,9 +44,8 @@
     "react-markdown": "^10.1.0",
     "react-mosaic-component": "7",
     "remark-gfm": "^4.0.1",
-    "shadcn": "catalog:",
     "simple-icons": "catalog:",
-    "sonner": "^2.0.7",
+    "sonner": "catalog:",
     "tw-animate-css": "catalog:"
   },
   "devDependencies": {

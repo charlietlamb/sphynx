@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useWorkbenchEvents } from "@/components/workbench/use-workbench-events";
-import { markWorkbenchSeen } from "@/components/workbench/workbench-store";
 
 export function useWorkbench(
   owner: string | null,
@@ -9,17 +8,20 @@ export function useWorkbench(
   pullTitles: ReadonlyMap<number, string>
 ) {
   const [open, setOpen] = useState(false);
+  const key = `${owner}/${repo}`;
+  const [seen, setSeen] = useState({ key, at: Date.now() });
   const data = useWorkbenchEvents(
     owner ?? "",
     repo ?? "",
     installationId,
     Boolean(owner && repo),
-    pullTitles
+    pullTitles,
+    seen.key === key ? seen.at : 0
   );
 
   const setSheetOpen = (next: boolean) => {
     if (next) {
-      markWorkbenchSeen();
+      setSeen({ key, at: Date.now() });
     }
     setOpen(Boolean(next));
   };

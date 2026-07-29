@@ -6,4 +6,4 @@ export interface PullRequestRef {
 
 /** The REST path for a pull request, optionally with a sub-resource suffix. */
 export const pullPath = (ref: PullRequestRef, suffix = "") =>
-  `/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}${suffix}`;
+  `/repos/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/pulls/${ref.number}${suffix}`;

@@ -90,7 +90,7 @@ const thread = (createdAt: string): ReviewThread => ({
   viewerCanResolve: false,
   comments: [
     {
-      id: 1,
+      id: "1",
       body: "thread comment",
       author,
       createdAt,

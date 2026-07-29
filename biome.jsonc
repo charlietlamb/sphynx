@@ -2,15 +2,8 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "extends": ["ultracite/biome/core"],
   "files": {
-    // shadcn/ui primitives + preview demo blocks + generated hooks are vendored,
-    // not hand-authored app code — exclude from lint/format.
-    "includes": [
-      "!packages/ui/src/components/ui",
-      "!packages/ui/src/components/blocks",
-      "!packages/ui/src/hooks",
-      "!.agents",
-      "!context"
-    ]
+    // shadcn/ui primitives are vendored, not hand-authored app code.
+    "includes": ["!packages/ui/src/components/ui", "!.agents", "!context"]
   },
   "javascript": {
     "globals": ["Bun"]
@@ -27,18 +20,6 @@
         "rules": {
           "security": {
             "noDangerouslySetInnerHtml": "off"
-          }
-        }
-      }
-    },
-    {
-      // The Drizzle schema barrel re-exports tables so drizzle-kit can discover
-      // them from a single entry point — the barrel is intentional here.
-      "includes": ["packages/db/src/schema.ts"],
-      "linter": {
-        "rules": {
-          "performance": {
-            "noBarrelFile": "off"
           }
         }
       }

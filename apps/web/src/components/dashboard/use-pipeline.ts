@@ -40,34 +40,3 @@ export function usePipeline(installationId: number | null, enabled: boolean) {
     ),
   });
 }
-
-/** The queue without the promotion rail — paints while the rail loads. */
-export function useQueue(installationId: number | null, enabled: boolean) {
-  return useQuery({
-    ...convexQuery(
-      api.github.reader.getQueue,
-      enabled && installationId !== null ? { installationId } : "skip"
-    ),
-  });
-}
-
-/**
- * One repo's open pulls, fetched on demand when the selected repo has no flow in
- * the installation pipeline yet — a freshly added or quiet repo. Live like the
- * pipeline.
- */
-export function useRepoFlow(
-  installationId: number | null,
-  owner: string | null,
-  repo: string | null,
-  enabled: boolean
-) {
-  return useQuery({
-    ...convexQuery(
-      api.github.reader.getRepoPulls,
-      enabled && installationId !== null && owner !== null && repo !== null
-        ? { installationId, owner, repo }
-        : "skip"
-    ),
-  });
-}

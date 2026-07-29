@@ -4,14 +4,18 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { verifySignature } from "./verifyWebhook";
+import { normalizeWebhookJob } from "./webhookJob";
 
 function parsePayload(
   body: string
-): { installation?: { id?: number } } & Record<string, unknown> {
+): ({ installation?: { id?: number } } & Record<string, unknown>) | null {
   try {
-    return JSON.parse(body);
+    const value: unknown = JSON.parse(body);
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? (value as { installation?: { id?: number } } & Record<string, unknown>)
+      : null;
   } catch {
-    return {};
+    return null;
   }
 }
 
@@ -33,6 +37,7 @@ export const ingestWebhook = internalAction({
     v.literal("accepted"),
     v.literal("duplicate"),
     v.literal("ping"),
+    v.literal("invalid"),
     v.literal("rejected")
   ),
   handler: async (ctx, args) => {
@@ -46,24 +51,27 @@ export const ingestWebhook = internalAction({
       return "rejected";
     }
     const payload = parsePayload(args.body);
+    if (payload === null) {
+      return "invalid";
+    }
+    const job = normalizeWebhookJob(
+      args.eventType,
+      args.deliveryId,
+      payload,
+      args.now
+    );
     const inserted = await ctx.runMutation(
       internal.github.ingest.recordDelivery,
       {
         deliveryId: args.deliveryId,
         eventType: args.eventType,
-        installationId: payload.installation?.id ?? null,
         receivedAt: args.now,
+        job,
       }
     );
     if (!inserted) {
       return "duplicate";
     }
-    await ctx.scheduler.runAfter(0, internal.github.project.project, {
-      eventType: args.eventType,
-      deliveryId: args.deliveryId,
-      payload,
-      now: args.now,
-    });
     return "accepted";
   },
 });

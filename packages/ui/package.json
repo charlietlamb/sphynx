@@ -9,22 +9,18 @@
     "./lib/*": "./src/lib/*.ts"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json --noEmit",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
-    "@base-ui/react": "^1.5.0",
+    "@base-ui/react": "catalog:",
     "@phosphor-icons/react": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "cmdk": "catalog:",
-    "date-fns": "catalog:",
     "next-themes": "catalog:",
-    "react-day-picker": "^9",
     "react-resizable-panels": "catalog:",
-    "recharts": "3.8.0",
-    "sonner": "^2.0.7",
+    "sonner": "catalog:",
     "tailwind-merge": "catalog:"
   },
   "peerDependencies": {

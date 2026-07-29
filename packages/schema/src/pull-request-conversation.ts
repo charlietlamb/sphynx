@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { GitHubUserSchema } from "./pull-requests";
 
-export const ConversationCommentSchema = Schema.Struct({
+const ConversationCommentSchema = Schema.Struct({
   id: Schema.String,
   author: Schema.NullOr(GitHubUserSchema),
   body: Schema.String,
@@ -12,7 +12,7 @@ export const ConversationCommentSchema = Schema.Struct({
 
 export type ConversationComment = typeof ConversationCommentSchema.Type;
 
-export const ConversationVerdictSchema = Schema.Literal(
+const ConversationVerdictSchema = Schema.Literal(
   "approved",
   "changes-requested",
   "commented",
@@ -21,7 +21,7 @@ export const ConversationVerdictSchema = Schema.Literal(
 
 export type ConversationVerdict = typeof ConversationVerdictSchema.Type;
 
-export const ConversationReviewSchema = Schema.Struct({
+const ConversationReviewSchema = Schema.Struct({
   id: Schema.String,
   author: Schema.NullOr(GitHubUserSchema),
   isBot: Schema.optionalWith(Schema.Boolean, { default: () => false }),
@@ -35,7 +35,7 @@ export const ConversationReviewSchema = Schema.Struct({
 
 export type ConversationReview = typeof ConversationReviewSchema.Type;
 
-export const ConversationEventKindSchema = Schema.Literal(
+const ConversationEventKindSchema = Schema.Literal(
   "commit",
   "force-push",
   "labeled",
@@ -50,7 +50,7 @@ export const ConversationEventKindSchema = Schema.Literal(
 
 export type ConversationEventKind = typeof ConversationEventKindSchema.Type;
 
-export const ConversationEventSchema = Schema.Struct({
+const ConversationEventSchema = Schema.Struct({
   id: Schema.String,
   kind: ConversationEventKindSchema,
   at: Schema.String,
@@ -62,7 +62,7 @@ export const ConversationEventSchema = Schema.Struct({
 
 export type ConversationEvent = typeof ConversationEventSchema.Type;
 
-export const ConversationSchema = Schema.Struct({
+const ConversationSchema = Schema.Struct({
   descriptionHTML: Schema.NullOr(Schema.String),
   comments: Schema.Array(ConversationCommentSchema),
   reviews: Schema.Array(ConversationReviewSchema),

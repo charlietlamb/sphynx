@@ -61,7 +61,7 @@ export interface PullRequestFile {
 }
 
 export interface PullRequestPatches {
-  readonly files: readonly PullRequestFile[];
+  readonly files: PullRequestFile[];
   readonly patches: Record<string, string>;
   readonly symbols: SymbolIndexPayload;
 }
@@ -71,12 +71,12 @@ export interface ReviewComment {
   readonly body: string;
   readonly createdAt: string;
   readonly githubUrl: string;
-  readonly id: number;
+  readonly id: string;
   readonly pending: boolean;
 }
 
 export interface ReviewThread {
-  readonly comments: readonly ReviewComment[];
+  readonly comments: ReviewComment[];
   readonly id: string | null;
   readonly isOutdated: boolean;
   readonly isResolved: boolean;
@@ -137,13 +137,15 @@ export interface ConversationEvent {
 }
 
 export interface Conversation {
-  readonly comments: readonly ConversationComment[];
+  readonly comments: ConversationComment[];
   readonly descriptionHTML: string | null;
-  readonly events: readonly ConversationEvent[];
-  readonly reviews: readonly ConversationReview[];
+  readonly events: ConversationEvent[];
+  readonly reviews: ConversationReview[];
 }
 
-const MAX_FILE_PAGES = 30;
+const MAX_FILE_PAGES = 5;
+const MAX_PATCH_BYTES = 8 * 1024 * 1024;
+const MAX_THREAD_BYTES = 8 * 1024 * 1024;
 
 const GitHubUserSchema = Schema.Struct({
   login: Schema.String,
@@ -322,12 +324,14 @@ query($owner: String!, $name: String!, $number: Int!) {
     pullRequest(number: $number) {
       bodyHTML
       comments(first: 50) {
+        totalCount
         nodes {
           id fullDatabaseId body bodyHTML createdAt url
           author { login avatarUrl }
         }
       }
       reviews(first: 50) {
+        totalCount
         nodes {
           id fullDatabaseId state body bodyHTML submittedAt url
           author { __typename login avatarUrl }
@@ -339,6 +343,7 @@ query($owner: String!, $name: String!, $number: Int!) {
         UNLABELED_EVENT, REVIEW_REQUESTED_EVENT, ASSIGNED_EVENT, MERGED_EVENT,
         CLOSED_EVENT, REOPENED_EVENT, RENAMED_TITLE_EVENT
       ]) {
+        totalCount
         nodes {
           __typename
           ... on PullRequestCommit {
@@ -422,12 +427,15 @@ type RawConversationReview = typeof RawConversationReviewSchema.Type;
 const ConversationNodesSchema = Schema.Struct({
   bodyHTML: Schema.NullishOr(Schema.String),
   comments: Schema.Struct({
+    totalCount: Schema.Number,
     nodes: Schema.Array(Schema.NullishOr(RawConversationCommentSchema)),
   }),
   reviews: Schema.Struct({
+    totalCount: Schema.Number,
     nodes: Schema.Array(Schema.NullishOr(RawConversationReviewSchema)),
   }),
   timelineItems: Schema.Struct({
+    totalCount: Schema.Number,
     nodes: Schema.Array(Schema.Unknown),
   }),
 });
@@ -706,6 +714,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
         nodes {
           id isResolved isOutdated viewerCanResolve path line startLine diffSide
           comments(first: 100) {
+            totalCount
             nodes {
               fullDatabaseId body state createdAt url
               author { login avatarUrl }
@@ -740,7 +749,10 @@ const ThreadNodeSchema = Schema.Struct({
   line: Schema.NullishOr(Schema.Number),
   startLine: Schema.NullishOr(Schema.Number),
   diffSide: Schema.NullishOr(Schema.String),
-  comments: Schema.Struct({ nodes: Schema.Array(ThreadCommentSchema) }),
+  comments: Schema.Struct({
+    totalCount: Schema.Number,
+    nodes: Schema.Array(ThreadCommentSchema),
+  }),
 });
 
 type ThreadNode = typeof ThreadNodeSchema.Type;
@@ -774,7 +786,7 @@ const toThread = (node: ThreadNode): ReviewThread | null => {
     isOutdated: node.isOutdated,
     viewerCanResolve: node.viewerCanResolve,
     comments: node.comments.nodes.map((comment) => ({
-      id: Number(comment.fullDatabaseId ?? 0),
+      id: comment.fullDatabaseId ?? "",
       body: comment.body,
       author: comment.author
         ? { login: comment.author.login, avatarUrl: comment.author.avatarUrl }
@@ -840,14 +852,17 @@ const makePrReads = (client: GitHubClient) => {
       );
 
   const parallelRest = (token: string, ref: PullRequestRef, last: number) =>
-    Effect.forEach(
-      Array.from(
-        { length: Math.min(last, MAX_FILE_PAGES) - 1 },
-        (_, i) => i + 2
-      ),
-      (page) => filesPage(token, ref, page),
-      { concurrency: 6 }
-    ).pipe(Effect.map((results) => results.map((result) => result.files)));
+    last > MAX_FILE_PAGES
+      ? Effect.fail(
+          new GitHubUnavailable({
+            message: `Pull request exceeds the ${MAX_FILE_PAGES * 100}-file limit`,
+          })
+        )
+      : Effect.forEach(
+          Array.from({ length: last - 1 }, (_, i) => i + 2),
+          (page) => filesPage(token, ref, page),
+          { concurrency: 6 }
+        ).pipe(Effect.map((results) => results.map((result) => result.files)));
 
   const serialRest = (
     token: string,
@@ -861,6 +876,13 @@ const makePrReads = (client: GitHubClient) => {
         const result = yield* filesPage(token, ref, next);
         pages.push(result.files);
         next = nextPageFrom(result.link);
+      }
+      if (next !== null) {
+        return yield* Effect.fail(
+          new GitHubUnavailable({
+            message: `Pull request exceeds the ${MAX_FILE_PAGES * 100}-file limit`,
+          })
+        );
       }
       return pages;
     });
@@ -879,7 +901,12 @@ const makePrReads = (client: GitHubClient) => {
         files.push(toFile(ref, file));
       }
     }
-    return { files, patches };
+    const bytes = [...patches].reduce(
+      (total, [path, patch]) =>
+        total + Buffer.byteLength(path) + Buffer.byteLength(patch),
+      0
+    );
+    return { bytes, files, patches };
   };
 
   /**
@@ -904,11 +931,19 @@ const makePrReads = (client: GitHubClient) => {
     token: string
   ): Effect.Effect<PullRequestPatches, GitHubError> =>
     collectPatches(token, ref).pipe(
-      Effect.map(({ files, patches }) => ({
-        files,
-        patches: Object.fromEntries(patches),
-        symbols: buildSymbolIndex(patches),
-      })),
+      Effect.flatMap(({ bytes, files, patches }) =>
+        bytes > MAX_PATCH_BYTES
+          ? Effect.fail(
+              new GitHubUnavailable({
+                message: "Pull request patches exceed the 8 MiB response limit",
+              })
+            )
+          : Effect.succeed({
+              files,
+              patches: Object.fromEntries(patches),
+              symbols: buildSymbolIndex(patches),
+            })
+      ),
       Effect.withSpan("GitHubPrReads.listPatches")
     );
 
@@ -947,16 +982,28 @@ const makePrReads = (client: GitHubClient) => {
         number: ref.number,
       })
       .pipe(
-        Effect.map((data) => {
+        Effect.flatMap((data) => {
           const nodes = data.repository?.pullRequest ?? null;
-          return nodes
-            ? toConversation(nodes)
-            : {
-                descriptionHTML: null,
-                comments: [],
-                reviews: [],
-                events: [],
-              };
+          if (!nodes) {
+            return Effect.succeed({
+              descriptionHTML: null,
+              comments: [],
+              reviews: [],
+              events: [],
+            });
+          }
+          const complete =
+            nodes.comments.totalCount <= nodes.comments.nodes.length &&
+            nodes.reviews.totalCount <= nodes.reviews.nodes.length &&
+            nodes.timelineItems.totalCount <= nodes.timelineItems.nodes.length;
+          return complete
+            ? Effect.succeed(toConversation(nodes))
+            : Effect.fail(
+                new GitHubUnavailable({
+                  message:
+                    "Pull request conversation exceeds the supported history limit",
+                })
+              );
         }),
         Effect.withSpan("GitHubPrReads.getConversation")
       );
@@ -967,6 +1014,7 @@ const makePrReads = (client: GitHubClient) => {
   ): Effect.Effect<ReviewThread[], GitHubError> =>
     Effect.gen(function* () {
       const threads: ReviewThread[] = [];
+      let bytes = 0;
       let after: string | null = null;
       for (let page = 0; page < MAX_CONNECTION_PAGES; page += 1) {
         const data: typeof ReviewThreadsDataSchema.Type = yield* client.query(
@@ -984,7 +1032,31 @@ const makePrReads = (client: GitHubClient) => {
         if (connection === null) {
           return threads;
         }
-        threads.push(...mapThreadNodes(connection.nodes));
+        if (
+          connection.nodes.some(
+            (thread) =>
+              thread.comments.totalCount > thread.comments.nodes.length
+          )
+        ) {
+          return yield* Effect.fail(
+            new GitHubUnavailable({
+              message: "A review thread exceeds the 100-comment limit",
+            })
+          );
+        }
+        const mapped = mapThreadNodes(connection.nodes);
+        bytes = yield* Effect.succeed(
+          bytes + new TextEncoder().encode(JSON.stringify(mapped)).byteLength
+        ).pipe(
+          Effect.filterOrFail(
+            (size) => size <= MAX_THREAD_BYTES,
+            () =>
+              new GitHubUnavailable({
+                message: "Review threads exceed the 8 MiB response limit",
+              })
+          )
+        );
+        threads.push(...mapped);
         if (
           !(connection.pageInfo.hasNextPage && connection.pageInfo.endCursor)
         ) {
@@ -992,7 +1064,11 @@ const makePrReads = (client: GitHubClient) => {
         }
         after = connection.pageInfo.endCursor;
       }
-      return threads;
+      return yield* Effect.fail(
+        new GitHubUnavailable({
+          message: `Pull request exceeds the ${MAX_CONNECTION_PAGES * 100}-thread limit`,
+        })
+      );
     }).pipe(Effect.withSpan("GitHubPrReads.getCommentThreads"));
 
   return {

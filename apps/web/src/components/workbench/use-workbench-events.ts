@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import type { MergedWorkbenchEvent } from "@/components/workbench/workbench-copy";
 import { toWorkbenchKind } from "@/components/workbench/workbench-kind";
-import { useWorkbenchStore } from "@/components/workbench/workbench-store";
 import { useSession } from "@/lib/auth-client";
 
 export function useWorkbenchEvents(
@@ -12,7 +11,8 @@ export function useWorkbenchEvents(
   repo: string,
   installationId: number | null,
   enabled: boolean,
-  pullTitles: ReadonlyMap<number, string>
+  pullTitles: ReadonlyMap<number, string>,
+  seenAt: number
 ) {
   const server = useQuery(
     convexQuery(
@@ -22,7 +22,6 @@ export function useWorkbenchEvents(
         : "skip"
     )
   );
-  const local = useWorkbenchStore(owner, repo);
   const { data: session } = useSession();
 
   const events = useMemo<readonly MergedWorkbenchEvent[]>(() => {
@@ -45,19 +44,15 @@ export function useWorkbenchEvents(
                 event.pull.title ?? pullTitles.get(event.pull.number) ?? null,
             }
           : null,
-        source: "github",
       };
       return [merged];
     });
-    return [...github, ...local.events].sort(
-      (a, b) => Date.parse(b.at) - Date.parse(a.at)
-    );
-  }, [server.data, local.events, pullTitles]);
+    return github;
+  }, [server.data, pullTitles]);
 
   const unseen = useMemo(
-    () =>
-      events.filter((event) => Date.parse(event.at) > local.lastSeenAt).length,
-    [events, local.lastSeenAt]
+    () => events.filter((event) => Date.parse(event.at) > seenAt).length,
+    [events, seenAt]
   );
 
   return {

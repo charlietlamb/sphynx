@@ -23,10 +23,7 @@ export function useCopy(resetMs = 1500) {
         if (timeoutRef.current !== null) {
           clearTimeout(timeoutRef.current);
         }
-        timeoutRef.current = window.setTimeout(
-          () => setCopied(false),
-          resetMs
-        );
+        timeoutRef.current = window.setTimeout(() => setCopied(false), resetMs);
       } catch {
         setCopied(false);
       }

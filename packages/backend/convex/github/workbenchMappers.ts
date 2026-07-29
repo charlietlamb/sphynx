@@ -1,7 +1,10 @@
+import type {
+  WorkbenchEvent,
+  WorkbenchEventKind,
+} from "@sphynx/schema/read-model";
 import { Option, Schema } from "effect";
 import { BOT_SUFFIX } from "./queueDecision";
 import { previewBody } from "./queueMappers";
-import type { WorkbenchEvent, WorkbenchEventKind } from "./workbenchTypes";
 
 const RawEventSchema = Schema.Struct({
   id: Schema.String,

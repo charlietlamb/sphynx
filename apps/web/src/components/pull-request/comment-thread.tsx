@@ -35,8 +35,7 @@ export function CommentThread({
   const [replyOpen, setReplyOpen] = useState(false);
   const collapsed = thread.isResolved && !expanded;
   const rootCommentId = thread.comments[0]?.id;
-  const canReply =
-    commenting.canComment && rootCommentId !== undefined && rootCommentId > 0;
+  const canReply = commenting.canComment && Boolean(rootCommentId);
   const threadId = thread.id;
   const onResolve =
     threadId && thread.viewerCanResolve

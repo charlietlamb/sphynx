@@ -14,17 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@sphynx/ui/components/ui/dialog";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-} from "@sphynx/ui/components/ui/sidebar";
 import { useMemo, useState } from "react";
 import { useRegisterCommands } from "@/components/command-palette/command-palette-context";
 import { SettingsAccess } from "@/components/settings/settings-access";
@@ -107,35 +96,25 @@ export function SettingsDialog() {
             Preferences for how Sphynx looks and feels.
           </DialogDescription>
         </DialogHeader>
-        <SidebarProvider className="min-h-0 items-start">
-          <Sidebar
-            className="hidden w-44 self-stretch border-border border-r md:flex"
-            collapsible="none"
-          >
-            <SidebarHeader className="px-4 pt-4 pb-1">
-              <p className="font-medium text-sm">Settings</p>
-            </SidebarHeader>
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {SECTIONS.map((candidate) => (
-                      <SidebarMenuItem key={candidate.id}>
-                        <SidebarMenuButton
-                          className="border border-transparent text-muted-foreground hover:bg-sidebar-accent/40 active:bg-sidebar-accent/40 data-active:border-border data-active:bg-sidebar-accent data-active:text-foreground"
-                          isActive={candidate.id === sectionId}
-                          onClick={() => setSectionId(candidate.id)}
-                        >
-                          <candidate.icon weight="fill" />
-                          {candidate.label}
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
-          </Sidebar>
+        <div className="flex min-h-0 items-start">
+          <aside className="hidden w-44 self-stretch border-border border-r p-2 md:block">
+            <p className="px-2 pt-2 pb-1 font-medium text-sm">Settings</p>
+            <nav className="grid gap-1">
+              {SECTIONS.map((candidate) => (
+                <Button
+                  className="justify-start text-muted-foreground data-active:bg-accent data-active:text-foreground"
+                  data-active={candidate.id === sectionId ? "true" : undefined}
+                  key={candidate.id}
+                  onClick={() => setSectionId(candidate.id)}
+                  size="sm"
+                  variant="ghost"
+                >
+                  <candidate.icon weight="fill" />
+                  {candidate.label}
+                </Button>
+              ))}
+            </nav>
+          </aside>
           <main className="flex h-96 min-w-0 flex-1 flex-col">
             <header className="border-border border-b px-5 pt-4 pb-3">
               <h2 className="font-medium text-sm">{section.label}</h2>
@@ -147,7 +126,7 @@ export function SettingsDialog() {
               <section.content />
             </div>
           </main>
-        </SidebarProvider>
+        </div>
       </DialogContent>
     </Dialog>
   );

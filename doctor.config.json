@@ -9,7 +9,11 @@
     ],
     "overrides": [
       {
-        "files": ["**/components/settings/use-resync.ts"],
+        "files": [
+          "**/components/dashboard/use-promote.ts",
+          "**/components/dashboard/use-pull-actions.ts",
+          "**/components/settings/use-resync.ts"
+        ],
         "rules": ["react-doctor/query-mutation-missing-invalidation"]
       }
     ]

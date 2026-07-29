@@ -10,6 +10,7 @@ import {
   threadPreviewValidator,
   workbenchEventFields,
 } from "./github/validators";
+import { webhookJobValidator } from "./github/webhookJob";
 
 export default defineSchema({
   reviewRepo: defineTable({
@@ -19,10 +20,14 @@ export default defineSchema({
     repo: v.string(),
     defaultBranch: v.union(v.string(), v.null()),
     stages: v.array(v.string()),
+    presenceSeenAt: v.optional(v.number()),
   })
     .index("by_key", ["key"])
     .index("by_installation", ["installationId"])
-    .index("by_owner", ["owner"]),
+    .index("by_installation_and_presence", [
+      "installationId",
+      "presenceSeenAt",
+    ]),
 
   reviewPull: defineTable({
     key: v.string(),
@@ -56,10 +61,15 @@ export default defineSchema({
     threadPreviews: v.array(threadPreviewValidator),
     ghUpdatedAt: v.number(),
     fetchedAt: v.number(),
+    presenceSeenAt: v.optional(v.number()),
   })
     .index("by_key", ["key"])
     .index("by_installation_and_state", ["installationId", "state"])
-    .index("by_repo_and_state", ["repoKey", "state"])
+    .index("by_repo_and_state_and_presence", [
+      "repoKey",
+      "state",
+      "presenceSeenAt",
+    ])
     .index("by_state_and_fetchedAt", ["state", "fetchedAt"]),
 
   stageGap: defineTable({
@@ -90,8 +100,18 @@ export default defineSchema({
     number: v.number(),
     headSha: v.string(),
   })
-    .index("by_owner_and_repo_and_number", ["owner", "repo", "number"])
-    .index("by_owner_and_repo_and_headSha", ["owner", "repo", "headSha"]),
+    .index("by_installation_and_owner_and_repo_and_number", [
+      "installationId",
+      "owner",
+      "repo",
+      "number",
+    ])
+    .index("by_installation_and_owner_and_repo_and_headSha", [
+      "installationId",
+      "owner",
+      "repo",
+      "headSha",
+    ]),
 
   workbenchEvent: defineTable(workbenchEventFields)
     .index("by_eventId", ["eventId"])
@@ -108,20 +128,68 @@ export default defineSchema({
     eventType: v.string(),
     installationId: v.union(v.number(), v.null()),
     receivedAt: v.number(),
+    job: v.optional(webhookJobValidator),
+    status: v.optional(
+      v.union(
+        v.literal("queued"),
+        v.literal("running"),
+        v.literal("succeeded"),
+        v.literal("failed")
+      )
+    ),
+    attempts: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    leaseExpiresAt: v.optional(v.number()),
   })
     .index("by_deliveryId", ["deliveryId"])
-    .index("by_receivedAt", ["receivedAt"]),
+    .index("by_receivedAt", ["receivedAt"])
+    .index("by_status_and_receivedAt", ["status", "receivedAt"])
+    .index("by_status_and_lease", ["status", "leaseExpiresAt"]),
 
   installation: defineTable({
     installationId: v.number(),
     reconciledAt: v.union(v.number(), v.null()),
-  }).index("by_installationId", ["installationId"]),
+    reconcileAttemptedAt: v.optional(v.number()),
+    retiredAt: v.optional(v.number()),
+    lastWebhookAt: v.optional(v.number()),
+    lastProjectedAt: v.optional(v.number()),
+  })
+    .index("by_installationId", ["installationId"])
+    .index("by_reconcileAttemptedAt", ["reconcileAttemptedAt"]),
+
+  userInstallation: defineTable({
+    userId: v.string(),
+    installationId: v.number(),
+    accountLogin: v.string(),
+    verifiedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_installation", ["userId", "installationId"]),
+
+  userRepository: defineTable({
+    userId: v.string(),
+    installationId: v.number(),
+    repoKey: v.string(),
+    verifiedAt: v.number(),
+  })
+    .index("by_user_and_installation_and_verifiedAt", [
+      "userId",
+      "installationId",
+      "verifiedAt",
+    ])
+    .index("by_user_and_installation_and_repo", [
+      "userId",
+      "installationId",
+      "repoKey",
+    ]),
 
   installationToken: defineTable({
     installationId: v.number(),
     token: v.string(),
     expiresAt: v.number(),
-  }).index("by_installationId", ["installationId"]),
+  })
+    .index("by_installationId", ["installationId"])
+    .index("by_expiresAt", ["expiresAt"]),
 
   pullRefresh: defineTable({
     key: v.string(),
@@ -130,5 +198,28 @@ export default defineSchema({
     repo: v.string(),
     number: v.number(),
     status: v.union(v.literal("running"), v.literal("pending")),
-  }).index("by_key", ["key"]),
+    leaseExpiresAt: v.optional(v.number()),
+    runId: v.optional(v.string()),
+  })
+    .index("by_key", ["key"])
+    .index("by_installation", ["installationId"])
+    .index("by_leaseExpiresAt", ["leaseExpiresAt"]),
+
+  materializationLease: defineTable({
+    installationId: v.number(),
+    status: v.union(v.literal("running"), v.literal("pending")),
+    leaseExpiresAt: v.number(),
+    runId: v.optional(v.string()),
+    seedRequested: v.optional(v.boolean()),
+  })
+    .index("by_installation", ["installationId"])
+    .index("by_leaseExpiresAt", ["leaseExpiresAt"]),
+
+  rateLimit: defineTable({
+    key: v.string(),
+    count: v.number(),
+    windowStartedAt: v.number(),
+  })
+    .index("by_key", ["key"])
+    .index("by_windowStartedAt", ["windowStartedAt"]),
 });

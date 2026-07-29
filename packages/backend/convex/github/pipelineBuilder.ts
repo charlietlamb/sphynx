@@ -5,7 +5,7 @@ import {
   type GitHubClient,
   makeGitHubClient,
 } from "./githubClient";
-import type { GitHubError } from "./githubErrors";
+import { type GitHubError, GitHubUnavailable } from "./githubErrors";
 import {
   commitPullNumbers,
   dropStaleMiddleStages,
@@ -85,9 +85,6 @@ const toPromotedPull = (pull: LookupPull): PromotedPull => ({
 
 const MAX_GAP_PULLS = 20;
 
-/** Repos rendered in the queue, most recently pushed first. */
-const MAX_ACTIVE_REPOS = 12;
-
 /**
  * The per-repo compare fan-out. Repos run wide and each repo's stage gaps run
  * in parallel within it; the product stays well under GitHub's 100-request
@@ -113,12 +110,24 @@ const makePipelineBuilder = (client: GitHubClient, queue: ReviewQueue) => {
     upper: string,
     lower: string
   ) =>
-    client.restJson(
-      token,
-      `/repos/${owner}/${repo}/compare/${encodeURIComponent(upper)}...${encodeURIComponent(lower)}?per_page=100`,
-      CompareSchema,
-      "Invalid compare response"
-    );
+    client
+      .restJson(
+        token,
+        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/compare/${encodeURIComponent(upper)}...${encodeURIComponent(lower)}?per_page=100`,
+        CompareSchema,
+        "Invalid compare response"
+      )
+      .pipe(
+        Effect.flatMap((compare) =>
+          compare.ahead_by <= compare.commits.length
+            ? Effect.succeed(compare)
+            : Effect.fail(
+                new GitHubUnavailable({
+                  message: `${owner}/${repo} stage gap exceeds the 100-commit limit`,
+                })
+              )
+        )
+      );
 
   const lookupPulls = (
     token: string,
@@ -198,7 +207,7 @@ query($owner: String!, $name: String!) {
     token: string
   ): Effect.Effect<Map<string, RepoRefs>, GitHubError> => {
     if (repos.length === 0) {
-      return Effect.succeed(new Map());
+      return Effect.succeed(new Map<string, RepoRefs>());
     }
     const selections = repos
       .map(
@@ -229,7 +238,7 @@ query($owner: String!, $name: String!) {
     token: string
   ): Effect.Effect<RepoFlow, GitHubError> => {
     const initial = initialChain(refs);
-    const middleCheck =
+    const middleCheck: Effect.Effect<number | null, GitHubError> =
       initial.length === 3
         ? restCompare(
             token,
@@ -237,13 +246,7 @@ query($owner: String!, $name: String!) {
             entry.repo,
             initial[1] ?? "",
             initial[0] ?? ""
-          ).pipe(
-            Effect.map((compare) => compare.ahead_by),
-            Effect.tapErrorCause((cause) =>
-              Effect.logWarning("middle stage check failed", cause)
-            ),
-            Effect.orElseSucceed(() => null)
-          )
+          ).pipe(Effect.map((compare) => compare.ahead_by))
         : Effect.succeed(null);
     return middleCheck.pipe(
       Effect.map((aheadOfMiddle) =>
@@ -256,28 +259,7 @@ query($owner: String!, $name: String!) {
         return Effect.forEach(
           pairs,
           ([lower, upper]) =>
-            gapFor(
-              token,
-              entry.owner,
-              entry.repo,
-              lower,
-              upper,
-              entry.pulls
-            ).pipe(
-              Effect.tapErrorCause((cause) =>
-                Effect.logWarning("gap computation failed", cause)
-              ),
-              Effect.orElseSucceed(
-                (): StageGap => ({
-                  from: lower,
-                  to: upper,
-                  aheadBy: 0,
-                  pulls: [],
-                  directCommits: 0,
-                  promotionPull: null,
-                })
-              )
-            ),
+            gapFor(token, entry.owner, entry.repo, lower, upper, entry.pulls),
           { concurrency: GAP_CONCURRENCY }
         ).pipe(
           Effect.map((gaps) => ({
@@ -307,19 +289,15 @@ query($owner: String!, $name: String!) {
           (entry) => {
             const refs = refsByRepo.get(repoKey(entry));
             return refs
-              ? flowFromRefs(entry, refs, token).pipe(
-                  Effect.tapErrorCause((cause) =>
-                    Effect.logWarning("repo flow failed", cause)
-                  ),
-                  Effect.orElseSucceed(() => null)
-                )
-              : Effect.succeed(null);
+              ? flowFromRefs(entry, refs, token)
+              : Effect.fail(
+                  new GitHubUnavailable({
+                    message: `Missing repository refs for ${entry.owner}/${entry.repo}`,
+                  })
+                );
           },
           { concurrency: REPO_CONCURRENCY }
         )
-      ),
-      Effect.map((flows) =>
-        flows.filter((flow): flow is RepoFlow => flow !== null)
       ),
       Effect.withSpan("GitHubPipeline.flowsFor"),
       Effect.annotateLogs({ repoCount: entries.length })
@@ -336,7 +314,30 @@ query($owner: String!, $name: String!) {
         repo: entry.repo,
         pulls: pullsByRepo.get(repoKey(entry)) ?? [],
       }));
-      return yield* flowsFor(entries, token);
+      const active = entries.filter((entry) => entry.pulls.length > 0);
+      const flows = yield* Effect.forEach(
+        Array.from(
+          { length: Math.ceil(active.length / REPO_CONCURRENCY) },
+          (_, index) =>
+            active.slice(
+              index * REPO_CONCURRENCY,
+              (index + 1) * REPO_CONCURRENCY
+            )
+        ),
+        (chunk) => flowsFor(chunk, token),
+        { concurrency: 2 }
+      );
+      const byRepo = new Map(flows.flat().map((flow) => [repoKey(flow), flow]));
+      return entries.map(
+        (entry) =>
+          byRepo.get(repoKey(entry)) ?? {
+            owner: entry.owner,
+            repo: entry.repo,
+            stages: [],
+            openPulls: [],
+            gaps: [],
+          }
+      );
     }).pipe(Effect.withSpan("GitHubPipeline.buildFrom"));
 
   return { buildFrom } as const;
@@ -348,8 +349,8 @@ query($owner: String!, $name: String!) {
  * produced, without the conditional-ETag revalidation (there is no cross-request
  * ETag store here; every build is a cold read).
  *
- * Only repos with open pulls reach the expensive per-repo compare fan-out, and
- * the active set is capped, matching the server's `refresh` trimming.
+ * Repositories without open pulls are still returned so reconciliation can
+ * authoritatively close departed rows without running stage comparisons.
  */
 export const buildPipeline = (
   token: string
@@ -360,11 +361,7 @@ export const buildPipeline = (
     const builder = makePipelineBuilder(client, queue);
 
     const discovered = yield* queue.discoverRepos(token);
-    const pullsByRepo = yield* queue.openPullsForRepos(discovered, token);
-    const active = discovered
-      .filter((entry) => (pullsByRepo.get(repoKey(entry))?.length ?? 0) > 0)
-      .slice(0, MAX_ACTIVE_REPOS);
-    const repos = yield* builder.buildFrom(active, token);
+    const repos = yield* builder.buildFrom(discovered, token);
     return { repos };
   }).pipe(Effect.withSpan("GitHubPipeline.buildPipeline"));
 

@@ -1,13 +1,9 @@
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useIsClient } from "@/lib/use-is-client";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
-  const isDark = mounted && resolvedTheme === "dark";
+  const isDark = useIsClient() && resolvedTheme === "dark";
 
   return (
     <button
@@ -28,7 +24,7 @@ export function ThemeToggle() {
         xmlns="http://www.w3.org/2000/svg"
       >
         <circle
-          className="origin-center transition-all duration-300 ease-out"
+          className="origin-center transition-transform duration-300 ease-out"
           cx="12"
           cy="12"
           fill="currentColor"
@@ -42,7 +38,7 @@ export function ThemeToggle() {
           style={{ opacity: isDark ? 1 : 0 }}
         />
         <g
-          className="origin-center transition-all duration-300 ease-out"
+          className="origin-center transition-transform duration-300 ease-out"
           style={{
             opacity: isDark ? 0 : 1,
             transform: isDark ? "rotate(-45deg) scale(0.6)" : "none",

@@ -6,19 +6,17 @@
   "exports": {
     "./pull-request-comments": "./src/pull-request-comments.ts",
     "./pull-request-conversation": "./src/pull-request-conversation.ts",
-    "./pull-request-views": "./src/pull-request-views.ts",
     "./pull-requests": "./src/pull-requests.ts",
     "./read-model": "./src/read-model.ts",
     "./review-queue": "./src/review-queue.ts",
     "./workbench": "./src/workbench.ts"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json --noEmit",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
-    "convex": "^1.42.3",
+    "convex": "catalog:",
     "effect": "catalog:"
   },
   "devDependencies": {

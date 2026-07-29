@@ -70,7 +70,13 @@ export type Projection =
       readonly installationId: number;
       readonly ref: PullRequestRef;
     }
+  | {
+      readonly _tag: "Pulls";
+      readonly installationId: number;
+      readonly refs: readonly PullRequestRef[];
+    }
   | { readonly _tag: "Install"; readonly installationId: number }
+  | { readonly _tag: "Retire"; readonly installationId: number }
   | { readonly _tag: "None" };
 
 const EnvelopeSchema = Schema.Struct(base);
@@ -109,6 +115,7 @@ export const headMoveFor = (payload: unknown): HeadMove | null => {
 };
 
 interface HeadClose {
+  readonly installationId: number;
   readonly number: number;
   readonly owner: string;
   readonly repo: string;
@@ -120,10 +127,11 @@ export const headCloseFor = (payload: unknown): HeadClose | null => {
   if (Option.isNone(decoded)) {
     return null;
   }
-  const { action, repository, pull_request } = decoded.value;
+  const { action, installation, repository, pull_request } = decoded.value;
   const closed = action === "closed" || pull_request?.state === "closed";
-  return closed && repository && pull_request
+  return closed && installation && repository && pull_request
     ? {
+        installationId: installation.id,
         owner: repository.owner.login,
         repo: repository.name,
         number: pull_request.number,
@@ -205,15 +213,22 @@ const PULL_EVENTS = new Set([
 ]);
 
 const CHECK_EVENTS = new Set(["check_run", "check_suite"]);
+const MAX_CHECK_PULLS = 20;
 
 const INSTALL_EVENTS = new Set(["installation", "installation_repositories"]);
 
 const fromInstallEvent = (payload: unknown): Projection => {
-  const decoded = decodePull(payload);
+  const decoded = decodePullHead(payload);
   if (decoded._tag === "None" || !decoded.value.installation) {
     return NONE;
   }
-  return { _tag: "Install", installationId: decoded.value.installation.id };
+  return {
+    _tag:
+      decoded.value.action === "deleted" || decoded.value.action === "suspend"
+        ? "Retire"
+        : "Install",
+    installationId: decoded.value.installation.id,
+  };
 };
 
 const fromPullEvent = (payload: unknown): Projection => {
@@ -254,13 +269,22 @@ const fromCheckEvent = (payload: unknown): Projection => {
     return NONE;
   }
   const { installation, repository, check_run, check_suite } = decoded.value;
-  const number =
-    check_run?.pull_requests?.[0]?.number ??
-    check_suite?.pull_requests?.[0]?.number ??
-    null;
-  return installation && repository && number !== null
-    ? pullFrom(installation.id, repository.owner.login, repository.name, number)
-    : NONE;
+  const pulls = check_run?.pull_requests ?? check_suite?.pull_requests ?? [];
+  if (!(installation && repository) || pulls.length === 0) {
+    return NONE;
+  }
+  if (pulls.length > MAX_CHECK_PULLS) {
+    throw new Error(`Check event exceeds the ${MAX_CHECK_PULLS}-pull limit`);
+  }
+  return {
+    _tag: "Pulls",
+    installationId: installation.id,
+    refs: pulls.map(({ number }) => ({
+      owner: repository.owner.login,
+      repo: repository.name,
+      number,
+    })),
+  };
 };
 
 /**

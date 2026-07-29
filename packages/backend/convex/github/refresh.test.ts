@@ -9,6 +9,8 @@ const ref = {
   owner: "acme",
   repo: "widgets",
   number: 7,
+  now: 1_785_000_000_000,
+  runId: "run-1",
 };
 
 const setup = () => convexTest(schema, modules);
@@ -19,6 +21,43 @@ const complete = (t: T) =>
   t.mutation(internal.github.refresh.completeRefresh, ref);
 
 describe("pullRefresh debounce", () => {
+  test("an expired claim is recoverable", async () => {
+    const t = setup();
+    expect(await claim(t)).toBe("run");
+    const takeover = {
+      ...ref,
+      now: ref.now + 2 * 60 * 1000 + 1,
+      runId: "run-2",
+    };
+    expect(
+      await t.mutation(internal.github.refresh.claimRefresh, takeover)
+    ).toBe("run");
+    expect(await complete(t)).toBe("lost");
+    await t.mutation(internal.github.refresh.releaseRefresh, {
+      installationId: ref.installationId,
+      owner: ref.owner,
+      repo: ref.repo,
+      number: ref.number,
+      runId: ref.runId,
+    });
+    expect(
+      await t.mutation(internal.github.refresh.completeRefresh, takeover)
+    ).toBe("done");
+  });
+
+  test("release after a failed runner allows the next claim", async () => {
+    const t = setup();
+    await claim(t);
+    await t.mutation(internal.github.refresh.releaseRefresh, {
+      installationId: ref.installationId,
+      owner: ref.owner,
+      repo: ref.repo,
+      number: ref.number,
+      runId: ref.runId,
+    });
+    expect(await claim(t)).toBe("run");
+  });
+
   test("the first claim runs, a concurrent claim is queued", async () => {
     const t = setup();
     expect(await claim(t)).toBe("run");

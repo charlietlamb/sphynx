@@ -24,7 +24,7 @@ const RawIssueCommentSchema = Schema.Struct({
 type RawIssueComment = typeof RawIssueCommentSchema.Type;
 
 const issueCommentsPath = (ref: PullRequestRef) =>
-  `/repos/${ref.owner}/${ref.repo}/issues/${ref.number}/comments`;
+  `/repos/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/issues/${ref.number}/comments`;
 
 const toRestComment = (row: RawIssueComment): ConversationComment => ({
   id: String(row.id),

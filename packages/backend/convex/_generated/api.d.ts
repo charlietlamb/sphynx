@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
+import type * as github_access from "../github/access.js";
 import type * as github_appAuth from "../github/appAuth.js";
 import type * as github_appJwt from "../github/appJwt.js";
 import type * as github_conversationWrite from "../github/conversationWrite.js";
@@ -18,13 +19,18 @@ import type * as github_gate from "../github/gate.js";
 import type * as github_githubClient from "../github/githubClient.js";
 import type * as github_githubErrors from "../github/githubErrors.js";
 import type * as github_ingest from "../github/ingest.js";
+import type * as github_input from "../github/input.js";
+import type * as github_installationState from "../github/installationState.js";
 import type * as github_installationToken from "../github/installationToken.js";
 import type * as github_installations from "../github/installations.js";
+import type * as github_limits from "../github/limits.js";
+import type * as github_materializationLease from "../github/materializationLease.js";
 import type * as github_materialize from "../github/materialize.js";
 import type * as github_pipelineBuilder from "../github/pipelineBuilder.js";
 import type * as github_pipelineHelpers from "../github/pipelineHelpers.js";
 import type * as github_prActions from "../github/prActions.js";
 import type * as github_prReads from "../github/prReads.js";
+import type * as github_prValidators from "../github/prValidators.js";
 import type * as github_project from "../github/project.js";
 import type * as github_projection from "../github/projection.js";
 import type * as github_prune from "../github/prune.js";
@@ -46,9 +52,9 @@ import type * as github_validators from "../github/validators.js";
 import type * as github_verifyWebhook from "../github/verifyWebhook.js";
 import type * as github_viewer from "../github/viewer.js";
 import type * as github_webhook from "../github/webhook.js";
+import type * as github_webhookJob from "../github/webhookJob.js";
 import type * as github_workbench from "../github/workbench.js";
 import type * as github_workbenchMappers from "../github/workbenchMappers.js";
-import type * as github_workbenchTypes from "../github/workbenchTypes.js";
 import type * as github_writeQueue from "../github/writeQueue.js";
 import type * as github_writer from "../github/writer.js";
 import type * as github_writes from "../github/writes.js";
@@ -63,6 +69,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   crons: typeof crons;
+  "github/access": typeof github_access;
   "github/appAuth": typeof github_appAuth;
   "github/appJwt": typeof github_appJwt;
   "github/conversationWrite": typeof github_conversationWrite;
@@ -71,13 +78,18 @@ declare const fullApi: ApiFromModules<{
   "github/githubClient": typeof github_githubClient;
   "github/githubErrors": typeof github_githubErrors;
   "github/ingest": typeof github_ingest;
+  "github/input": typeof github_input;
+  "github/installationState": typeof github_installationState;
   "github/installationToken": typeof github_installationToken;
   "github/installations": typeof github_installations;
+  "github/limits": typeof github_limits;
+  "github/materializationLease": typeof github_materializationLease;
   "github/materialize": typeof github_materialize;
   "github/pipelineBuilder": typeof github_pipelineBuilder;
   "github/pipelineHelpers": typeof github_pipelineHelpers;
   "github/prActions": typeof github_prActions;
   "github/prReads": typeof github_prReads;
+  "github/prValidators": typeof github_prValidators;
   "github/project": typeof github_project;
   "github/projection": typeof github_projection;
   "github/prune": typeof github_prune;
@@ -99,9 +111,9 @@ declare const fullApi: ApiFromModules<{
   "github/verifyWebhook": typeof github_verifyWebhook;
   "github/viewer": typeof github_viewer;
   "github/webhook": typeof github_webhook;
+  "github/webhookJob": typeof github_webhookJob;
   "github/workbench": typeof github_workbench;
   "github/workbenchMappers": typeof github_workbenchMappers;
-  "github/workbenchTypes": typeof github_workbenchTypes;
   "github/writeQueue": typeof github_writeQueue;
   "github/writer": typeof github_writer;
   "github/writes": typeof github_writes;
@@ -136,5 +148,4 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
-  migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
 };

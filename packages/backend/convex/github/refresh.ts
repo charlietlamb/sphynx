@@ -1,5 +1,8 @@
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { internalMutation } from "../_generated/server";
+
+const LEASE_MS = 2 * 60 * 1000;
 
 const refreshKey = (
   installationId: number,
@@ -22,6 +25,8 @@ export const claimRefresh = internalMutation({
     owner: v.string(),
     repo: v.string(),
     number: v.number(),
+    now: v.number(),
+    runId: v.string(),
   },
   returns: v.union(v.literal("run"), v.literal("queued")),
   handler: async (ctx, args) => {
@@ -43,11 +48,21 @@ export const claimRefresh = internalMutation({
         repo: args.repo,
         number: args.number,
         status: "running",
+        leaseExpiresAt: args.now + LEASE_MS,
+        runId: args.runId,
+      });
+      return "run";
+    }
+    if ((existing.leaseExpiresAt ?? 0) <= args.now) {
+      await ctx.db.patch("pullRefresh", existing._id, {
+        status: "running",
+        leaseExpiresAt: args.now + LEASE_MS,
+        runId: args.runId,
       });
       return "run";
     }
     if (existing.status !== "pending") {
-      await ctx.db.patch(existing._id, { status: "pending" });
+      await ctx.db.patch("pullRefresh", existing._id, { status: "pending" });
     }
     return "queued";
   },
@@ -64,8 +79,10 @@ export const completeRefresh = internalMutation({
     owner: v.string(),
     repo: v.string(),
     number: v.number(),
+    now: v.number(),
+    runId: v.string(),
   },
-  returns: v.union(v.literal("rerun"), v.literal("done")),
+  returns: v.union(v.literal("rerun"), v.literal("done"), v.literal("lost")),
   handler: async (ctx, args) => {
     const key = refreshKey(
       args.installationId,
@@ -80,11 +97,53 @@ export const completeRefresh = internalMutation({
     if (existing === null) {
       return "done";
     }
+    if (existing.runId !== args.runId) {
+      return "lost";
+    }
     if (existing.status === "pending") {
-      await ctx.db.patch(existing._id, { status: "running" });
+      await ctx.db.patch("pullRefresh", existing._id, {
+        status: "running",
+        leaseExpiresAt: args.now + LEASE_MS,
+      });
       return "rerun";
     }
-    await ctx.db.delete(existing._id);
+    await ctx.db.delete("pullRefresh", existing._id);
     return "done";
+  },
+});
+
+export const releaseRefresh = internalMutation({
+  args: {
+    installationId: v.number(),
+    owner: v.string(),
+    repo: v.string(),
+    number: v.number(),
+    runId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const key = refreshKey(
+      args.installationId,
+      args.owner,
+      args.repo,
+      args.number
+    );
+    const existing = await ctx.db
+      .query("pullRefresh")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (existing?.runId === args.runId) {
+      const pending = existing.status === "pending";
+      await ctx.db.delete("pullRefresh", existing._id);
+      if (pending) {
+        await ctx.scheduler.runAfter(0, internal.github.project.refreshPull, {
+          installationId: args.installationId,
+          owner: args.owner,
+          repo: args.repo,
+          number: args.number,
+        });
+      }
+    }
+    return null;
   },
 });

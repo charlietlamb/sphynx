@@ -7,7 +7,6 @@
 export type {
   CiState,
   Decision,
-  DiscoveredRepo,
   FailingCheck,
   Installation,
   Pipeline,

@@ -16,9 +16,11 @@ import {
 } from "@sphynx/ui/components/ui/dropdown-menu";
 import { Skeleton } from "@sphynx/ui/components/ui/skeleton";
 import { cn } from "@sphynx/ui/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { trackEvent } from "@/lib/analytics";
 import { signOut, useSession } from "@/lib/auth-client";
+import { clearUserState } from "@/lib/clear-user-state";
 import { useIsClient } from "@/lib/use-is-client";
 
 /**
@@ -29,6 +31,7 @@ import { useIsClient } from "@/lib/use-is-client";
 export function UserMenu() {
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isClient = useIsClient();
   if (!isClient || isPending) {
     return <Skeleton className="size-[1.875rem] rounded-md" />;
@@ -40,6 +43,7 @@ export function UserMenu() {
   const onSignOut = async () => {
     trackEvent("signed_out", {});
     await signOut();
+    clearUserState(queryClient);
     navigate({ to: "/login" });
   };
   return (

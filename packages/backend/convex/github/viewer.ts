@@ -140,7 +140,11 @@ const makeViewer = (client: GitHubClient) => {
         }
         after = connection.pageInfo.endCursor;
       }
-      return files;
+      return yield* Effect.fail(
+        new GitHubUnavailable({
+          message: `Pull request exceeds the ${MAX_CONNECTION_PAGES * 100}-file limit`,
+        })
+      );
     }).pipe(
       Effect.withSpan("GitHubViewer.listViewedFiles"),
       Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` })

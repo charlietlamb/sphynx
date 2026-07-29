@@ -29,6 +29,7 @@ export function WorkbenchFilters({
       <div className="relative min-w-0 max-w-64 flex-1">
         <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-0 size-3.5 -translate-y-1/2 text-muted-foreground/50" />
         <input
+          aria-label="Search workbench events"
           className="h-7 w-full bg-transparent pl-6 text-xs outline-none placeholder:text-muted-foreground/50"
           onChange={(event) => onSearch(event.target.value)}
           placeholder="Search actor, title, #number"

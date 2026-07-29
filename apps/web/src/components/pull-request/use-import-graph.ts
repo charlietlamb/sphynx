@@ -11,7 +11,7 @@ import {
 import { buildImportGraph, type ImportGraph } from "@/lib/import-graph";
 
 const SOURCE_FILE = /\.(?:m|c)?[jt]sx?$/;
-const MAX_GRAPH_FILES = 200;
+const MAX_GRAPH_FILES = 40;
 
 const graphEligible = (file: PullRequestFile) =>
   file.status !== "deleted" &&
@@ -20,6 +20,7 @@ const graphEligible = (file: PullRequestFile) =>
 
 export function useImportGraph(
   ref: PullRequestRef,
+  headSha: string,
   files: readonly PullRequestFile[]
 ): ImportGraph {
   const eligible = useMemo(
@@ -29,7 +30,7 @@ export function useImportGraph(
   const getFileContents = useFileContentsAction();
   const contents = useQueries({
     queries: eligible.map((file) =>
-      fileContentsQuery(getFileContents, ref, file.sha, file.path)
+      fileContentsQuery(getFileContents, ref, headSha, file.path)
     ),
     combine: (results) =>
       results

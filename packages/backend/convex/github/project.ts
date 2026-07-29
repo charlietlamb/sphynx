@@ -7,14 +7,7 @@ import type { ActionCtx } from "../_generated/server";
 import { internalAction } from "../_generated/server";
 import { getInstallationToken } from "./installationToken";
 import { refreshPull as refreshPullProgram } from "./pipelineBuilder";
-import {
-  headCloseFor,
-  headMoveFor,
-  projectionFor,
-  statusTargetFor,
-  workbenchTargetFor,
-} from "./projection";
-import { webhookToWorkbenchEvent } from "./workbenchMappers";
+import { normalizeWebhookJob, type WebhookJob } from "./webhookJob";
 
 /**
  * Refresh one PR from GitHub and write it through the gate, coalescing a burst
@@ -26,131 +19,119 @@ import { webhookToWorkbenchEvent } from "./workbenchMappers";
 async function projectPull(
   ctx: ActionCtx,
   installationId: number,
-  ref: { owner: string; repo: string; number: number },
-  now: number
+  ref: { owner: string; repo: string; number: number }
 ) {
+  const runId = crypto.randomUUID();
   const claim = await ctx.runMutation(internal.github.refresh.claimRefresh, {
     installationId,
     ...ref,
+    now: Date.now(),
+    runId,
   });
   if (claim === "queued") {
     return;
   }
-  const accessToken = await getInstallationToken(ctx, installationId, now);
-  let go = true;
-  while (go) {
-    const pull = await Effect.runPromise(refreshPullProgram(ref, accessToken));
-    if (pull !== null) {
-      await ctx.runMutation(internal.github.writer.writePull, {
-        installationId,
-        owner: ref.owner,
-        repo: ref.repo,
-        pull,
-        snapshotAt: now,
-        fetchedAt: Date.now(),
-      });
+  try {
+    const accessToken = await getInstallationToken(
+      ctx,
+      installationId,
+      Date.now()
+    );
+    let go = true;
+    while (go) {
+      const snapshotAt = Date.now();
+      const pull = await Effect.runPromise(
+        refreshPullProgram(ref, accessToken)
+      );
+      const fetchedAt = Date.now();
+      if (pull !== null) {
+        await ctx.runMutation(internal.github.writer.writePull, {
+          installationId,
+          owner: ref.owner,
+          repo: ref.repo,
+          pull,
+          snapshotAt,
+          fetchedAt,
+        });
+      }
+      const next = await ctx.runMutation(
+        internal.github.refresh.completeRefresh,
+        {
+          installationId,
+          ...ref,
+          now: fetchedAt,
+          runId,
+        }
+      );
+      go = next === "rerun";
     }
-    const next = await ctx.runMutation(
-      internal.github.refresh.completeRefresh,
+  } catch (error) {
+    await ctx.runMutation(internal.github.refresh.releaseRefresh, {
+      installationId,
+      ...ref,
+      runId,
+    });
+    throw error;
+  }
+}
+
+async function executeJob(ctx: ActionCtx, job: WebhookJob) {
+  if (job.projection.kind === "pull") {
+    await projectPull(ctx, job.projection.installationId, job.projection.ref);
+  } else if (job.projection.kind === "pulls") {
+    for (const ref of job.projection.refs) {
+      await projectPull(ctx, job.projection.installationId, ref);
+    }
+  } else if (job.projection.kind === "install") {
+    await ctx.runMutation(internal.github.reconcile.restoreInstallation, {
+      installationId: job.projection.installationId,
+    });
+    await ctx.runAction(internal.github.materialize.materialize, {
+      installationId: job.projection.installationId,
+      seed: true,
+    });
+  } else if (job.projection.kind === "retire") {
+    await ctx.runMutation(internal.github.reconcile.retireInstallation, {
+      installationId: job.projection.installationId,
+      retiredAt: Date.now(),
+    });
+  }
+  const target = job.status;
+  if (target) {
+    const numbers = await ctx.runQuery(
+      internal.github.reader.pullNumbersForHead,
       {
-        installationId,
-        ...ref,
+        installationId: target.installationId,
+        owner: target.owner,
+        repo: target.repo,
+        headSha: target.sha,
       }
     );
-    go = next === "rerun";
-  }
-}
-
-async function projectHead(
-  ctx: ActionCtx,
-  eventType: string,
-  payload: unknown
-) {
-  if (eventType !== "pull_request") {
-    return;
-  }
-  const close = headCloseFor(payload);
-  if (close !== null) {
-    await ctx.runMutation(internal.github.writer.deletePullHead, close);
-    return;
-  }
-  const move = headMoveFor(payload);
-  if (move !== null) {
-    await ctx.runMutation(internal.github.writer.writePullHead, move);
-  }
-}
-
-async function projectStatus(
-  ctx: ActionCtx,
-  eventType: string,
-  payload: unknown,
-  now: number
-) {
-  if (eventType !== "status") {
-    return;
-  }
-  const target = statusTargetFor(payload);
-  if (target === null) {
-    return;
-  }
-  const numbers = await ctx.runQuery(
-    internal.github.reader.pullNumbersForHead,
-    {
-      owner: target.owner,
-      repo: target.repo,
-      headSha: target.sha,
+    for (const number of numbers) {
+      await projectPull(ctx, target.installationId, {
+        owner: target.owner,
+        repo: target.repo,
+        number,
+      });
     }
-  );
-  for (const number of numbers) {
-    await projectPull(
-      ctx,
-      target.installationId,
-      { owner: target.owner, repo: target.repo, number },
-      now
-    );
   }
-}
-
-async function projectWorkbench(
-  ctx: ActionCtx,
-  eventType: string,
-  deliveryId: string,
-  payload: unknown,
-  now: number
-) {
-  const target = workbenchTargetFor(payload);
-  if (target === null) {
-    return;
+  if (job.headClose) {
+    await ctx.runMutation(internal.github.writer.deletePullHead, job.headClose);
+  } else if (job.headMove) {
+    await ctx.runMutation(internal.github.writer.writePullHead, job.headMove);
   }
-  const event = webhookToWorkbenchEvent(
-    target.owner,
-    target.repo,
-    eventType,
-    deliveryId,
-    new Date(now).toISOString(),
-    payload
-  );
-  if (event) {
+  if (job.workbench) {
     await ctx.runMutation(internal.github.workbench.writeWorkbenchEvents, {
-      events: [
-        {
-          eventId: event.id,
-          installationId: target.installationId,
-          owner: target.owner,
-          repo: target.repo,
-          kind: event.kind,
-          actor: event.actor.login,
-          actorAvatarUrl: event.actor.avatarUrl || null,
-          pullNumber: event.pull?.number ?? null,
-          title: event.pull?.title ?? null,
-          detail: event.detail,
-          url: event.url,
-          occurredAt: new Date(event.at).getTime(),
-        },
-      ],
+      events: [job.workbench],
     });
   }
 }
+
+const syncsQueue = (job: WebhookJob) =>
+  job.projection.kind !== "none" ||
+  job.status !== null ||
+  job.headClose !== null ||
+  job.headMove !== null;
 
 /**
  * Refresh a single PR into the read model — the after-a-write path. A write
@@ -163,19 +144,28 @@ export const refreshPull = internalAction({
     owner: v.string(),
     repo: v.string(),
     number: v.number(),
-    now: v.number(),
+    attempt: v.optional(v.number()),
+    now: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     try {
-      await projectPull(
-        ctx,
-        args.installationId,
-        { owner: args.owner, repo: args.repo, number: args.number },
-        args.now
-      );
+      await projectPull(ctx, args.installationId, {
+        owner: args.owner,
+        repo: args.repo,
+        number: args.number,
+      });
     } catch (error) {
-      console.error("post-write refresh failed", error);
+      const attempt = args.attempt ?? 0;
+      if (attempt < 3) {
+        await ctx.scheduler.runAfter(
+          2 ** attempt * 1000,
+          internal.github.project.refreshPull,
+          { ...args, attempt: attempt + 1 }
+        );
+      } else {
+        console.error("post-write refresh failed after retries", error);
+      }
     }
     return null;
   },
@@ -184,45 +174,52 @@ export const refreshPull = internalAction({
 /**
  * Process one accepted delivery: refresh the affected PR (or backfill on an
  * installation event), maintain the head cursor, resolve legacy commit statuses
- * to PRs, and append the feed event. Failures are swallowed and logged — the
- * reconcile backstop is the repair path for a dropped projection.
+ * to PRs, and append the feed event. Scheduled actions are at-most-once, so
+ * transient failures explicitly reschedule before the reconcile backstop.
  */
 export const project = internalAction({
   args: {
-    eventType: v.string(),
     deliveryId: v.string(),
-    payload: v.any(),
-    now: v.number(),
+    eventType: v.optional(v.string()),
+    payload: v.optional(v.any()),
+    now: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    if (args.eventType !== undefined && args.payload !== undefined) {
+      const now = args.now ?? Date.now();
+      await ctx.runMutation(internal.github.ingest.recordDelivery, {
+        deliveryId: args.deliveryId,
+        eventType: args.eventType,
+        receivedAt: now,
+        job: normalizeWebhookJob(
+          args.eventType,
+          args.deliveryId,
+          args.payload,
+          now
+        ),
+      });
+    }
+    const claimed = await ctx.runMutation(
+      internal.github.ingest.claimDelivery,
+      { deliveryId: args.deliveryId, now: Date.now() }
+    );
+    if (!claimed) {
+      return null;
+    }
     try {
-      const projection = projectionFor(args.eventType, args.payload);
-      if (projection._tag === "Pull") {
-        await projectPull(
-          ctx,
-          projection.installationId,
-          projection.ref,
-          args.now
-        );
-      } else if (projection._tag === "Install") {
-        await ctx.runAction(internal.github.materialize.materialize, {
-          installationId: projection.installationId,
-          now: args.now,
-          seed: true,
-        });
-      }
-      await projectStatus(ctx, args.eventType, args.payload, args.now);
-      await projectHead(ctx, args.eventType, args.payload);
-      await projectWorkbench(
-        ctx,
-        args.eventType,
-        args.deliveryId,
-        args.payload,
-        args.now
-      );
+      await executeJob(ctx, claimed.job);
+      await ctx.runMutation(internal.github.ingest.completeDelivery, {
+        deliveryId: args.deliveryId,
+        attempt: claimed.attempt,
+        syncedAt: syncsQueue(claimed.job) ? Date.now() : null,
+      });
     } catch (error) {
-      console.error("webhook projection failed", error);
+      await ctx.runMutation(internal.github.ingest.retryDelivery, {
+        deliveryId: args.deliveryId,
+        attempt: claimed.attempt,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
     return null;
   },

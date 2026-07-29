@@ -1,7 +1,5 @@
 import type { WorkbenchEvent } from "@sphynx/schema/workbench";
 
-type WorkbenchSource = "github" | "sphynx";
-
 export type WorkbenchKind = WorkbenchEvent["kind"] | "thread-resolved";
 
 export interface MergedWorkbenchEvent {
@@ -11,7 +9,6 @@ export interface MergedWorkbenchEvent {
   readonly id: string;
   readonly kind: WorkbenchKind;
   readonly pull: { number: number; title: string | null } | null;
-  readonly source: WorkbenchSource;
   readonly url: string | null;
 }
 
@@ -86,9 +83,6 @@ const FILTER_KINDS: Record<
 };
 
 export function actorLabel(event: MergedWorkbenchEvent) {
-  if (event.source === "sphynx") {
-    return "you";
-  }
   return event.actor?.login ?? "someone";
 }
 
@@ -105,7 +99,7 @@ export function filterWorkbenchEvents(
       const isViewer =
         viewerLogin !== null &&
         event.actor?.login.toLowerCase() === viewerLogin;
-      if (event.source !== "sphynx" && !isViewer) {
+      if (!isViewer) {
         return false;
       }
     }

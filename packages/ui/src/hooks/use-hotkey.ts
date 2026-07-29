@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
 import { isTypingTarget } from "@sphynx/ui/lib/typing-target";
+import { useEffect } from "react";
 
 interface UseHotkeyOptions {
-  enabled?: boolean;
   /** Fire even when a modifier is held. Default only fires on the bare key. */
   allowModifiers?: boolean;
+  enabled?: boolean;
 }
 
 /**
@@ -28,10 +28,7 @@ export function useHotkey(
       if (event.defaultPrevented || event.repeat) {
         return;
       }
-      if (
-        !allowModifiers &&
-        (event.metaKey || event.ctrlKey || event.altKey)
-      ) {
+      if (!allowModifiers && (event.metaKey || event.ctrlKey || event.altKey)) {
         return;
       }
       if (event.key?.toLowerCase() !== key.toLowerCase()) {

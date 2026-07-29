@@ -74,6 +74,7 @@ const DEFINITION_PATTERNS: readonly {
 ];
 
 const MIN_SYMBOL_LENGTH = 4;
+const MAX_SYMBOLS = 500;
 
 const RESERVED_NAMES = new Set([
   "catch",
@@ -133,6 +134,9 @@ export function buildSymbolIndex(
   const ambiguous = new Set<string>();
   for (const [path, patch] of patches) {
     collectDefinitions(path, patch, (symbol, definition) => {
+      if (definitions.size >= MAX_SYMBOLS && !definitions.has(symbol)) {
+        return;
+      }
       const existing = definitions.get(symbol);
       if (!existing) {
         definitions.set(symbol, definition);
@@ -150,5 +154,5 @@ export function buildSymbolIndex(
   for (const symbol of ambiguous) {
     definitions.delete(symbol);
   }
-  return Object.assign(Object.create(null), Object.fromEntries(definitions));
+  return Object.fromEntries(definitions);
 }

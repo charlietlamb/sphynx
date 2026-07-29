@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "../_generated/server";
+import { isInstallationRetired } from "./installationState";
 
 /** Refresh installation tokens early: GitHub gives 60 min, we treat 50 as live. */
 const TOKEN_SKEW_MS = 10 * 60 * 1000;
@@ -27,8 +28,11 @@ export const storeToken = internalMutation({
     token: v.string(),
     expiresAt: v.number(),
   },
-  returns: v.null(),
+  returns: v.boolean(),
   handler: async (ctx, args) => {
+    if (await isInstallationRetired(ctx, args.installationId)) {
+      return false;
+    }
     const row = await ctx.db
       .query("installationToken")
       .withIndex("by_installationId", (q) =>
@@ -41,12 +45,12 @@ export const storeToken = internalMutation({
         token: args.token,
         expiresAt: args.expiresAt,
       });
-      return null;
+      return true;
     }
-    await ctx.db.patch(row._id, {
+    await ctx.db.patch("installationToken", row._id, {
       token: args.token,
       expiresAt: args.expiresAt,
     });
-    return null;
+    return true;
   },
 });

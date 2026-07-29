@@ -1,12 +1,15 @@
 "use node";
 
-import { ConvexError, v } from "convex/values";
+import { v } from "convex/values";
 import { Effect } from "effect";
-import { api } from "../_generated/api";
-import type { ActionCtx } from "../_generated/server";
 import { action } from "../_generated/server";
 import { addConversationComment as addConversationCommentProgram } from "./conversationWrite";
-import { getInstallationToken } from "./installationToken";
+import {
+  validateLineRange,
+  validateRef,
+  validateSha,
+  validateText,
+} from "./input";
 import {
   getCommentThreads,
   getConversation,
@@ -15,6 +18,12 @@ import {
   listPatches,
 } from "./prReads";
 import {
+  conversationValidator,
+  patchesValidator,
+  pullSummaryValidator,
+  threadsValidator,
+} from "./prValidators";
+import {
   createComment,
   discardReview,
   pendingReview,
@@ -22,7 +31,7 @@ import {
   resolveThread,
   submitReview,
 } from "./reviews";
-import { userToken } from "./userToken";
+import { userTokenForRepository } from "./userToken";
 import { listViewedFiles, setAllFilesViewed, setFileViewed } from "./viewer";
 
 const refArgs = {
@@ -33,39 +42,22 @@ const refArgs = {
 
 const sideValidator = v.union(v.literal("additions"), v.literal("deletions"));
 
-/**
- * The installation token for the app that owns the repo. Reads run as the
- * installation so they draw on its rate limit. A repo with no installation in
- * the read model cannot be read.
- */
-async function readToken(ctx: ActionCtx, owner: string): Promise<string> {
-  const installationId = await ctx.runQuery(
-    api.github.reader.installationForOwner,
-    { owner }
-  );
-  if (installationId === null) {
-    throw new ConvexError({
-      code: "NOT_FOUND",
-      message: `No installation for ${owner}`,
-    });
-  }
-  return await getInstallationToken(ctx, installationId, Date.now());
-}
-
 export const getSummary = action({
   args: refArgs,
-  returns: v.any(),
+  returns: pullSummaryValidator,
   handler: async (ctx, args) => {
-    const token = await readToken(ctx, args.owner);
+    validateRef(args);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo);
     return await Effect.runPromise(getPullSummary(args, token));
   },
 });
 
 export const getPatches = action({
   args: refArgs,
-  returns: v.any(),
+  returns: patchesValidator,
   handler: async (ctx, args) => {
-    const token = await readToken(ctx, args.owner);
+    validateRef(args);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo, 5);
     return await Effect.runPromise(listPatches(args, token));
   },
 });
@@ -74,7 +66,10 @@ export const getFileContentsAction = action({
   args: { ...refArgs, path: v.string(), sha: v.string() },
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, args) => {
-    const token = await readToken(ctx, args.owner);
+    validateRef(args);
+    validateText("Path", args.path, 4096);
+    validateSha(args.sha);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo);
     return await Effect.runPromise(
       getFileContents(
         { owner: args.owner, repo: args.repo, number: args.number },
@@ -88,18 +83,20 @@ export const getFileContentsAction = action({
 
 export const getConversationAction = action({
   args: refArgs,
-  returns: v.any(),
+  returns: conversationValidator,
   handler: async (ctx, args) => {
-    const token = await readToken(ctx, args.owner);
+    validateRef(args);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo);
     return await Effect.runPromise(getConversation(args, token));
   },
 });
 
 export const getThreads = action({
   args: refArgs,
-  returns: v.any(),
+  returns: threadsValidator,
   handler: async (ctx, args) => {
-    const token = await readToken(ctx, args.owner);
+    validateRef(args);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo, 20);
     return await Effect.runPromise(getCommentThreads(args, token));
   },
 });
@@ -111,7 +108,8 @@ export const getPending = action({
     commentCount: v.number(),
   }),
   handler: async (ctx, args) => {
-    const token = await userToken(ctx);
+    validateRef(args);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo);
     return await Effect.runPromise(pendingReview(args, token));
   },
 });
@@ -129,7 +127,12 @@ export const createReviewComment = action({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const token = await userToken(ctx);
+    validateRef(args);
+    validateText("Review body", args.body, 65_536);
+    validateText("Path", args.path, 4096);
+    validateSha(args.commitSha);
+    validateLineRange(args.line, args.startLine);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo);
     await Effect.runPromise(
       createComment(
         { owner: args.owner, repo: args.repo, number: args.number },
@@ -150,10 +153,13 @@ export const createReviewComment = action({
 });
 
 export const replyToReviewComment = action({
-  args: { ...refArgs, body: v.string(), commentId: v.number() },
+  args: { ...refArgs, body: v.string(), commentId: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const token = await userToken(ctx);
+    validateRef(args);
+    validateText("Reply body", args.body, 65_536);
+    validateText("Comment ID", args.commentId, 100);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo);
     await Effect.runPromise(
       replyToComment(
         { owner: args.owner, repo: args.repo, number: args.number },
@@ -166,12 +172,24 @@ export const replyToReviewComment = action({
 });
 
 export const resolveReviewThread = action({
-  args: { threadId: v.string(), resolved: v.boolean() },
+  args: {
+    owner: v.string(),
+    repo: v.string(),
+    number: v.number(),
+    threadId: v.string(),
+    resolved: v.boolean(),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const token = await userToken(ctx);
+    validateText("Thread ID", args.threadId, 200);
+    validateRef(args);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo, 2);
     await Effect.runPromise(
-      resolveThread({ threadId: args.threadId, resolved: args.resolved }, token)
+      resolveThread(
+        { owner: args.owner, repo: args.repo, number: args.number },
+        { threadId: args.threadId, resolved: args.resolved },
+        token
+      )
     );
     return null;
   },
@@ -189,7 +207,11 @@ export const submitPendingReview = action({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const token = await userToken(ctx);
+    validateRef(args);
+    if (args.body !== null) {
+      validateText("Review body", args.body, 65_536, true);
+    }
+    const token = await userTokenForRepository(ctx, args.owner, args.repo);
     await Effect.runPromise(
       submitReview(
         { owner: args.owner, repo: args.repo, number: args.number },
@@ -205,7 +227,8 @@ export const discardPendingReview = action({
   args: refArgs,
   returns: v.null(),
   handler: async (ctx, args) => {
-    const token = await userToken(ctx);
+    validateRef(args);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo);
     await Effect.runPromise(discardReview(args, token));
     return null;
   },
@@ -215,7 +238,8 @@ export const getViewedFiles = action({
   args: refArgs,
   returns: v.array(v.object({ path: v.string(), viewed: v.boolean() })),
   handler: async (ctx, args) => {
-    const token = await userToken(ctx);
+    validateRef(args);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo, 20);
     return await Effect.runPromise(
       listViewedFiles(
         { owner: args.owner, repo: args.repo, number: args.number },
@@ -229,7 +253,9 @@ export const setViewedFile = action({
   args: { ...refArgs, path: v.string(), viewed: v.boolean() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const token = await userToken(ctx);
+    validateRef(args);
+    validateText("Path", args.path, 4096);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo);
     await Effect.runPromise(
       setFileViewed(
         { owner: args.owner, repo: args.repo, number: args.number },
@@ -246,7 +272,8 @@ export const setAllViewedFiles = action({
   args: { ...refArgs, viewed: v.boolean() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const token = await userToken(ctx);
+    validateRef(args);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo, 100);
     await Effect.runPromise(
       setAllFilesViewed(
         { owner: args.owner, repo: args.repo, number: args.number },
@@ -272,7 +299,9 @@ export const addConversationComment = action({
     githubUrl: v.string(),
   }),
   handler: async (ctx, args) => {
-    const token = await userToken(ctx);
+    validateRef(args);
+    validateText("Comment body", args.body, 65_536);
+    const token = await userTokenForRepository(ctx, args.owner, args.repo);
     return await Effect.runPromise(
       addConversationCommentProgram(
         { owner: args.owner, repo: args.repo, number: args.number },

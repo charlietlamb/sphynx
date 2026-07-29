@@ -5,6 +5,7 @@ import {
 } from "@tanstack/start-server-core/request-response";
 import {
   COOKIE_MAX_AGE,
+  decodeReviewSettings,
   parseSettings,
   type ReviewSettings,
   SETTINGS_COOKIE,
@@ -15,7 +16,7 @@ export const getServerSettings = createServerFn().handler(
 );
 
 export const saveServerSettings = createServerFn({ method: "POST" })
-  .inputValidator((data: ReviewSettings) => data)
+  .validator((data: unknown) => decodeReviewSettings(data))
   .handler(({ data }) => {
     setCookie(SETTINGS_COOKIE, encodeURIComponent(JSON.stringify(data)), {
       httpOnly: false,

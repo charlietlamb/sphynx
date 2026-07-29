@@ -8,7 +8,6 @@ import {
   recordMerged,
 } from "@/components/dashboard/pending-merges-store";
 import { useSettings } from "@/components/settings/settings-provider";
-import { logWorkbenchEvent } from "@/components/workbench/workbench-store";
 import { isAccessBlocked } from "@/lib/access-block";
 import { trackEvent } from "@/lib/analytics";
 import { installationSettingsUrl } from "@/lib/github-app";
@@ -67,12 +66,6 @@ export function usePullActions(pull: QueuePull) {
       reportWriteError(pull, "merge", error);
     },
     onSuccess: () => {
-      logWorkbenchEvent({
-        owner: pull.owner,
-        repo: pull.repo,
-        kind: "pr-merged",
-        pull: { number: pull.number, title: pull.title },
-      });
       trackEvent("pull_merged", {
         owner: pull.owner,
         repo: pull.repo,
@@ -90,14 +83,7 @@ export function usePullActions(pull: QueuePull) {
         number: pull.number,
         body,
       }),
-    onSuccess: (_data, body) => {
-      logWorkbenchEvent({
-        owner: pull.owner,
-        repo: pull.repo,
-        kind: "review-changes",
-        pull: { number: pull.number, title: pull.title },
-        detail: body,
-      });
+    onSuccess: () => {
       trackEvent("pull_blocked", {
         owner: pull.owner,
         repo: pull.repo,

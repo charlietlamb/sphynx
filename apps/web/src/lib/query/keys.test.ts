@@ -28,14 +28,13 @@ describe("query keys", () => {
     expect(startsWith(keys.repoEvents(ref, 1), keys.repo(ref))).toBe(true);
   });
 
-  test("pipeline and search nest under their installation", () => {
+  test("search nests under its installation", () => {
     const installation = keys.installation(7);
-    expect(startsWith(keys.pipeline(7), installation)).toBe(true);
     expect(startsWith(keys.search(7, "is:pr"), installation)).toBe(true);
   });
 
   test("different installations do not collide", () => {
-    expect(keys.pipeline(1)).not.toEqual(keys.pipeline(2));
+    expect(keys.search(1, "is:pr")).not.toEqual(keys.search(2, "is:pr"));
   });
 
   test("different repos do not collide", () => {

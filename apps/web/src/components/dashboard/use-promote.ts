@@ -3,7 +3,6 @@ import { useMutation } from "@tanstack/react-query";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { useSettings } from "@/components/settings/settings-provider";
-import { logWorkbenchEvent } from "@/components/workbench/workbench-store";
 
 interface PromoteInput {
   from: string;
@@ -23,12 +22,6 @@ export function usePromote(owner: string, repo: string) {
         title: `Release ${from} to ${to}`,
       }),
     onSuccess: (created, { from, to }) => {
-      logWorkbenchEvent({
-        owner,
-        repo,
-        kind: "pr-opened",
-        pull: { number: created.number, title: `Release ${from} to ${to}` },
-      });
       if (settings.confirmActions) {
         toast.success(`Opened #${created.number}`, {
           description: `Release ${from} to ${to}`,

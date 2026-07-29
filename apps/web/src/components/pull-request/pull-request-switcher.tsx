@@ -6,9 +6,9 @@ import {
   RepoSwitcher,
 } from "@/components/dashboard/repo-switcher";
 import { toRepoOption, usePipeline } from "@/components/dashboard/use-pipeline";
+import { usePullInstallation } from "@/components/pull-request/use-pull-installation";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useSession } from "@/lib/auth-client";
-import { asRepoFlows } from "@/lib/read-model";
 
 export function PullRequestSwitcher({
   pullRequestRef,
@@ -19,12 +19,17 @@ export function PullRequestSwitcher({
   const { update } = useSettings();
   const { data: session, isPending: sessionPending } = useSession();
   const authed = Boolean(session?.user);
-  const pipeline = usePipeline(null, authed && !sessionPending);
+  const installationId = usePullInstallation(
+    pullRequestRef.owner,
+    pullRequestRef.repo,
+    authed && !sessionPending
+  );
+  const pipeline = usePipeline(installationId, installationId !== null);
   const currentKey = `${pullRequestRef.owner}/${pullRequestRef.repo}`;
 
   const repos = useMemo(() => {
     const options: RepoOption[] = [];
-    const flows = asRepoFlows(pipeline.data?.repos ?? []);
+    const flows = pipeline.data?.repos ?? [];
     for (const flow of flows) {
       if (flow.openPulls.length > 0) {
         options.push(toRepoOption(flow));

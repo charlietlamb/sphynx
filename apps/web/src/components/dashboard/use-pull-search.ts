@@ -1,7 +1,7 @@
 import { api } from "@sphynx/backend/convex/_generated/api";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { asQueuePulls } from "@/lib/read-model";
+import { keys } from "@/lib/query/keys";
 import { useDebounced } from "@/lib/use-debounced";
 
 const DEBOUNCE_MS = 250;
@@ -11,7 +11,7 @@ export function usePullSearch(query: string, installationId: number | null) {
   const debounced = useDebounced(query.trim(), DEBOUNCE_MS);
   const search = useAction(api.github.searchActions.search);
   const server = useQuery({
-    queryKey: ["search", installationId, debounced],
+    queryKey: keys.search(installationId, debounced),
     queryFn: () =>
       search({
         installationId: installationId as number,
@@ -27,7 +27,7 @@ export function usePullSearch(query: string, installationId: number | null) {
     active: debounced.length > 0,
     isError: server.isError,
     isPending: server.isFetching,
-    pulls: asQueuePulls(server.data?.pulls ?? []),
+    pulls: server.data?.pulls ?? [],
     totalCount: server.data?.totalCount ?? 0,
   };
 }

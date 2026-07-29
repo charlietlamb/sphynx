@@ -7,26 +7,27 @@
     "./convex/_generated/api": {
       "types": "./convex/_generated/api.d.ts",
       "default": "./convex/_generated/api.js"
-    },
-    "./convex/_generated/dataModel": "./convex/_generated/dataModel.d.ts",
-    "./convex/auth": "./convex/auth.ts"
+    }
   },
   "scripts": {
     "dev": "convex dev",
-    "lint": "eslint convex/"
+    "lint": "eslint convex/",
+    "test": "vitest run",
+    "typecheck": "tsc -p convex/tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@convex-dev/better-auth": "^0.12.5",
-    "@convex-dev/migrations": "^0.3.6",
+    "@convex-dev/better-auth": "catalog:",
     "@sphynx/schema": "workspace:*",
-    "better-auth": "^1.6.25",
-    "convex": "^1.42.3",
-    "effect": "^3.22.0"
+    "better-auth": "catalog:",
+    "convex": "catalog:",
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@convex-dev/eslint-plugin": "^2.0.0",
     "@edge-runtime/vm": "^5.0.0",
     "convex-test": "^0.0.54",
+    "eslint": "^9.39.2",
+    "typescript": "catalog:",
     "typescript-eslint": "^8.65.0",
     "vitest": "^4.1.10"
   }

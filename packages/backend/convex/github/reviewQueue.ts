@@ -1,9 +1,9 @@
-import { Array as Arr, Effect, Schema } from "effect";
+import { Effect, Schema } from "effect";
 import type { QueuePull } from "./domain";
 import { decodeBody, type GitHubClient } from "./githubClient";
-import type { GitHubError } from "./githubErrors";
+import { type GitHubError, GitHubUnavailable } from "./githubErrors";
+import { MAX_INSTALLATION_REPOSITORIES, MAX_PIPELINE_PULLS } from "./limits";
 import {
-  BatchedPullsSchema,
   PULL_FIELDS_FRAGMENT,
   RawPullSchema,
   toQueuePull,
@@ -57,20 +57,6 @@ const nextInstallationPage = (link: string | null) => {
   return Number.isInteger(page) ? page : null;
 };
 
-/** Repos probed for open-PR counts before trimming to the discovery cap. */
-const MAX_COUNTED_REPOS = 40;
-/** Installation-repository pages walked; 100 per page bounds huge accounts. */
-const MAX_REPO_PAGES = 10;
-/**
- * Open pulls fetched per repo. GitHub caps a connection page at 100, and a
- * repo above that is past what the queue can usefully show. Previously 30,
- * which silently dropped the oldest pulls on any busy repo.
- */
-const OPEN_PULLS_PER_REPO = 100;
-
-const PULLS_CHUNK_SIZE = 3;
-
-/** Batched GraphQL chunks run wide; each is one request. */
 const PULLS_CONCURRENCY = 8;
 
 export function repoKey(entry: { owner: string; repo: string }) {
@@ -78,54 +64,95 @@ export function repoKey(entry: { owner: string; repo: string }) {
 }
 
 export const makeReviewQueue = (client: GitHubClient) => {
+  let openPullCount = 0;
+  const PullPageSchema = Schema.Struct({
+    repository: Schema.NullOr(
+      Schema.Struct({
+        pullRequests: Schema.Struct({
+          nodes: Schema.Array(RawPullSchema),
+          pageInfo: Schema.Struct({
+            hasNextPage: Schema.Boolean,
+            endCursor: Schema.NullishOr(Schema.String),
+          }),
+        }),
+      })
+    ),
+  });
+  type PullPage = typeof PullPageSchema.Type;
+  type PullConnection = NonNullable<PullPage["repository"]>["pullRequests"];
+
+  const openPullsForRepo = (
+    entry: { owner: string; repo: string },
+    token: string
+  ): Effect.Effect<QueuePull[], GitHubError> =>
+    Effect.gen(function* () {
+      const pulls: QueuePull[] = [];
+      let after: string | null = null;
+      let more = true;
+      while (more) {
+        const data: PullPage = yield* client.query(
+          token,
+          PullPageSchema,
+          `query($owner: String!, $name: String!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(states: [OPEN], first: 100, after: $after, orderBy: { field: UPDATED_AT, direction: DESC }) {
+      nodes { ...PullFields }
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+}
+${PULL_FIELDS_FRAGMENT}`,
+          { owner: entry.owner, name: entry.repo, after }
+        );
+        const connection: PullConnection | undefined =
+          data.repository?.pullRequests;
+        if (!connection) {
+          return yield* Effect.fail(
+            new GitHubUnavailable({
+              message: `Missing open pull data for ${entry.owner}/${entry.repo}`,
+            })
+          );
+        }
+        openPullCount += connection.nodes.length;
+        if (openPullCount > MAX_PIPELINE_PULLS) {
+          return yield* Effect.fail(
+            new GitHubUnavailable({
+              message: `Installation exceeds the ${MAX_PIPELINE_PULLS} open pull request materialization limit`,
+            })
+          );
+        }
+        pulls.push(
+          ...connection.nodes.map((pull) =>
+            toQueuePull(entry.owner, entry.repo, pull)
+          )
+        );
+        after = connection.pageInfo.endCursor ?? null;
+        more = connection.pageInfo.hasNextPage && after !== null;
+      }
+      return pulls;
+    });
+
   const openPullsChunk = (
     repos: readonly { owner: string; repo: string }[],
     token: string
-  ): Effect.Effect<Map<string, QueuePull[]>, GitHubError> => {
-    const selections = repos
-      .map(
-        (entry, index) =>
-          `r${index}: repository(owner: ${JSON.stringify(entry.owner)}, name: ${JSON.stringify(entry.repo)}) {
-    pullRequests(states: [OPEN], first: ${OPEN_PULLS_PER_REPO}, orderBy: { field: UPDATED_AT, direction: DESC }) {
-      nodes { ...PullFields }
-    }
-  }`
-      )
-      .join("\n");
-    const document = `query {\n${selections}\n}\n${PULL_FIELDS_FRAGMENT}`;
-    return client.query(token, BatchedPullsSchema, document, {}).pipe(
-      Effect.map((data) => {
-        const byRepo = new Map<string, QueuePull[]>();
-        repos.forEach((entry, index) => {
-          const node = data[`r${index}`];
-          if (node) {
-            byRepo.set(
-              repoKey(entry),
-              node.pullRequests.nodes.map((pull) =>
-                toQueuePull(entry.owner, entry.repo, pull)
-              )
-            );
-          }
-        });
-        return byRepo;
-      })
-    );
-  };
+  ): Effect.Effect<Map<string, QueuePull[]>, GitHubError> =>
+    Effect.forEach(
+      repos,
+      (entry) =>
+        openPullsForRepo(entry, token).pipe(
+          Effect.map((pulls) => [repoKey(entry), pulls] as const)
+        ),
+      { concurrency: PULLS_CONCURRENCY }
+    ).pipe(Effect.map((entries) => new Map(entries)));
 
   const openPullsForRepos = (
     repos: readonly { owner: string; repo: string }[],
     token: string
   ): Effect.Effect<Map<string, QueuePull[]>, GitHubError> => {
     if (repos.length === 0) {
-      return Effect.succeed(new Map());
+      return Effect.succeed(new Map<string, QueuePull[]>());
     }
-    const chunks = Arr.chunksOf(repos, PULLS_CHUNK_SIZE).map((chunk) => [
-      ...chunk,
-    ]);
-    return Effect.forEach(chunks, (chunk) => openPullsChunk(chunk, token), {
-      concurrency: PULLS_CONCURRENCY,
-    }).pipe(
-      Effect.map((maps) => new Map(maps.flatMap((entries) => [...entries]))),
+    return openPullsChunk(repos, token).pipe(
       Effect.withSpan("GitHubReviewQueue.openPullsForRepos"),
       Effect.annotateLogs({ repoCount: repos.length })
     );
@@ -172,20 +199,26 @@ export const makeReviewQueue = (client: GitHubClient) => {
       const repositories: InstallationRepo[] = [];
       let page = 1;
       let nextPage: number | null = 1;
-      while (nextPage !== null && page <= MAX_REPO_PAGES) {
+      while (nextPage !== null) {
         const result: {
           repositories: readonly InstallationRepo[];
           nextPage: number | null;
         } = yield* reposPage(token, page);
         repositories.push(...result.repositories);
+        if (repositories.length > MAX_INSTALLATION_REPOSITORIES) {
+          return yield* Effect.fail(
+            new GitHubUnavailable({
+              message: `Installation exceeds the ${MAX_INSTALLATION_REPOSITORIES}-repository materialization limit`,
+            })
+          );
+        }
         nextPage = result.nextPage;
         page += 1;
       }
       return repositories
         .filter((repo) => !repo.archived)
         .sort((a, b) => (b.pushed_at ?? "").localeCompare(a.pushed_at ?? ""))
-        .map((repo) => ({ owner: repo.owner.login, repo: repo.name }))
-        .slice(0, MAX_COUNTED_REPOS);
+        .map((repo) => ({ owner: repo.owner.login, repo: repo.name }));
     }).pipe(Effect.withSpan("GitHubReviewQueue.discoverRepos"));
 
   /**
@@ -202,7 +235,7 @@ export const makeReviewQueue = (client: GitHubClient) => {
       .rest(
         token,
         "GET",
-        `/repos/${entry.owner}/${entry.repo}/events?per_page=100`
+        `/repos/${encodeURIComponent(entry.owner)}/${encodeURIComponent(entry.repo)}/events?per_page=100`
       )
       .pipe(
         Effect.flatMap((response) =>

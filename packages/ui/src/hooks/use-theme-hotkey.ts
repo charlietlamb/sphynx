@@ -1,13 +1,13 @@
 "use client";
 
+import { isTypingTarget } from "@sphynx/ui/lib/typing-target";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
-import { isTypingTarget } from "@sphynx/ui/lib/typing-target";
 
-type UseThemeHotkeyOptions = {
-  key?: string;
+interface UseThemeHotkeyOptions {
   enabled?: boolean;
-};
+  key?: string;
+}
 
 export function useThemeHotkey({
   key = "t",

@@ -42,8 +42,12 @@ interface PullRequestPageProps {
 
 export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
   const { pullRequest, patches } = usePullRequest(pullRequestRef);
-  const { viewedFiles, setAllViewed } = useViewedFiles(pullRequestRef);
-  const freshness = usePullRequestFreshness(pullRequestRef);
+  const viewed = useViewedFiles(pullRequestRef);
+  const freshness = usePullRequestFreshness(
+    pullRequestRef,
+    pullRequest.data?.head.sha ?? null,
+    pullRequest.isFetching
+  );
   const accessBlock = useAccessBlock(pullRequestRef);
   const [{ tab }, setSearch] = usePullRequestSearch();
   useTabKeys(setSearch);
@@ -106,15 +110,15 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
       pullRequestRef={pullRequestRef}
       refetch={() => patches.refetch()}
       symbolIndex={symbolIndex}
+      viewed={viewed}
     />
   );
-
   return (
     <main className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
       <PullRequestCommands
         files={patches.data?.files ?? []}
         pullRequest={pullRequest.data}
-        setAllViewed={setAllViewed}
+        setAllViewed={viewed.setAllViewed}
         setSearch={setSearch}
       />
       <div className="flex flex-1 flex-col md:hidden">
@@ -132,12 +136,12 @@ export function PullRequestPage({ pullRequestRef }: PullRequestPageProps) {
               <PullRequestHeader
                 canAct={Boolean(session?.user)}
                 progress={
-                  viewedFiles && patches.data ? (
+                  viewed.viewedFiles && patches.data ? (
                     <ViewedProgress
                       total={patches.data.files.length}
                       viewed={
                         patches.data.files.filter((candidate) =>
-                          viewedFiles.has(candidate.path)
+                          viewed.viewedFiles?.has(candidate.path)
                         ).length
                       }
                     />

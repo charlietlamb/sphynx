@@ -1,5 +1,5 @@
 import { isTypingTarget } from "@sphynx/ui/lib/typing-target";
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent } from "react";
 
 export interface DashboardKeyHandlers {
   active: boolean;
@@ -36,32 +36,28 @@ const BINDINGS: Record<
 };
 
 export function useDashboardKeys(handlers: DashboardKeyHandlers) {
-  const live = useRef(handlers);
-  useEffect(() => {
-    live.current = handlers;
+  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    if (
+      event.metaKey ||
+      event.ctrlKey ||
+      isTypingTarget(event.target) ||
+      !handlers.active
+    ) {
+      return;
+    }
+    if (DIGIT_PATTERN.test(event.key)) {
+      event.preventDefault();
+      handlers.onBranch(Number(event.key) - 1);
+      return;
+    }
+    const binding = BINDINGS[event.key];
+    if (!binding) {
+      return;
+    }
+    event.preventDefault();
+    handlers[binding]();
   });
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.metaKey ||
-        event.ctrlKey ||
-        isTypingTarget(event.target) ||
-        !live.current.active
-      ) {
-        return;
-      }
-      if (DIGIT_PATTERN.test(event.key)) {
-        event.preventDefault();
-        live.current.onBranch(Number(event.key) - 1);
-        return;
-      }
-      const binding = BINDINGS[event.key];
-      if (!binding) {
-        return;
-      }
-      event.preventDefault();
-      live.current[binding]();
-    };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);

@@ -13,12 +13,7 @@ import {
 import type { RepoOption } from "@/components/dashboard/repo-switcher";
 import { useDashboardKeys } from "@/components/dashboard/use-dashboard-keys";
 import { useInstallations } from "@/components/dashboard/use-installations";
-import {
-  toRepoOption,
-  usePipeline,
-  useQueue,
-  useRepoFlow,
-} from "@/components/dashboard/use-pipeline";
+import { toRepoOption, usePipeline } from "@/components/dashboard/use-pipeline";
 import { usePullSearch } from "@/components/dashboard/use-pull-search";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useWorkbench } from "@/components/workbench/use-workbench";
@@ -31,11 +26,26 @@ import {
   repoKeyOf,
 } from "@/lib/attention";
 import { useSession } from "@/lib/auth-client";
-import { asPipeline, asQueuePulls } from "@/lib/read-model";
 
 function cycle(index: number, delta: number, length: number) {
   return (index + delta + length) % length;
 }
+
+interface DashboardControls {
+  allRepos: boolean;
+  branchFilter: string | null;
+  focusedKey: string | null;
+  queueFilter: QueueFilter;
+  searchQuery: string;
+}
+
+const INITIAL_CONTROLS: DashboardControls = {
+  allRepos: false,
+  branchFilter: null,
+  focusedKey: null,
+  queueFilter: "all",
+  searchQuery: "",
+};
 
 /** The focused pull key: the current one if still in view, else the first. */
 function resolveFocus(focusedKey: string | null, order: readonly string[]) {
@@ -46,54 +56,18 @@ function resolveFocus(focusedKey: string | null, order: readonly string[]) {
 }
 
 /**
- * The repo flows to show, busiest first: the full pipeline once it lands, else
- * the lighter queue with empty stages/gaps so the list paints before the rail.
- * Tombstoned (just-merged) pulls are filtered out, and repos with no open pulls
- * are dropped.
+ * The repo flows to show, busiest first. Tombstoned (just-merged) pulls are
+ * filtered out, and repos with no open pulls are dropped.
  */
 function buildFlows(
   pipelineData: { repos: readonly RepoFlow[] } | undefined,
-  queueData: { repos: readonly RepoFlow[] } | undefined,
   pendingMerges: PendingMerges
 ): readonly RepoFlow[] {
-  const full = pipelineData
-    ? withoutMerged(pipelineData, pendingMerges).repos
-    : undefined;
-  const queued = queueData ? withoutMerged(queueData, pendingMerges).repos : [];
-  const source: readonly RepoFlow[] =
-    full ?? queued.map((flow) => ({ ...flow, stages: [], gaps: [] }));
-  return source
+  return (pipelineData ? withoutMerged(pipelineData, pendingMerges).repos : [])
     .filter((flow) => flow.openPulls.length > 0)
     .sort((a, b) => b.openPulls.length - a.openPulls.length);
 }
 
-/**
- * The repo flow to render: the pipeline's own flow when the selected repo has
- * open pulls, a minimal flow built from the on-demand pulls for a quiet repo, or
- * the busiest repo as a fallback.
- */
-function selectFlow(
-  pipelineFlow: RepoFlow | null,
-  quietRepo: RepoOption | null,
-  quietPulls: unknown,
-  flows: readonly RepoFlow[]
-): RepoFlow | null {
-  if (pipelineFlow) {
-    return pipelineFlow;
-  }
-  if (quietRepo) {
-    return {
-      owner: quietRepo.owner,
-      repo: quietRepo.repo,
-      stages: [],
-      openPulls: asQueuePulls(quietPulls),
-      gaps: [],
-    };
-  }
-  return flows[0] ?? null;
-}
-
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the dashboard composition root wires ~10 hooks and derives the view state; pure logic is already extracted into buildFlows/selectFlow/resolveFocus and splitting further would fragment cohesive state.
 export function useDashboardState() {
   const navigate = useNavigate();
   const { data: session, isPending: sessionPending } = useSession();
@@ -102,37 +76,19 @@ export function useDashboardState() {
   const repoKey = settings.selectedRepo;
 
   const orgs = useInstallations(settings.selectedInstallation, authed);
-  /**
-   * Drive the reads off the cookie's installation id the moment the session is
-   * ready, without waiting on `useInstallations` — that endpoint makes a live
-   * GitHub call to list installations, which would gate the (instant, Neon)
-   * dashboard reads behind a GitHub round-trip. The server revalidates the id
-   * and falls back if it is stale, so an out-of-date cookie is safe.
-   * `useInstallations` still resolves in parallel to populate the org switcher.
-   */
-  const installationId =
-    settings.selectedInstallation ?? orgs.active?.id ?? null;
-  const ready = authed && !sessionPending && installationId !== null;
+  const installationId = orgs.active?.id ?? null;
+  const ready =
+    authed && !(sessionPending || orgs.isPending) && installationId !== null;
   const settled = authed && !(sessionPending || orgs.isPending);
   /** Signed in, installations resolved, but the App is on no organization. */
   const needsInstall = settled && !orgs.isError && orgs.active === null;
-  /**
-   * The lookup itself failed — usually a stale GitHub token from before the
-   * App migration. Signing in again re-issues it.
-   */
+  /** The lookup failed, usually because GitHub needs a fresh sign-in. */
   const needsReauth = settled && orgs.isError;
 
-  const queue0 = useQueue(installationId, ready);
   const pipeline = usePipeline(installationId, ready);
   const pendingMerges = usePendingMerges();
 
-  /**
-   * Convex return types are structurally identical to the schema but deeply
-   * readonly. Narrow to the mutable schema shapes once at the hook boundary so
-   * downstream helpers keep their existing signatures.
-   */
-  const pipelineData = pipeline.data ? asPipeline(pipeline.data) : undefined;
-  const queueData = queue0.data ? asPipeline(queue0.data) : undefined;
+  const pipelineData = pipeline.data;
 
   /**
    * A merge is confirmed by GitHub before its webhook materializes into the
@@ -141,27 +97,23 @@ export function useDashboardState() {
    * pull, so it suppresses the pull for exactly the stale window and no longer.
    */
   useEffect(() => {
-    const latest = pipelineData ?? queueData;
-    if (latest) {
-      reconcilePendingMerges(latest);
+    if (pipelineData) {
+      reconcilePendingMerges(pipelineData);
     }
-  }, [pipelineData, queueData]);
+  }, [pipelineData]);
   const dialogs = useDialog();
-  const [focusedKey, setFocusedKey] = useState<string | null>(null);
-  const [branchFilter, setBranchFilter] = useState<string | null>(null);
-  const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [allRepos, setAllRepos] = useState(false);
+  const [controls, setControls] = useState(INITIAL_CONTROLS);
+  const { allRepos, branchFilter, focusedKey, queueFilter, searchQuery } =
+    controls;
+  const updateControls = (next: Partial<DashboardControls>) =>
+    setControls((current) => ({ ...current, ...next }));
+  const setFocusedKey = (next: string | null) =>
+    updateControls({ focusedKey: next });
   const searchInput = useRef<HTMLInputElement>(null);
 
-  /**
-   * The queue arrives well before the promotion rail, so it renders first with
-   * empty stages and gaps. Once the full pipeline lands it replaces this, and
-   * the rail fills in without the queue ever having been blocked on it.
-   */
   const flows = useMemo(
-    () => buildFlows(pipelineData, queueData, pendingMerges),
-    [pipelineData, queueData, pendingMerges]
+    () => buildFlows(pipelineData, pendingMerges),
+    [pipelineData, pendingMerges]
   );
 
   /**
@@ -176,30 +128,7 @@ export function useDashboardState() {
     [flows, repoKey]
   );
 
-  /**
-   * A quiet repo the user picked has no flow in the installation pipeline yet.
-   * Fetch just that repo on demand so it renders immediately instead of showing
-   * an empty pipeline until the next reconcile. Only quiet selections that name
-   * an accessible repo trigger this — an unknown key falls back to the busiest.
-   */
-  const quietRepo = useMemo(() => {
-    if (pipelineFlow) {
-      return null;
-    }
-    return repos.find((option) => option.key === repoKey) ?? null;
-  }, [pipelineFlow, repos, repoKey]);
-
-  const repoFlowQuery = useRepoFlow(
-    installationId,
-    quietRepo?.owner ?? null,
-    quietRepo?.repo ?? null,
-    ready
-  );
-
-  const flow = useMemo<RepoFlow | null>(
-    () => selectFlow(pipelineFlow, quietRepo, repoFlowQuery.data ?? [], flows),
-    [pipelineFlow, quietRepo, repoFlowQuery.data, flows]
-  );
+  const flow = pipelineFlow ?? flows[0] ?? null;
 
   const fullQueue = useMemo(
     () => (flow ? buildBranchQueue(flow) : null),
@@ -268,35 +197,29 @@ export function useDashboardState() {
 
   const selectInstallation = (id: number) => {
     updateSettings({ selectedInstallation: id });
-    setFocusedKey(null);
-    setBranchFilter(null);
+    updateControls({ branchFilter: null, focusedKey: null });
   };
 
   const selectRepo = (key: string) => {
     updateSettings({ selectedRepo: key });
-    setFocusedKey(null);
-    setBranchFilter(null);
+    updateControls({ branchFilter: null, focusedKey: null });
   };
 
-  const selectBranch = (branch: string | null) => {
-    setBranchFilter(branch);
-    setFocusedKey(null);
-  };
+  const selectBranch = (branch: string | null) =>
+    updateControls({ branchFilter: branch, focusedKey: null });
 
-  const selectQueueFilter = (next: QueueFilter) => {
-    setQueueFilter(next);
-    setFocusedKey(null);
-  };
+  const selectQueueFilter = (next: QueueFilter) =>
+    updateControls({ focusedKey: null, queueFilter: next });
 
-  const changeSearch = (next: string) => {
-    setSearchQuery(next);
-    setFocusedKey(null);
-  };
+  const changeSearch = (next: string) =>
+    updateControls({ focusedKey: null, searchQuery: next });
 
-  const toggleAllRepos = () => {
-    setAllRepos((previous) => !previous);
-    setFocusedKey(null);
-  };
+  const toggleAllRepos = () =>
+    setControls((current) => ({
+      ...current,
+      allRepos: !current.allRepos,
+      focusedKey: null,
+    }));
 
   const moveRepo = (delta: number) => {
     if (!flow || flows.length === 0) {

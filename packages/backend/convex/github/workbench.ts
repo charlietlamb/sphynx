@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
+import { isInstallationRetired } from "./installationState";
 import { workbenchEventInput } from "./validators";
 
 /**
@@ -12,13 +13,27 @@ export const writeWorkbenchEvents = internalMutation({
   returns: v.number(),
   handler: async (ctx, args) => {
     let inserted = 0;
+    const retired = new Map<number, boolean>();
     for (const event of args.events) {
+      if (!retired.has(event.installationId)) {
+        retired.set(
+          event.installationId,
+          await isInstallationRetired(ctx, event.installationId)
+        );
+      }
+      if (retired.get(event.installationId)) {
+        continue;
+      }
       const existing = await ctx.db
         .query("workbenchEvent")
         .withIndex("by_eventId", (q) => q.eq("eventId", event.eventId))
         .unique();
       if (existing === null) {
-        await ctx.db.insert("workbenchEvent", event);
+        await ctx.db.insert("workbenchEvent", {
+          ...event,
+          owner: event.owner.toLowerCase(),
+          repo: event.repo.toLowerCase(),
+        });
         inserted += 1;
       }
     }

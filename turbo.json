@@ -3,17 +3,11 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".output/**", "dist/**", ".nitro/**"]
+      "outputs": [".output/**"]
     },
     "dev": {
       "cache": false,
       "persistent": true
-    },
-    "db:generate": {
-      "cache": false
-    },
-    "db:migrate": {
-      "cache": false
     },
     "test": {
       "outputs": []

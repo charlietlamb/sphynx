@@ -5,11 +5,14 @@ import { Effect } from "effect";
 import { internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import { internalAction } from "../_generated/server";
+import type { RepoFlow } from "./domain";
 import { getInstallationToken } from "./installationToken";
 import { buildPipeline, discoverRepos, repoEvents } from "./pipelineBuilder";
+import { repoKeyOf } from "./rows";
 import { toWorkbenchEvents } from "./workbenchMappers";
 
 const SEED_REPOS = 10;
+const PULL_WRITE_BATCH = 25;
 
 /**
  * Seed the workbench feed with recent Events-API history for the first repos.
@@ -54,6 +57,76 @@ async function seedWorkbench(
   }
 }
 
+async function writeFlow(
+  ctx: ActionCtx,
+  installationId: number,
+  flow: RepoFlow,
+  snapshotAt: number,
+  runId: string
+) {
+  await ctx.runMutation(internal.github.writer.writeRepoMetadata, {
+    installationId,
+    owner: flow.owner,
+    repo: flow.repo,
+    stages: flow.stages,
+    gaps: flow.gaps,
+    snapshotAt,
+    runId,
+  });
+  for (
+    let offset = 0;
+    offset < flow.openPulls.length;
+    offset += PULL_WRITE_BATCH
+  ) {
+    await ctx.runMutation(internal.github.writer.writePullBatch, {
+      installationId,
+      owner: flow.owner,
+      repo: flow.repo,
+      pulls: flow.openPulls.slice(offset, offset + PULL_WRITE_BATCH),
+      snapshotAt,
+      fetchedAt: Date.now(),
+      runId,
+    });
+  }
+  let more = true;
+  while (more) {
+    more = await ctx.runMutation(internal.github.writer.finalizeRepo, {
+      installationId,
+      repoKey: repoKeyOf(installationId, flow.owner, flow.repo),
+      snapshotAt,
+      now: Date.now(),
+      runId,
+    });
+  }
+}
+
+async function retireUndiscovered(
+  ctx: ActionCtx,
+  installationId: number,
+  snapshotAt: number,
+  runId: string
+) {
+  let repoKeys: string[];
+  do {
+    repoKeys = await ctx.runMutation(
+      internal.github.writer.claimUndiscoveredRepos,
+      { installationId, snapshotAt, runId }
+    );
+    for (const repoKey of repoKeys) {
+      let more = true;
+      while (more) {
+        more = await ctx.runMutation(internal.github.writer.retireRepo, {
+          installationId,
+          repoKey,
+          snapshotAt,
+          now: Date.now(),
+          runId,
+        });
+      }
+    }
+  } while (repoKeys.length > 0);
+}
+
 /**
  * Build an installation's full pipeline from GitHub and write it to the read
  * model, one repo per mutation to stay under the write cap. `snapshotAt` is
@@ -63,34 +136,84 @@ async function seedWorkbench(
 export const materialize = internalAction({
   args: {
     installationId: v.number(),
-    now: v.number(),
     seed: v.boolean(),
+    now: v.optional(v.number()),
   },
   returns: v.object({ repoCount: v.number() }),
   handler: async (ctx, args): Promise<{ repoCount: number }> => {
-    const snapshotAt = args.now;
-    await ctx.runMutation(internal.github.reconcile.markInstallation, {
-      installationId: args.installationId,
-      reconciledAt: args.now,
-    });
-    const accessToken = await getInstallationToken(
-      ctx,
-      args.installationId,
-      args.now
-    );
-    const pipeline = await Effect.runPromise(buildPipeline(accessToken));
-    for (const flow of pipeline.repos) {
-      await ctx.runMutation(internal.github.writer.writeRepoFlow, {
+    if (
+      await ctx.runQuery(internal.github.reconcile.isRetired, {
         installationId: args.installationId,
-        flow,
-        snapshotAt,
-        now: args.now,
+      })
+    ) {
+      return { repoCount: 0 };
+    }
+    const runId = crypto.randomUUID();
+    const claim = await ctx.runMutation(
+      internal.github.materializationLease.claim,
+      {
+        installationId: args.installationId,
+        now: Date.now(),
+        runId,
+        seed: args.seed,
+      }
+    );
+    if (claim === "queued") {
+      return { repoCount: 0 };
+    }
+    let repoCount = 0;
+    try {
+      const snapshotAt = Date.now();
+      const accessToken = await getInstallationToken(
+        ctx,
+        args.installationId,
+        snapshotAt
+      );
+      const pipeline = await Effect.runPromise(buildPipeline(accessToken));
+      for (const flow of pipeline.repos) {
+        await writeFlow(ctx, args.installationId, flow, snapshotAt, runId);
+        const renewed = await ctx.runMutation(
+          internal.github.materializationLease.renew,
+          { installationId: args.installationId, now: Date.now(), runId }
+        );
+        if (!renewed) {
+          return { repoCount };
+        }
+      }
+      await retireUndiscovered(ctx, args.installationId, snapshotAt, runId);
+      if (
+        !(await ctx.runMutation(internal.github.materializationLease.renew, {
+          installationId: args.installationId,
+          now: Date.now(),
+          runId,
+        }))
+      ) {
+        return { repoCount };
+      }
+      if (args.seed) {
+        const discovered = await Effect.runPromise(discoverRepos(accessToken));
+        await seedWorkbench(ctx, args.installationId, discovered, accessToken);
+      }
+      repoCount = pipeline.repos.length;
+      const finishedAt = Date.now();
+      const completion = await ctx.runMutation(
+        internal.github.materializationLease.complete,
+        { installationId: args.installationId, now: finishedAt, runId }
+      );
+      if (completion !== "lost") {
+        await ctx.runMutation(internal.github.reconcile.markInstallation, {
+          installationId: args.installationId,
+          reconciledAt: finishedAt,
+        });
+      }
+    } catch (error) {
+      await ctx.runMutation(internal.github.materializationLease.release, {
+        installationId: args.installationId,
+        runId,
+        seed: args.seed,
       });
+      throw error;
     }
-    if (args.seed) {
-      const discovered = await Effect.runPromise(discoverRepos(accessToken));
-      await seedWorkbench(ctx, args.installationId, discovered, accessToken);
-    }
-    return { repoCount: pipeline.repos.length };
+    return { repoCount };
   },
 });

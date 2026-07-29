@@ -51,7 +51,7 @@ export const threadPreviewValidator = v.object({
   body: v.string(),
   id: v.string(),
   path: v.union(v.string(), v.null()),
-  rootCommentId: v.union(v.number(), v.null()),
+  rootCommentId: v.union(v.string(), v.null()),
 });
 
 export const failingCheckValidator = v.object({
@@ -124,12 +124,28 @@ export const pipelineValidator = v.object({
   repos: v.array(repoFlowValidator),
 });
 
+export const workbenchEventKindValidator = v.union(
+  v.literal("pr-opened"),
+  v.literal("pr-merged"),
+  v.literal("pr-closed"),
+  v.literal("pr-reopened"),
+  v.literal("pr-ready"),
+  v.literal("review-approved"),
+  v.literal("review-changes"),
+  v.literal("review-commented"),
+  v.literal("comment"),
+  v.literal("push"),
+  v.literal("branch-created"),
+  v.literal("branch-deleted"),
+  v.literal("release")
+);
+
 export const workbenchEventFields = {
   eventId: v.string(),
   installationId: v.number(),
   owner: v.string(),
   repo: v.string(),
-  kind: v.string(),
+  kind: workbenchEventKindValidator,
   actor: v.union(v.string(), v.null()),
   actorAvatarUrl: v.union(v.string(), v.null()),
   pullNumber: v.union(v.number(), v.null()),
@@ -151,7 +167,7 @@ export const workbenchEventInput = v.object(workbenchEventFields);
 type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 type AssertExact<A, B> = Exact<A, B> extends true ? true : never;
 
-const _contractParity: [
+export const contractParity: [
   AssertExact<Infer<typeof queuePullValidator>, Contract.QueuePull>,
   AssertExact<Infer<typeof pipelineValidator>, Contract.Pipeline>,
   AssertExact<Infer<typeof repoFlowValidator>, Contract.RepoFlow>,
@@ -163,4 +179,8 @@ const _contractParity: [
   AssertExact<Infer<typeof ciStateValidator>, Contract.CiState>,
   AssertExact<Infer<typeof decisionValidator>, Contract.Decision>,
   AssertExact<Infer<typeof pullStateValidator>, Contract.PullState>,
-] = [true, true, true, true, true, true, true, true, true, true, true];
+  AssertExact<
+    Infer<typeof workbenchEventKindValidator>,
+    Contract.WorkbenchEventKind
+  >,
+] = [true, true, true, true, true, true, true, true, true, true, true, true];

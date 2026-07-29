@@ -22,26 +22,20 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
-import { recordAccessBlock } from "@/components/pull-request/access-block-store";
+import {
+  clearAccessBlock,
+  recordAccessBlock,
+} from "@/components/pull-request/access-block-store";
 import { seededSummary } from "@/components/pull-request/summary-seed";
-import { usePullInstallation } from "@/components/pull-request/use-pull-installation";
 import { isAccessBlocked } from "@/lib/access-block";
 import { trackEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/auth-client";
 import { convexQueryClient } from "@/lib/convex";
 import { keys } from "@/lib/query/keys";
-import {
-  asConversation,
-  asConversationComment,
-  asPendingReview,
-  asPullPatches,
-  asPullSummary,
-  asReviewThreads,
-} from "@/lib/read-model";
 
-type SummaryAction = (ref: PullRequestRef) => Promise<unknown>;
+type SummaryAction = (ref: PullRequestRef) => Promise<PullRequestSummary>;
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -71,7 +65,11 @@ function pullRequestQuery(
 ) {
   return queryOptions({
     queryKey: keys.pullSummary(ref),
-    queryFn: async () => asPullSummary(await getSummary(ref)),
+    queryFn: async () => {
+      const summary = await getSummary(ref);
+      clearAccessBlock(ref);
+      return summary;
+    },
     placeholderData: placeholder,
   });
 }
@@ -87,12 +85,10 @@ export function prefetchPullRequest(
 ) {
   return queryClient.prefetchQuery({
     queryKey: keys.pullSummary(ref),
-    queryFn: async () =>
-      asPullSummary(
-        await convexQueryClient.convexClient.action(
-          api.github.prActions.getSummary,
-          ref
-        )
+    queryFn: () =>
+      convexQueryClient.convexClient.action(
+        api.github.prActions.getSummary,
+        ref
       ),
   });
 }
@@ -108,7 +104,7 @@ export function usePullRequest(ref: PullRequestRef) {
   const pullRequest = useQuery(pullRequestQuery(ref, getSummary, placeholder));
   const patches = useQuery({
     queryKey: keys.pullPatches(ref),
-    queryFn: async () => asPullPatches(await getPatches(ref)),
+    queryFn: () => getPatches(ref),
     staleTime: Number.POSITIVE_INFINITY,
   });
   return { pullRequest, patches };
@@ -162,32 +158,25 @@ export function useFileContents(
  * out-of-band "new commits" banner. `viewing` is seeded from the first head sha
  * and advanced only by an explicit refresh.
  */
-export function usePullRequestFreshness(ref: PullRequestRef) {
+export function usePullRequestFreshness(
+  ref: PullRequestRef,
+  head: string | null,
+  refreshing: boolean
+) {
   const queryClient = useQueryClient();
-  const { data: session } = useSession();
-  const authed = Boolean(session?.user);
-  usePullInstallation(ref.owner, authed);
-
-  const getSummary = useAction(api.github.prActions.getSummary);
-  const placeholder = useMemo(
-    () => seededSummary(queryClient, ref),
-    [queryClient, ref]
-  );
-  const summary = useQuery(pullRequestQuery(ref, getSummary, placeholder));
-
-  const head = summary.data?.head.sha ?? null;
-  const [viewing, setViewing] = useState<string | null>(head);
-  if (viewing === null && head !== null) {
-    setViewing(head);
+  const viewing = useRef<string | null>(head);
+  if (viewing.current === null) {
+    viewing.current = head;
   }
-  const hasNewChanges = head !== null && viewing !== null && viewing !== head;
+  const hasNewChanges =
+    head !== null && viewing.current !== null && viewing.current !== head;
 
   const refresh = useCallback(() => {
-    setViewing(head);
+    viewing.current = head;
     return queryClient.invalidateQueries({ queryKey: keys.pull(ref) });
   }, [queryClient, ref, head]);
 
-  return { hasNewChanges, refresh, refreshing: summary.isFetching };
+  return { hasNewChanges, refresh, refreshing };
 }
 
 const EMPTY_THREADS: readonly ReviewThread[] = [];
@@ -196,7 +185,7 @@ export function useCommentThreads(ref: PullRequestRef) {
   const getThreads = useAction(api.github.prActions.getThreads);
   const query = useQuery({
     queryKey: keys.pullThreads(ref),
-    queryFn: async () => asReviewThreads(await getThreads(ref)),
+    queryFn: () => getThreads(ref),
   });
   return query.data ?? EMPTY_THREADS;
 }
@@ -205,7 +194,7 @@ export function useConversation(ref: PullRequestRef) {
   const getConversation = useAction(api.github.prActions.getConversationAction);
   return useQuery({
     queryKey: keys.pullConversation(ref),
-    queryFn: async () => asConversation(await getConversation(ref)),
+    queryFn: () => getConversation(ref),
   });
 }
 
@@ -231,8 +220,8 @@ export function useAddConversationComment(ref: PullRequestRef) {
   );
   const queryKey = keys.pullConversation(ref);
   const mutation = useMutation({
-    mutationFn: async (body: string): Promise<ConversationComment> =>
-      asConversationComment(await addConversationComment({ ...ref, body })),
+    mutationFn: (body: string): Promise<ConversationComment> =>
+      addConversationComment({ ...ref, body }),
     onMutate: async (body) => {
       await queryClient.cancelQueries({ queryKey });
       const optimistic: ConversationComment = {
@@ -274,7 +263,7 @@ export function useAddConversationComment(ref: PullRequestRef) {
   return { addComment: mutation.mutate, adding: mutation.isPending };
 }
 
-const OPTIMISTIC_COMMENT_ID = -1;
+const OPTIMISTIC_COMMENT_ID = "optimistic";
 
 function optimisticComment(body: string, pending: boolean) {
   return {
@@ -346,7 +335,7 @@ export function useReplyToComment(ref: PullRequestRef) {
   const reply = useAction(api.github.prActions.replyToReviewComment);
   const queryKey = keys.pullThreads(ref);
   const mutation = useMutation({
-    mutationFn: (payload: { body: string; commentId: number }) =>
+    mutationFn: (payload: { body: string; commentId: string }) =>
       reply({ ...ref, body: payload.body, commentId: payload.commentId }),
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey });
@@ -383,7 +372,7 @@ export function useResolveThread(ref: PullRequestRef) {
   const queryKey = keys.pullThreads(ref);
   const mutation = useMutation({
     mutationFn: (payload: { resolved: boolean; threadId: string }) =>
-      resolveAction(payload),
+      resolveAction({ ...ref, ...payload }),
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey });
       const previous =
@@ -429,7 +418,7 @@ export function useReviewSubmission(ref: PullRequestRef) {
   const pendingKey = keys.pullPendingReview(ref);
   const pending = useQuery({
     queryKey: pendingKey,
-    queryFn: async () => asPendingReview(await getPending(ref)),
+    queryFn: () => getPending(ref),
     retry: false,
   });
   const invalidate = () =>
@@ -482,7 +471,13 @@ export function useMergePullRequest(ref: PullRequestRef) {
 /**
  * Optimistic set/clear is applied to the cache and reconciled on settle.
  */
-export function useViewedFiles(ref: PullRequestRef) {
+export interface ViewedFilesState {
+  setAllViewed: (paths: readonly string[]) => void;
+  setViewed: (change: { path: string; viewed: boolean }) => void;
+  viewedFiles: ReadonlySet<string> | null;
+}
+
+export function useViewedFiles(ref: PullRequestRef): ViewedFilesState {
   const queryClient = useQueryClient();
   const getViewedFiles = useAction(api.github.prActions.getViewedFiles);
   const setViewedFile = useAction(api.github.prActions.setViewedFile);

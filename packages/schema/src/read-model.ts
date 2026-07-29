@@ -59,7 +59,7 @@ export const threadPreviewValidator = v.object({
   body: v.string(),
   id: v.string(),
   path: v.union(v.string(), v.null()),
-  rootCommentId: v.union(v.number(), v.null()),
+  rootCommentId: v.union(v.string(), v.null()),
 });
 
 export const failingCheckValidator = v.object({
@@ -132,13 +132,7 @@ export const pipelineValidator = v.object({
   repos: v.array(repoFlowValidator),
 });
 
-export const discoveredRepoValidator = v.object({
-  owner: v.string(),
-  repo: v.string(),
-  openPulls: v.number(),
-});
-
-export const installationValidator = v.object({
+const installationValidator = v.object({
   id: v.number(),
   accountLogin: v.string(),
   accountType: v.string(),
@@ -180,7 +174,7 @@ export const workbenchEventFields = {
   installationId: v.number(),
   owner: v.string(),
   repo: v.string(),
-  kind: v.string(),
+  kind: workbenchEventKindValidator,
   actor: v.union(v.string(), v.null()),
   actorAvatarUrl: v.union(v.string(), v.null()),
   pullNumber: v.union(v.number(), v.null()),
@@ -196,18 +190,15 @@ export type CiState = Infer<typeof ciStateValidator>;
 export type Decision = Infer<typeof decisionValidator>;
 export type PullState = Infer<typeof pullStateValidator>;
 export type SourceKind = Infer<typeof sourceKindValidator>;
-export type ReviewerState = Infer<typeof reviewerStateValidator>;
 export type GitHubUser = Infer<typeof githubUserValidator>;
 export type ReviewerVerdict = Infer<typeof reviewerVerdictValidator>;
 export type ThreadPreview = Infer<typeof threadPreviewValidator>;
 export type FailingCheck = Infer<typeof failingCheckValidator>;
-export type CiCounts = Infer<typeof ciCountsValidator>;
 export type QueuePull = Infer<typeof queuePullValidator>;
 export type PromotedPull = Infer<typeof promotedPullValidator>;
 export type StageGap = Infer<typeof stageGapValidator>;
 export type RepoFlow = Infer<typeof repoFlowValidator>;
 export type Pipeline = Infer<typeof pipelineValidator>;
-export type DiscoveredRepo = Infer<typeof discoveredRepoValidator>;
 export type Installation = Infer<typeof installationValidator>;
 export type WorkbenchEventKind = Infer<typeof workbenchEventKindValidator>;
 export type WorkbenchEvent = Infer<typeof workbenchEventValidator>;

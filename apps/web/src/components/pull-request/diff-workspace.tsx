@@ -15,7 +15,7 @@ import type {
 } from "@/components/pull-request/patch-map";
 import {
   useCommentThreads,
-  useViewedFiles,
+  type ViewedFilesState,
 } from "@/components/pull-request/pull-request-queries";
 import {
   EMPTY_TRAIL,
@@ -41,6 +41,7 @@ interface DiffWorkspaceProps {
   patches: PatchMap;
   pullRequestRef: PullRequestRef;
   symbolIndex: SymbolIndex;
+  viewed: ViewedFilesState;
 }
 
 export default function DiffWorkspace({
@@ -49,11 +50,11 @@ export default function DiffWorkspace({
   patches,
   pullRequestRef,
   symbolIndex,
+  viewed,
 }: DiffWorkspaceProps) {
   const [{ file, line, panes }, setSearch] = usePullRequestSearch();
   const { settings } = useSettings();
-  const { viewedFiles, setViewed, setAllViewed } =
-    useViewedFiles(pullRequestRef);
+  const { viewedFiles, setViewed, setAllViewed } = viewed;
   const threads = useCommentThreads(pullRequestRef);
   const trail = useMemo(() => {
     const known = new Set(files.map((candidate) => candidate.path));
@@ -71,7 +72,7 @@ export default function DiffWorkspace({
     ? file
     : null;
   const currentPath = knownFile ?? files[0]?.path;
-  const importGraph = useImportGraph(pullRequestRef, files);
+  const importGraph = useImportGraph(pullRequestRef, headSha, files);
 
   const {
     applyTrail,

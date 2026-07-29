@@ -45,11 +45,11 @@ import {
   type PalettePage,
   resolvePage,
 } from "@/components/command-palette/palette-commands";
+import { useInstallations } from "@/components/dashboard/use-installations";
 import { usePipeline } from "@/components/dashboard/use-pipeline";
 import { FileTypeIcon } from "@/components/pull-request/file-type-icon";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useSession } from "@/lib/auth-client";
-import { asRepoFlows } from "@/lib/read-model";
 import { CODE_THEMES } from "@/lib/settings";
 
 const ICONS: Record<string, ReactNode> = {
@@ -131,8 +131,15 @@ export default function CommandPalette() {
   const pathname = useLocation({ select: (location) => location.pathname });
   const { data: session } = useSession();
   const authed = Boolean(session?.user);
-  const pipeline = usePipeline(null, open && authed);
   const { settings, update } = useSettings();
+  const installations = useInstallations(
+    settings.selectedInstallation,
+    open && authed
+  );
+  const pipeline = usePipeline(
+    installations.active?.id ?? null,
+    open && authed && !installations.isError
+  );
   const { resolvedTheme, setTheme } = useTheme();
 
   const runCommand = (command: PaletteCommand) => {
@@ -154,8 +161,11 @@ export default function CommandPalette() {
   };
 
   const flows = useMemo(
-    () => asRepoFlows(pipeline.data?.repos ?? []),
-    [pipeline.data]
+    () =>
+      installations.isError || pipeline.isError
+        ? []
+        : (pipeline.data?.repos ?? []),
+    [installations.isError, pipeline.data, pipeline.isError]
   );
 
   const groups = useMemo(

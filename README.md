@@ -1,22 +1,23 @@
 # Sphynx
 
-Code review platform built as a Bun TypeScript monorepo.
+Code review platform built with TanStack Start, Convex, and Better Auth.
 
 ## Setup
 
 ```sh
 bun install
 cp .env.example .env
-bun run db:setup
+nvm use
 bun dev
 ```
 
-The web app runs on port `3006`, the Effect/Bun server on `3003`, and Postgres on `5433`.
+The web app runs on port `3006`. Convex owns persistence, auth, webhooks,
+background reconciliation, and the GitHub read model.
 
 ## Foundation
 
 - TanStack Start and React
-- Bun and Effect
-- Better Auth with GitHub and organizations
-- Postgres and Drizzle ORM
+- Convex
+- Bun and Effect Schema
+- Better Auth with GitHub
 - Shared UI package

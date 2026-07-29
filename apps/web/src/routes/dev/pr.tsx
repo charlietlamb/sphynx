@@ -77,6 +77,12 @@ const PATCHES: PatchMap = new Map([
   ],
 ]);
 
+const VIEWED = {
+  viewedFiles: new Set<string>(),
+  setViewed: () => undefined,
+  setAllViewed: () => undefined,
+};
+
 function DevHeader() {
   const trailSlot = useDiffTrailSlot();
   return (
@@ -106,6 +112,7 @@ function DevPr() {
                 patches={PATCHES}
                 pullRequestRef={REF}
                 symbolIndex={EMPTY_SYMBOLS}
+                viewed={VIEWED}
               />
             </Suspense>
           </div>

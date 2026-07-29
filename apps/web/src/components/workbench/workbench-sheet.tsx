@@ -6,7 +6,7 @@ import {
   SheetTitle,
 } from "@sphynx/ui/components/ui/sheet";
 import { isTypingTarget } from "@sphynx/ui/lib/typing-target";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import {
   filterWorkbenchEvents,
   type MergedWorkbenchEvent,
@@ -53,11 +53,7 @@ export function WorkbenchSheet({
   const [filter, setFilter] = useState<WorkbenchFilter>("all");
   const [search, setSearch] = useState("");
   const now = Date.now();
-  const liveOpenChange = useRef(onOpenChange);
-  useEffect(() => {
-    liveOpenChange.current = onOpenChange;
-  });
-
+  const close = useEffectEvent(() => onOpenChange(false));
   useEffect(() => {
     if (!open) {
       return;
@@ -68,7 +64,7 @@ export function WorkbenchSheet({
       }
       if (event.key === "w") {
         event.preventDefault();
-        liveOpenChange.current(false);
+        close();
       }
     };
     window.addEventListener("keydown", onKeyDown);

@@ -116,7 +116,7 @@ const PULLS: QueuePull[] = [
         body: "P1 The schedule is committed before the parallel customer-product updates.",
         id: "t1",
         path: "server/src/transferRelatedCustomerProducts.ts",
-        rootCommentId: 1,
+        rootCommentId: "1",
       },
     ],
   }),

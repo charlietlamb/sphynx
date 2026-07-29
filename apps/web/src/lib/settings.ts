@@ -1,12 +1,15 @@
-export interface ReviewSettings {
-  codeTheme: string;
-  /** Confirm merges, blocks and promotions with a toast. */
-  confirmActions: boolean;
-  mirrorCodeTheme: boolean;
-  selectedInstallation: number | null;
-  selectedRepo: string | null;
-  sidebarCollapsed: boolean;
-}
+import { Schema } from "effect";
+
+const ReviewSettingsSchema = Schema.Struct({
+  codeTheme: Schema.String,
+  confirmActions: Schema.Boolean,
+  mirrorCodeTheme: Schema.Boolean,
+  selectedInstallation: Schema.NullOr(Schema.Number),
+  selectedRepo: Schema.NullOr(Schema.String),
+  sidebarCollapsed: Schema.Boolean,
+});
+
+export type ReviewSettings = typeof ReviewSettingsSchema.Type;
 
 export const DEFAULT_SETTINGS: ReviewSettings = {
   confirmActions: true,
@@ -85,13 +88,19 @@ export const CODE_THEMES: Record<
 
 export const SETTINGS_COOKIE = "sphynx-settings";
 export const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
-export const LEGACY_STORAGE_KEY = "sphynx.settings";
 
-export function decodeSettings(raw: string): Partial<ReviewSettings> {
+const decodeSettings = Schema.decodeUnknownSync(
+  Schema.partial(ReviewSettingsSchema)
+);
+
+export const decodeReviewSettings =
+  Schema.decodeUnknownSync(ReviewSettingsSchema);
+
+function decodeCookie(raw: string): Partial<ReviewSettings> {
   try {
-    return JSON.parse(raw);
+    return decodeSettings(JSON.parse(raw));
   } catch {
-    return JSON.parse(decodeURIComponent(raw));
+    return decodeSettings(JSON.parse(decodeURIComponent(raw)));
   }
 }
 
@@ -100,7 +109,7 @@ export function parseSettings(raw: string | null | undefined): ReviewSettings {
     return DEFAULT_SETTINGS;
   }
   try {
-    return { ...DEFAULT_SETTINGS, ...decodeSettings(raw) };
+    return { ...DEFAULT_SETTINGS, ...decodeCookie(raw) };
   } catch {
     return DEFAULT_SETTINGS;
   }
@@ -115,8 +124,4 @@ function readCookieValue(): string | null {
 
 export function clientSettings(): ReviewSettings {
   return parseSettings(readCookieValue());
-}
-
-export function hasSettingsCookie(): boolean {
-  return readCookieValue() !== null;
 }

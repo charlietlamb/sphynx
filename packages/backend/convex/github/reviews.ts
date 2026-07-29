@@ -19,7 +19,7 @@ export interface CreateReviewComment {
 
 export interface ReplyPayload {
   readonly body: string;
-  readonly commentId: number;
+  readonly commentId: string;
 }
 
 export interface ResolveThread {
@@ -104,6 +104,26 @@ const UNRESOLVE_MUTATION = `
 mutation($id: ID!) {
   unresolveReviewThread(input: { threadId: $id }) { thread { id } }
 }`;
+
+const THREAD_OWNER_QUERY = `
+query($id: ID!) {
+  node(id: $id) {
+    ... on PullRequestReviewThread {
+      pullRequest { number repository { nameWithOwner } }
+    }
+  }
+}`;
+
+const ThreadOwnerData = Schema.Struct({
+  node: Schema.NullishOr(
+    Schema.Struct({
+      pullRequest: Schema.Struct({
+        number: Schema.Number,
+        repository: Schema.Struct({ nameWithOwner: Schema.String }),
+      }),
+    })
+  ),
+});
 
 const SUBMIT_REVIEW_MUTATION = `
 mutation($id: ID!, $event: PullRequestReviewEvent!, $body: String) {
@@ -292,24 +312,43 @@ const makeReviews = (client: GitHubClient) => {
       );
 
   const resolveThread = (
+    ref: PullRequestRef,
     payload: ResolveThread,
     token: string
   ): Effect.Effect<void, GitHubError> =>
-    client
-      .query(
+    Effect.gen(function* () {
+      const owner = yield* client.query(
+        token,
+        ThreadOwnerData,
+        THREAD_OWNER_QUERY,
+        { id: payload.threadId }
+      );
+      const pullRequest = owner.node?.pullRequest;
+      if (
+        !pullRequest ||
+        pullRequest.number !== ref.number ||
+        pullRequest.repository.nameWithOwner.toLowerCase() !==
+          `${ref.owner}/${ref.repo}`.toLowerCase()
+      ) {
+        return yield* Effect.fail(
+          new GitHubUnavailable({ message: "Review thread not found" })
+        );
+      }
+      yield* client.query(
         token,
         Schema.Unknown,
         payload.resolved ? RESOLVE_MUTATION : UNRESOLVE_MUTATION,
         { id: payload.threadId }
-      )
-      .pipe(
-        Effect.asVoid,
-        Effect.withSpan("GitHubReviews.resolveThread"),
-        Effect.annotateLogs({
-          "github.thread_id": payload.threadId,
-          "github.resolved": payload.resolved,
-        })
       );
+    }).pipe(
+      Effect.asVoid,
+      Effect.withSpan("GitHubReviews.resolveThread"),
+      Effect.annotateLogs({
+        "github.repo": `${ref.owner}/${ref.repo}`,
+        "github.thread_id": payload.threadId,
+        "github.resolved": payload.resolved,
+      })
+    );
 
   const submitReview = (
     ref: PullRequestRef,
@@ -387,10 +426,15 @@ export const replyToComment = (
   );
 
 export const resolveThread = (
+  ref: PullRequestRef,
   payload: ResolveThread,
   token: string
 ): Effect.Effect<void, GitHubError> =>
-  makeReviews(makeGitHubClient(configFromEnv())).resolveThread(payload, token);
+  makeReviews(makeGitHubClient(configFromEnv())).resolveThread(
+    ref,
+    payload,
+    token
+  );
 
 export const submitReview = (
   ref: PullRequestRef,

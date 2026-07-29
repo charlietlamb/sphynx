@@ -63,16 +63,16 @@ describe("projectionFor", () => {
     expect(p._tag).toBe("None");
   });
 
-  test("check_run -> Pull from the first associated PR", () => {
+  test("check_run -> every associated pull", () => {
     const p = projectionFor(
       "check_run",
       envelope({
         check_run: { pull_requests: [{ number: 11 }, { number: 12 }] },
       })
     );
-    expect(p._tag).toBe("Pull");
-    if (p._tag === "Pull") {
-      expect(p.ref.number).toBe(11);
+    expect(p._tag).toBe("Pulls");
+    if (p._tag === "Pulls") {
+      expect(p.refs.map((ref) => ref.number)).toEqual([11, 12]);
     }
   });
 
@@ -90,6 +90,21 @@ describe("projectionFor", () => {
     if (p._tag === "Install") {
       expect(p.installationId).toBe(INSTALL);
     }
+  });
+
+  test("deleted and suspended installations retire", () => {
+    expect(
+      projectionFor("installation", {
+        action: "deleted",
+        installation: { id: INSTALL },
+      })._tag
+    ).toBe("Retire");
+    expect(
+      projectionFor("installation", {
+        action: "suspend",
+        installation: { id: INSTALL },
+      })._tag
+    ).toBe("Retire");
   });
 
   test("installation_repositories -> Install", () => {
@@ -136,7 +151,12 @@ describe("headMoveFor / headCloseFor", () => {
         pull_request: { number: 3, state: "closed", head: { sha: "x" } },
       })
     );
-    expect(close).toEqual({ owner: "useautumn", repo: "autumn", number: 3 });
+    expect(close).toEqual({
+      installationId: INSTALL,
+      owner: "useautumn",
+      repo: "autumn",
+      number: 3,
+    });
   });
 });
 
