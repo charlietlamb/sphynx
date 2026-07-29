@@ -53,8 +53,6 @@ import type * as github_writeQueue from "../github/writeQueue.js";
 import type * as github_writer from "../github/writer.js";
 import type * as github_writes from "../github/writes.js";
 import type * as http from "../http.js";
-import type * as spikes_effectSpike from "../spikes/effectSpike.js";
-import type * as spikes_githubAppSpike from "../spikes/githubAppSpike.js";
 
 import type {
   ApiFromModules,
@@ -108,8 +106,6 @@ declare const fullApi: ApiFromModules<{
   "github/writer": typeof github_writer;
   "github/writes": typeof github_writes;
   http: typeof http;
-  "spikes/effectSpike": typeof spikes_effectSpike;
-  "spikes/githubAppSpike": typeof spikes_githubAppSpike;
 }>;
 
 /**
