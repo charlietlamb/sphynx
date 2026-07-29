@@ -27,18 +27,29 @@ export function RailGapQueue({
 }: RailGapQueueProps) {
   if (gap.aheadBy === 0) {
     return (
-      <div className="relative flex h-7 items-center gap-1.5 pl-7">
-        <span
-          aria-hidden
-          className="absolute left-[14px] h-px w-[10px] bg-border"
-        />
-        <CheckCircleIcon
-          className="size-3.5 shrink-0 text-addition"
-          weight="fill"
-        />
-        <p className="text-[11px] text-muted-foreground">
-          in sync with <span className="font-mono">{gap.to}</span>
-        </p>
+      <div className="relative pl-7">
+        <div className="flex h-7 items-center gap-1.5">
+          <span
+            aria-hidden
+            className="absolute left-[14px] h-px w-[10px] bg-border"
+          />
+          <CheckCircleIcon
+            className="size-3.5 shrink-0 text-addition"
+            weight="fill"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            in sync with <span className="font-mono">{gap.to}</span>
+          </p>
+        </div>
+        {gap.promotionPull === null ? null : (
+          <RailPromotion
+            canAct={canAct}
+            gap={gap}
+            onOpenNumber={onOpenNumber}
+            owner={owner}
+            repo={repo}
+          />
+        )}
       </div>
     );
   }

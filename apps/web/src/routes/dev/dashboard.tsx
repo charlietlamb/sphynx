@@ -146,7 +146,16 @@ const FLOW: RepoFlow = {
   repo: "autumn",
   stages: ["dev", "main"],
   openPulls: PULLS,
-  gaps: [],
+  gaps: [
+    {
+      from: "dev",
+      to: "main",
+      aheadBy: 0,
+      pulls: [],
+      directCommits: 0,
+      promotionPull: 2401,
+    },
+  ],
 };
 
 function DevDashboard() {
