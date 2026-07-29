@@ -1,0 +1,25 @@
+{
+  "name": "@sphynx/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./convex/_generated/api": "./convex/_generated/api.js",
+    "./convex/_generated/dataModel": "./convex/_generated/dataModel.d.ts"
+  },
+  "scripts": {
+    "dev": "convex dev",
+    "lint": "eslint convex/"
+  },
+  "dependencies": {
+    "@convex-dev/better-auth": "^0.12.5",
+    "@convex-dev/migrations": "^0.3.6",
+    "better-auth": "^1.6.25",
+    "convex": "^1.42.3",
+    "effect": "^3.22.0"
+  },
+  "devDependencies": {
+    "@convex-dev/eslint-plugin": "^2.0.0",
+    "typescript-eslint": "^8.65.0"
+  }
+}
