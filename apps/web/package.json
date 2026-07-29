@@ -20,7 +20,6 @@
     "@phosphor-icons/react": "catalog:",
     "@pierre/diffs": "catalog:",
     "@shikijs/themes": "catalog:",
-    "@sphynx/auth": "workspace:*",
     "@sphynx/backend": "workspace:*",
     "@sphynx/schema": "workspace:*",
     "@sphynx/ui": "workspace:*",
