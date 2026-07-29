@@ -16,7 +16,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: bun run --cwd packages/backend lint
+      - run: bun run build
       - run: bun run knip
       - run: bun run typecheck
       - run: bun run test
-      - run: bun run build
