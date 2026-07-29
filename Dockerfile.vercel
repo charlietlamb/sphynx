@@ -10,6 +10,9 @@ COPY packages/auth/package.json packages/auth/package.json
 COPY packages/db/package.json packages/db/package.json
 COPY packages/schema/package.json packages/schema/package.json
 COPY packages/ui/package.json packages/ui/package.json
+# The lockfile pins patchedDependencies, so bun needs the patch files present at
+# install time even though react-dnd is a web-only dep.
+COPY patches patches
 # Install only the server workspace's closure. `bun src/server.ts` never loads
 # the web app or the UI package, so keeping their dependency trees out of the
 # image (~100M+: tanstack, vite, recharts, fonts, simple-icons…) shrinks the
