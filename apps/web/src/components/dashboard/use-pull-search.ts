@@ -9,7 +9,7 @@ const RESULT_LIMIT = 30;
 
 export function usePullSearch(query: string, installationId: number | null) {
   const debounced = useDebounced(query.trim(), DEBOUNCE_MS);
-  const search = useAction(api.github.writes.searchPulls);
+  const search = useAction(api.github.searchActions.search);
   const server = useQuery({
     queryKey: ["search", installationId, debounced],
     queryFn: () =>

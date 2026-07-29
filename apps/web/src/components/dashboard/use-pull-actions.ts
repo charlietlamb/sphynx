@@ -9,8 +9,8 @@ import {
 } from "@/components/dashboard/pending-merges-store";
 import { useSettings } from "@/components/settings/settings-provider";
 import { logWorkbenchEvent } from "@/components/workbench/workbench-store";
+import { isAccessBlocked } from "@/lib/access-block";
 import { trackEvent } from "@/lib/analytics";
-import { isAccessBlocked } from "@/lib/api";
 import { installationSettingsUrl } from "@/lib/github-app";
 
 /**

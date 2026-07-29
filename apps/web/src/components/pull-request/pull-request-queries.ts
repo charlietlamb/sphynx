@@ -5,12 +5,10 @@ import type {
   ReviewThread,
   SubmitReview,
 } from "@sphynx/schema/pull-request-comments";
-import {
-  type Conversation,
-  type ConversationComment,
-  ConversationCommentSchema,
+import type {
+  Conversation,
+  ConversationComment,
 } from "@sphynx/schema/pull-request-conversation";
-import { ViewedFilesSchema } from "@sphynx/schema/pull-request-views";
 import type {
   PullRequestFile,
   PullRequestRef,
@@ -24,18 +22,19 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useAction } from "convex/react";
-import { Schema } from "effect";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { recordAccessBlock } from "@/components/pull-request/access-block-store";
 import { seededSummary } from "@/components/pull-request/summary-seed";
 import { usePullInstallation } from "@/components/pull-request/use-pull-installation";
+import { isAccessBlocked } from "@/lib/access-block";
 import { trackEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/auth-client";
 import { convexQueryClient } from "@/lib/convex";
 import { keys } from "@/lib/query/keys";
 import {
   asConversation,
+  asConversationComment,
   asPendingReview,
   asPullPatches,
   asPullSummary,
@@ -43,13 +42,6 @@ import {
 } from "@/lib/read-model";
 
 type SummaryAction = (ref: PullRequestRef) => Promise<unknown>;
-
-/**
- * A GitHub App reports missing reach as a resource/permission failure rather
- * than the OAuth-App restriction message, so match what the App actually emits.
- * Convex surfaces the failure as an error whose message carries GitHub's text.
- */
-const ACCESS_BLOCK = /not accessible by integration|Resource not accessible/i;
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -64,9 +56,8 @@ function reportMutationError(
   title: string,
   error: unknown
 ) {
-  const message = errorMessage(error);
-  if (ACCESS_BLOCK.test(message)) {
-    recordAccessBlock(ref, message);
+  if (isAccessBlocked(error)) {
+    recordAccessBlock(ref, String(error));
   }
   toast.error(title, {
     description: "Can't reach the server. Please try again.",
@@ -228,33 +219,20 @@ function dropOptimisticConversationComments(
   );
 }
 
-function conversationCommentsUrl({ owner, repo, number }: PullRequestRef) {
-  return `/api/github/repos/${owner}/${repo}/pulls/${number}/conversation-comments`;
-}
-
 /**
- * Adding a top-level conversation (issue) comment has no Convex read model yet,
- * so it stays on the HTTP endpoint. The optimistic append and rollback mirror
- * the converted review-comment mutations.
+ * Adding a top-level conversation (issue) comment. The optimistic append and
+ * rollback mirror the converted review-comment mutations.
  */
 export function useAddConversationComment(ref: PullRequestRef) {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
+  const addConversationComment = useAction(
+    api.github.prActions.addConversationComment
+  );
   const queryKey = keys.pullConversation(ref);
   const mutation = useMutation({
-    mutationFn: async (body: string): Promise<ConversationComment> => {
-      const response = await fetch(conversationCommentsUrl(ref), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ body }),
-      });
-      if (!response.ok) {
-        throw new Error(`conversation-comments failed: ${response.status}`);
-      }
-      return await Schema.decodeUnknownPromise(ConversationCommentSchema)(
-        await response.json()
-      );
-    },
+    mutationFn: async (body: string): Promise<ConversationComment> =>
+      asConversationComment(await addConversationComment({ ...ref, body })),
     onMutate: async (body) => {
       await queryClient.cancelQueries({ queryKey });
       const optimistic: ConversationComment = {
@@ -501,33 +479,21 @@ export function useMergePullRequest(ref: PullRequestRef) {
   return { merge: merge.mutate, merging: merge.isPending };
 }
 
-function viewedFilesUrl({ owner, repo, number }: PullRequestRef) {
-  return `/api/github/repos/${owner}/${repo}/pulls/${number}/viewed-files`;
-}
-
 /**
- * Viewed-file state has no Convex read model yet, so it stays on the HTTP
- * endpoint. Optimistic set/clear is applied to the cache and reconciled on
- * settle.
+ * Optimistic set/clear is applied to the cache and reconciled on settle.
  */
 export function useViewedFiles(ref: PullRequestRef) {
   const queryClient = useQueryClient();
+  const getViewedFiles = useAction(api.github.prActions.getViewedFiles);
+  const setViewedFile = useAction(api.github.prActions.setViewedFile);
+  const setAllViewedFiles = useAction(api.github.prActions.setAllViewedFiles);
   const queryKey = keys.pullViewedFiles(ref);
   const query = useQuery({
     queryKey,
-    queryFn: async (): Promise<ReadonlySet<string> | null> => {
-      const response = await fetch(viewedFilesUrl(ref));
-      if (response.status === 401) {
-        return null;
-      }
-      if (!response.ok) {
-        throw new Error(`viewed-files failed: ${response.status}`);
-      }
-      const decoded = await Schema.decodeUnknownPromise(ViewedFilesSchema)(
-        await response.json()
-      );
+    queryFn: async (): Promise<ReadonlySet<string>> => {
+      const files = await getViewedFiles(ref);
       const viewed = new Set<string>();
-      for (const file of decoded.files) {
+      for (const file of files) {
         if (file.viewed) {
           viewed.add(file.path);
         }
@@ -539,16 +505,8 @@ export function useViewedFiles(ref: PullRequestRef) {
   const mutationKey = ["viewed-files", ref.owner, ref.repo, ref.number];
   const mutation = useMutation({
     mutationKey,
-    mutationFn: async (change: { path: string; viewed: boolean }) => {
-      const response = await fetch(viewedFilesUrl(ref), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(change),
-      });
-      if (!response.ok) {
-        throw new Error(`viewed-files failed: ${response.status}`);
-      }
-    },
+    mutationFn: (change: { path: string; viewed: boolean }) =>
+      setViewedFile({ ...ref, path: change.path, viewed: change.viewed }),
     onMutate: async (change) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData(queryKey);
@@ -583,16 +541,8 @@ export function useViewedFiles(ref: PullRequestRef) {
   });
   const allMutation = useMutation({
     mutationKey,
-    mutationFn: async (_paths: readonly string[]) => {
-      const response = await fetch(`${viewedFilesUrl(ref)}/all`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ viewed: true }),
-      });
-      if (!response.ok) {
-        throw new Error(`viewed-files failed: ${response.status}`);
-      }
-    },
+    mutationFn: (_paths: readonly string[]) =>
+      setAllViewedFiles({ ...ref, viewed: true }),
     onMutate: async (paths: readonly string[]) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData(queryKey);

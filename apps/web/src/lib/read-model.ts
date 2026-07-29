@@ -1,5 +1,11 @@
-import type { PendingReview } from "@sphynx/schema/pull-request-comments";
-import type { Conversation } from "@sphynx/schema/pull-request-conversation";
+import type {
+  PendingReview,
+  ReviewThread,
+} from "@sphynx/schema/pull-request-comments";
+import type {
+  Conversation,
+  ConversationComment,
+} from "@sphynx/schema/pull-request-conversation";
 import type {
   PullRequestPatches,
   PullRequestSummary,
@@ -9,7 +15,6 @@ import type {
   QueuePull,
   RepoFlow,
 } from "@sphynx/schema/review-queue";
-import type { ReviewThread } from "@sphynx/schema/pull-request-comments";
 
 /**
  * The Convex read-model queries return values structurally identical to the
@@ -40,6 +45,9 @@ export const asPullPatches = (value: unknown): PullRequestPatches =>
 
 export const asConversation = (value: unknown): Conversation =>
   value as Conversation;
+
+export const asConversationComment = (value: unknown): ConversationComment =>
+  value as ConversationComment;
 
 export const asReviewThreads = (value: unknown): readonly ReviewThread[] =>
   value as readonly ReviewThread[];

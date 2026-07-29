@@ -273,23 +273,23 @@ export function useDashboardState() {
   };
 
   const selectRepo = (key: string) => {
-    updateSettings({ selectedRepo: `${key}` });
+    updateSettings({ selectedRepo: key });
     setFocusedKey(null);
     setBranchFilter(null);
   };
 
   const selectBranch = (branch: string | null) => {
-    setBranchFilter(branch ? `${branch}` : null);
+    setBranchFilter(branch);
     setFocusedKey(null);
   };
 
   const selectQueueFilter = (next: QueueFilter) => {
-    setQueueFilter(`${next}` as QueueFilter);
+    setQueueFilter(next);
     setFocusedKey(null);
   };
 
   const changeSearch = (next: string) => {
-    setSearchQuery(`${next}`);
+    setSearchQuery(next);
     setFocusedKey(null);
   };
 
