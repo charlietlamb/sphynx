@@ -18,6 +18,7 @@
   "dependencies": {
     "@convex-dev/better-auth": "^0.12.5",
     "@convex-dev/migrations": "^0.3.6",
+    "@sphynx/schema": "workspace:*",
     "better-auth": "^1.6.25",
     "convex": "^1.42.3",
     "effect": "^3.22.0"

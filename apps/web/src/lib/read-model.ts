@@ -25,11 +25,10 @@ import type {
  */
 export const asPipeline = (value: unknown): Pipeline => value as Pipeline;
 
-export const asRepoFlows = (value: unknown): readonly RepoFlow[] =>
-  value as readonly RepoFlow[];
+export const asRepoFlows = (value: unknown): RepoFlow[] => value as RepoFlow[];
 
-export const asQueuePulls = (value: unknown): readonly QueuePull[] =>
-  value as readonly QueuePull[];
+export const asQueuePulls = (value: unknown): QueuePull[] =>
+  value as QueuePull[];
 
 /**
  * The PR-page reads run as Convex actions returning opaque (`v.any()`) results —

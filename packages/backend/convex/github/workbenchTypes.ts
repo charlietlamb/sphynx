@@ -1,4 +1,5 @@
-import { v } from "convex/values";
+import type * as Contract from "@sphynx/schema/read-model";
+import { type Infer, v } from "convex/values";
 
 export const workbenchEventKindValidator = v.union(
   v.literal("pr-opened"),
@@ -16,35 +17,18 @@ export const workbenchEventKindValidator = v.union(
   v.literal("release")
 );
 
-export type WorkbenchEventKind =
-  | "pr-opened"
-  | "pr-merged"
-  | "pr-closed"
-  | "pr-reopened"
-  | "pr-ready"
-  | "review-approved"
-  | "review-changes"
-  | "review-commented"
-  | "comment"
-  | "push"
-  | "branch-created"
-  | "branch-deleted"
-  | "release";
+export type {
+  WorkbenchEvent,
+  WorkbenchEventKind,
+} from "@sphynx/schema/read-model";
 
 export interface GitHubUser {
   avatarUrl: string;
   login: string;
 }
 
-export interface WorkbenchEvent {
-  actor: GitHubUser;
-  at: string;
-  detail: string | null;
-  id: string;
-  kind: WorkbenchEventKind;
-  pull: {
-    number: number;
-    title: string | null;
-  } | null;
-  url: string | null;
-}
+type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+const _kindParity: Exact<
+  Infer<typeof workbenchEventKindValidator>,
+  Contract.WorkbenchEventKind
+> = true;

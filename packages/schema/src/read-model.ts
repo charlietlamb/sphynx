@@ -1,5 +1,13 @@
-import type * as Contract from "@sphynx/schema/read-model";
 import { type Infer, v } from "convex/values";
+
+/**
+ * The read-model wire contract, defined once as Convex validators so the same
+ * definition validates the database rows, the query args/returns, and — via
+ * `Infer` — the TypeScript types the frontend consumes. Convex validates every
+ * read at the wire, so these shapes are never re-decoded on the client; the
+ * frontend imports the `Infer`-derived types only. Raw GitHub API payloads are a
+ * separate, untrusted boundary and stay Effect Schema in the backend.
+ */
 
 export const ciStateValidator = v.union(
   v.literal("success"),
@@ -124,6 +132,49 @@ export const pipelineValidator = v.object({
   repos: v.array(repoFlowValidator),
 });
 
+export const discoveredRepoValidator = v.object({
+  owner: v.string(),
+  repo: v.string(),
+  openPulls: v.number(),
+});
+
+export const installationValidator = v.object({
+  id: v.number(),
+  accountLogin: v.string(),
+  accountType: v.string(),
+  avatarUrl: v.union(v.string(), v.null()),
+  repositorySelection: v.string(),
+});
+
+export const workbenchEventKindValidator = v.union(
+  v.literal("pr-opened"),
+  v.literal("pr-merged"),
+  v.literal("pr-closed"),
+  v.literal("pr-reopened"),
+  v.literal("pr-ready"),
+  v.literal("review-approved"),
+  v.literal("review-changes"),
+  v.literal("review-commented"),
+  v.literal("comment"),
+  v.literal("push"),
+  v.literal("branch-created"),
+  v.literal("branch-deleted"),
+  v.literal("release")
+);
+
+export const workbenchEventValidator = v.object({
+  id: v.string(),
+  at: v.string(),
+  actor: v.object({ login: v.string(), avatarUrl: v.string() }),
+  kind: workbenchEventKindValidator,
+  pull: v.union(
+    v.object({ number: v.number(), title: v.union(v.string(), v.null()) }),
+    v.null()
+  ),
+  detail: v.union(v.string(), v.null()),
+  url: v.union(v.string(), v.null()),
+});
+
 export const workbenchEventFields = {
   eventId: v.string(),
   installationId: v.number(),
@@ -141,26 +192,22 @@ export const workbenchEventFields = {
 
 export const workbenchEventInput = v.object(workbenchEventFields);
 
-/**
- * These Convex validators must stay structurally identical to the canonical
- * shared contract in `@sphynx/schema/read-model` — the frontend derives its
- * types from there, and Convex cannot bundle that package's validator values, so
- * they are re-authored here for `defineTable`/args/returns. This assertion turns
- * any drift between the two into a compile error rather than a wire mismatch.
- */
-type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
-type AssertExact<A, B> = Exact<A, B> extends true ? true : never;
-
-const _contractParity: [
-  AssertExact<Infer<typeof queuePullValidator>, Contract.QueuePull>,
-  AssertExact<Infer<typeof pipelineValidator>, Contract.Pipeline>,
-  AssertExact<Infer<typeof repoFlowValidator>, Contract.RepoFlow>,
-  AssertExact<Infer<typeof stageGapValidator>, Contract.StageGap>,
-  AssertExact<Infer<typeof promotedPullValidator>, Contract.PromotedPull>,
-  AssertExact<Infer<typeof reviewerVerdictValidator>, Contract.ReviewerVerdict>,
-  AssertExact<Infer<typeof threadPreviewValidator>, Contract.ThreadPreview>,
-  AssertExact<Infer<typeof failingCheckValidator>, Contract.FailingCheck>,
-  AssertExact<Infer<typeof ciStateValidator>, Contract.CiState>,
-  AssertExact<Infer<typeof decisionValidator>, Contract.Decision>,
-  AssertExact<Infer<typeof pullStateValidator>, Contract.PullState>,
-] = [true, true, true, true, true, true, true, true, true, true, true];
+export type CiState = Infer<typeof ciStateValidator>;
+export type Decision = Infer<typeof decisionValidator>;
+export type PullState = Infer<typeof pullStateValidator>;
+export type SourceKind = Infer<typeof sourceKindValidator>;
+export type ReviewerState = Infer<typeof reviewerStateValidator>;
+export type GitHubUser = Infer<typeof githubUserValidator>;
+export type ReviewerVerdict = Infer<typeof reviewerVerdictValidator>;
+export type ThreadPreview = Infer<typeof threadPreviewValidator>;
+export type FailingCheck = Infer<typeof failingCheckValidator>;
+export type CiCounts = Infer<typeof ciCountsValidator>;
+export type QueuePull = Infer<typeof queuePullValidator>;
+export type PromotedPull = Infer<typeof promotedPullValidator>;
+export type StageGap = Infer<typeof stageGapValidator>;
+export type RepoFlow = Infer<typeof repoFlowValidator>;
+export type Pipeline = Infer<typeof pipelineValidator>;
+export type DiscoveredRepo = Infer<typeof discoveredRepoValidator>;
+export type Installation = Infer<typeof installationValidator>;
+export type WorkbenchEventKind = Infer<typeof workbenchEventKindValidator>;
+export type WorkbenchEvent = Infer<typeof workbenchEventValidator>;
