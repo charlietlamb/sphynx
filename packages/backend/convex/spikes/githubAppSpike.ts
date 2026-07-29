@@ -97,3 +97,25 @@ export const probeAppAuth = internalAction({
     };
   },
 });
+
+export const listInstallations = internalAction({
+  args: { nowSeconds: v.number() },
+  returns: v.array(v.object({ id: v.number(), account: v.union(v.string(), v.null()) })),
+  handler: async (_ctx, args) => {
+    const clientId = process.env.GITHUB_APP_CLIENT_ID;
+    const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+    if (!(clientId && privateKey)) {
+      throw new Error("missing app creds");
+    }
+    const jwt = appJwt(clientId, privateKey, args.nowSeconds);
+    const res = await fetch("https://api.github.com/app/installations", {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
+    const list = (await res.json()) as { id: number; account?: { login?: string } }[];
+    return list.map((i) => ({ id: i.id, account: i.account?.login ?? null }));
+  },
+});

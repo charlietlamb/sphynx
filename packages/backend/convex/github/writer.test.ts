@@ -49,7 +49,6 @@ type T = ReturnType<typeof setup>;
 const writeOne = (t: T, value: QueuePull, at: string) =>
   t.mutation(internal.github.writer.writePull, {
     installationId: INSTALLATION,
-    repoKey: REPO_KEY,
     owner: OWNER,
     repo: REPO,
     pull: value,
@@ -173,7 +172,6 @@ describe("writePull monotonicity gate", () => {
     );
     await t.mutation(internal.github.writer.writePull, {
       installationId: INSTALLATION,
-      repoKey: REPO_KEY,
       owner: OWNER,
       repo: REPO,
       pull: pull({
@@ -189,18 +187,56 @@ describe("writePull monotonicity gate", () => {
     expect(row?.ciCounts.pending).toBe(0);
   });
 
-  test("closeDepartedPulls marks a departed open pull merged, sparing fresh ones", async () => {
+  test("writeRepoFlow marks a departed open pull merged, sparing fresh ones", async () => {
     const t = setup();
     await writeOne(t, pull({ number: 30 }), "2026-07-01T00:00:00Z");
     await writeOne(t, pull({ number: 31 }), "2026-07-08T00:00:00Z");
-    const closed = await t.mutation(internal.github.writer.closeDepartedPulls, {
-      repoKey: REPO_KEY,
-      openNumbers: [],
+    await t.mutation(internal.github.writer.writeRepoFlow, {
+      installationId: INSTALLATION,
+      flow: {
+        owner: OWNER,
+        repo: REPO,
+        stages: ["dev", "main"],
+        openPulls: [],
+        gaps: [],
+      },
       snapshotAt: new Date("2026-07-05T00:00:00Z").getTime(),
       now: new Date("2026-07-05T00:00:01Z").getTime(),
     });
-    expect(closed).toBe(1);
     expect((await readPull(t, 30))?.state).toBe("merged");
     expect((await readPull(t, 31))?.state).toBe("open");
+  });
+
+  test("writeRepoFlow materializes pulls and the stage-gap rail", async () => {
+    const t = setup();
+    await t.mutation(internal.github.writer.writeRepoFlow, {
+      installationId: INSTALLATION,
+      flow: {
+        owner: OWNER,
+        repo: REPO,
+        stages: ["dev", "main"],
+        openPulls: [pull({ number: 40, decision: "ready" })],
+        gaps: [
+          {
+            from: "dev",
+            to: "main",
+            aheadBy: 0,
+            directCommits: 0,
+            promotionPull: 40,
+            pulls: [],
+          },
+        ],
+      },
+      snapshotAt: new Date("2026-07-10T00:00:00Z").getTime(),
+      now: new Date("2026-07-10T00:00:00Z").getTime(),
+    });
+    expect((await readPull(t, 40))?.decision).toBe("ready");
+    const gaps = await t.run((ctx) =>
+      ctx.db
+        .query("stageGap")
+        .withIndex("by_repo", (q) => q.eq("repoKey", REPO_KEY))
+        .collect(),
+    );
+    expect(gaps[0]?.promotionPull).toBe(40);
   });
 });

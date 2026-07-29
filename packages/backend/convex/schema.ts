@@ -75,7 +75,8 @@ export default defineSchema({
     .index("by_key", ["key"])
     .index("by_installation_and_state", ["installationId", "state"])
     .index("by_repo_and_number", ["repoKey", "number"])
-    .index("by_repo_and_state", ["repoKey", "state"]),
+    .index("by_repo_and_state", ["repoKey", "state"])
+    .index("by_state_and_fetchedAt", ["state", "fetchedAt"]),
 
   stageGap: defineTable({
     repoKey: v.string(),
@@ -124,6 +125,7 @@ export default defineSchema({
     occurredAt: v.number(),
   })
     .index("by_eventId", ["eventId"])
+    .index("by_occurredAt", ["occurredAt"])
     .index("by_installation_and_occurredAt", ["installationId", "occurredAt"])
     .index("by_installation_and_repo_and_occurredAt", [
       "installationId",

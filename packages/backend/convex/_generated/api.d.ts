@@ -8,12 +8,25 @@
  * @module
  */
 
+import type * as github_appAuth from "../github/appAuth.js";
+import type * as github_appJwt from "../github/appJwt.js";
 import type * as github_domain from "../github/domain.js";
 import type * as github_gate from "../github/gate.js";
+import type * as github_githubClient from "../github/githubClient.js";
+import type * as github_githubErrors from "../github/githubErrors.js";
+import type * as github_materialize from "../github/materialize.js";
+import type * as github_pipelineBuilder from "../github/pipelineBuilder.js";
+import type * as github_pipelineHelpers from "../github/pipelineHelpers.js";
+import type * as github_prune from "../github/prune.js";
 import type * as github_queueDecision from "../github/queueDecision.js";
 import type * as github_queueMappers from "../github/queueMappers.js";
+import type * as github_reviewQueue from "../github/reviewQueue.js";
 import type * as github_rows from "../github/rows.js";
+import type * as github_tokens from "../github/tokens.js";
 import type * as github_validators from "../github/validators.js";
+import type * as github_workbench from "../github/workbench.js";
+import type * as github_workbenchMappers from "../github/workbenchMappers.js";
+import type * as github_workbenchTypes from "../github/workbenchTypes.js";
 import type * as github_writer from "../github/writer.js";
 import type * as spikes_effectSpike from "../spikes/effectSpike.js";
 import type * as spikes_githubAppSpike from "../spikes/githubAppSpike.js";
@@ -25,12 +38,25 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "github/appAuth": typeof github_appAuth;
+  "github/appJwt": typeof github_appJwt;
   "github/domain": typeof github_domain;
   "github/gate": typeof github_gate;
+  "github/githubClient": typeof github_githubClient;
+  "github/githubErrors": typeof github_githubErrors;
+  "github/materialize": typeof github_materialize;
+  "github/pipelineBuilder": typeof github_pipelineBuilder;
+  "github/pipelineHelpers": typeof github_pipelineHelpers;
+  "github/prune": typeof github_prune;
   "github/queueDecision": typeof github_queueDecision;
   "github/queueMappers": typeof github_queueMappers;
+  "github/reviewQueue": typeof github_reviewQueue;
   "github/rows": typeof github_rows;
+  "github/tokens": typeof github_tokens;
   "github/validators": typeof github_validators;
+  "github/workbench": typeof github_workbench;
+  "github/workbenchMappers": typeof github_workbenchMappers;
+  "github/workbenchTypes": typeof github_workbenchTypes;
   "github/writer": typeof github_writer;
   "spikes/effectSpike": typeof spikes_effectSpike;
   "spikes/githubAppSpike": typeof spikes_githubAppSpike;
