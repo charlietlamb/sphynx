@@ -1,24 +1,20 @@
-import {
-  type CreateReviewComment,
-  type PendingReview,
-  PendingReviewSchema,
-  type ReviewThread,
-  ReviewThreadsSchema,
-  type SubmitReview,
+import { api } from "@sphynx/backend/convex/_generated/api";
+import type {
+  CreateReviewComment,
+  PendingReview,
+  ReviewThread,
+  SubmitReview,
 } from "@sphynx/schema/pull-request-comments";
 import {
+  type Conversation,
   type ConversationComment,
   ConversationCommentSchema,
-  ConversationSchema,
 } from "@sphynx/schema/pull-request-conversation";
 import { ViewedFilesSchema } from "@sphynx/schema/pull-request-views";
-import {
-  type PullRequestFile,
-  PullRequestFileContentsSchema,
-  PullRequestPatchesSchema,
-  type PullRequestRef,
-  type PullRequestSummary,
-  PullRequestSummarySchema,
+import type {
+  PullRequestFile,
+  PullRequestRef,
+  PullRequestSummary,
 } from "@sphynx/schema/pull-requests";
 import {
   type QueryClient,
@@ -27,62 +23,37 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useAction } from "convex/react";
 import { Schema } from "effect";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { recordAccessBlock } from "@/components/pull-request/access-block-store";
 import { seededSummary } from "@/components/pull-request/summary-seed";
-import { usePullFreshnessStream } from "@/components/pull-request/use-pull-freshness-stream";
 import { usePullInstallation } from "@/components/pull-request/use-pull-installation";
 import { trackEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/auth-client";
-import { fetchWithEtag } from "@/lib/etag-cache";
+import { convexQueryClient } from "@/lib/convex";
 import { keys } from "@/lib/query/keys";
+import {
+  asConversation,
+  asPendingReview,
+  asPullPatches,
+  asPullSummary,
+  asReviewThreads,
+} from "@/lib/read-model";
 
-interface ApiErrorBody {
-  _tag?: string;
-  message?: string;
-  resetAt?: string | null;
-  retryAfterSeconds?: number | null;
-}
-
-class ApiError extends Error {
-  readonly status: number;
-  readonly body: ApiErrorBody;
-
-  constructor(status: number, body: ApiErrorBody) {
-    super(body.message ?? `Request failed with status ${status}`);
-    this.status = status;
-    this.body = body;
-  }
-}
-
-async function ensureOk(response: Response) {
-  if (response.ok) {
-    return;
-  }
-  throw await apiError(response);
-}
-
-async function apiError(response: Response): Promise<never> {
-  const body: ApiErrorBody = await response.json().catch(() => ({}));
-  throw new ApiError(response.status, body);
-}
-
-function showMutationError(title: string, error: unknown) {
-  toast.error(title, {
-    description:
-      error instanceof ApiError && error.body.message
-        ? error.body.message
-        : "Can't reach the server. Please try again.",
-  });
-}
+type SummaryAction = (ref: PullRequestRef) => Promise<unknown>;
 
 /**
  * A GitHub App reports missing reach as a resource/permission failure rather
  * than the OAuth-App restriction message, so match what the App actually emits.
+ * Convex surfaces the failure as an error whose message carries GitHub's text.
  */
 const ACCESS_BLOCK = /not accessible by integration|Resource not accessible/i;
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * Surfaces a failed write, and remembers it when GitHub refused because the
@@ -93,99 +64,95 @@ function reportMutationError(
   title: string,
   error: unknown
 ) {
-  if (
-    error instanceof ApiError &&
-    error.body.message &&
-    ACCESS_BLOCK.test(error.body.message)
-  ) {
-    recordAccessBlock(ref, error.body.message);
+  const message = errorMessage(error);
+  if (ACCESS_BLOCK.test(message)) {
+    recordAccessBlock(ref, message);
   }
-  showMutationError(title, error);
-}
-
-async function fetchDecoded<A, I>(
-  url: string,
-  schema: Schema.Schema<A, I>
-): Promise<A> {
-  const response = await fetch(url);
-  await ensureOk(response);
-  return Schema.decodeUnknownPromise(schema)(await response.json());
-}
-
-function pullUrl({ owner, repo, number }: PullRequestRef) {
-  return `/api/github/repos/${owner}/${repo}/pulls/${number}`;
-}
-
-function viewedFilesUrl({ owner, repo, number }: PullRequestRef) {
-  return `/api/github/repos/${owner}/${repo}/pulls/${number}/viewed-files`;
+  toast.error(title, {
+    description: "Can't reach the server. Please try again.",
+  });
 }
 
 function pullRequestQuery(
   ref: PullRequestRef,
+  getSummary: SummaryAction,
   placeholder?: PullRequestSummary
 ) {
   return queryOptions({
     queryKey: keys.pullSummary(ref),
-    queryFn: () =>
-      fetchWithEtag(pullUrl(ref), PullRequestSummarySchema, apiError),
+    queryFn: async () => asPullSummary(await getSummary(ref)),
     placeholderData: placeholder,
   });
 }
 
 /**
- * The file list, its diff text, and the symbol index in one request.
- *
- * These all come from the same GitHub pages, so fetching the list separately
- * walked those pages twice — once on the client and once on the server.
- */
-function pullRequestPatchesQuery(ref: PullRequestRef) {
-  return queryOptions({
-    queryKey: keys.pullPatches(ref),
-    queryFn: () =>
-      fetchDecoded(`${pullUrl(ref)}/patches`, PullRequestPatchesSchema),
-    staleTime: Number.POSITIVE_INFINITY,
-  });
-}
-
-/**
  * Warm the summary before navigation — called on hover/focus of a dashboard
- * row so the live fetch is often in flight or done by the time the user opens
- * the PR. Cheap: a single conditional GET that 304s when unchanged.
+ * row so the fetch is often in flight or done by the time the user opens the
+ * PR. The Convex action is invoked directly, off the React tree.
  */
 export function prefetchPullRequest(
   queryClient: QueryClient,
   ref: PullRequestRef
 ) {
-  return queryClient.prefetchQuery(pullRequestQuery(ref));
+  return queryClient.prefetchQuery({
+    queryKey: keys.pullSummary(ref),
+    queryFn: async () =>
+      asPullSummary(
+        await convexQueryClient.convexClient.action(
+          api.github.prActions.getSummary,
+          ref
+        )
+      ),
+  });
 }
 
 export function usePullRequest(ref: PullRequestRef) {
   const queryClient = useQueryClient();
+  const getSummary = useAction(api.github.prActions.getSummary);
+  const getPatches = useAction(api.github.prActions.getPatches);
   const placeholder = useMemo(
     () => seededSummary(queryClient, ref),
     [queryClient, ref]
   );
-  const pullRequest = useQuery(pullRequestQuery(ref, placeholder));
-  const patches = useQuery(pullRequestPatchesQuery(ref));
+  const pullRequest = useQuery(pullRequestQuery(ref, getSummary, placeholder));
+  const patches = useQuery({
+    queryKey: keys.pullPatches(ref),
+    queryFn: async () => asPullPatches(await getPatches(ref)),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
   return { pullRequest, patches };
 }
 
+export type FileContentsAction = (args: {
+  owner: string;
+  repo: string;
+  number: number;
+  path: string;
+  sha: string;
+}) => Promise<string | null>;
+
+/**
+ * Query options for one file's content at a sha. Content-addressed, so cached
+ * indefinitely. The bound action is passed in so `useQueries` callers can build
+ * one options object per file without a hook per item.
+ */
 export function fileContentsQuery(
+  getFileContents: FileContentsAction,
   ref: PullRequestRef,
   sha: string,
   path: string | undefined
 ) {
   return queryOptions({
     queryKey: keys.pullFileContents(ref, sha, path),
-    queryFn: () =>
-      fetchDecoded(
-        `${pullUrl(ref)}/file-contents?path=${encodeURIComponent(path ?? "")}&sha=${sha}`,
-        PullRequestFileContentsSchema
-      ),
+    queryFn: () => getFileContents({ ...ref, path: path ?? "", sha }),
     enabled: Boolean(path && sha),
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
+}
+
+export function useFileContentsAction(): FileContentsAction {
+  return useAction(api.github.prActions.getFileContentsAction);
 }
 
 export function useFileContents(
@@ -193,83 +160,62 @@ export function useFileContents(
   sha: string,
   path: string | undefined
 ) {
-  const query = useQuery(fileContentsQuery(ref, sha, path));
-  return query.data?.content ?? null;
+  const getFileContents = useFileContentsAction();
+  const query = useQuery(fileContentsQuery(getFileContents, ref, sha, path));
+  return query.data ?? null;
 }
 
 /**
- * Watches for new commits on the open pull request.
- *
- * Freshness is pushed, not polled: the server sends a `pull` SSE event when a
- * webhook moves the head, and `usePullFreshnessStream` reports the new sha and
- * invalidates the summary/conversation/threads. The installation is resolved
- * from the owner so the stream can be scoped to it.
- *
- * `viewing` is the sha the reviewer is currently looking at. It is state rather
- * than a ref because it is read during render, seeded from the first head sha
- * via the render-time comparison React supports for derived state, and advanced
- * by the stream as new commits land.
+ * Tracks the head the reviewer is looking at. The live head push was dropped
+ * with the SSE stream — the summary refetches on navigation, so there is no
+ * out-of-band "new commits" banner. `viewing` is seeded from the first head sha
+ * and advanced only by an explicit refresh.
  */
 export function usePullRequestFreshness(ref: PullRequestRef) {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const authed = Boolean(session?.user);
-  const installationId = usePullInstallation(ref.owner, authed);
+  usePullInstallation(ref.owner, authed);
 
+  const getSummary = useAction(api.github.prActions.getSummary);
   const placeholder = useMemo(
     () => seededSummary(queryClient, ref),
     [queryClient, ref]
   );
-  const summary = useQuery(pullRequestQuery(ref, placeholder));
+  const summary = useQuery(pullRequestQuery(ref, getSummary, placeholder));
 
   const head = summary.data?.head.sha ?? null;
   const [viewing, setViewing] = useState<string | null>(head);
-  const [pushedHead, setPushedHead] = useState<string | null>(null);
   if (viewing === null && head !== null) {
     setViewing(head);
   }
-  const latestHead = pushedHead ?? head;
-  const hasNewChanges =
-    latestHead !== null && viewing !== null && viewing !== latestHead;
-
-  usePullFreshnessStream(installationId, ref, setPushedHead);
+  const hasNewChanges = head !== null && viewing !== null && viewing !== head;
 
   const refresh = useCallback(() => {
-    setViewing(latestHead);
+    setViewing(head);
     return queryClient.invalidateQueries({ queryKey: keys.pull(ref) });
-  }, [queryClient, ref, latestHead]);
+  }, [queryClient, ref, head]);
 
   return { hasNewChanges, refresh, refreshing: summary.isFetching };
 }
 
 const EMPTY_THREADS: readonly ReviewThread[] = [];
 
-function commentThreadsQuery(ref: PullRequestRef) {
-  return queryOptions({
-    queryKey: keys.pullThreads(ref),
-    queryFn: () =>
-      fetchDecoded(`${pullUrl(ref)}/comment-threads`, ReviewThreadsSchema),
-  });
-}
-
 export function useCommentThreads(ref: PullRequestRef) {
-  const query = useQuery(commentThreadsQuery(ref));
-  return query.data?.threads ?? EMPTY_THREADS;
-}
-
-function conversationUrl(ref: PullRequestRef) {
-  return `${pullUrl(ref)}/conversation`;
-}
-
-function conversationQuery(ref: PullRequestRef) {
-  return queryOptions({
-    queryKey: keys.pullConversation(ref),
-    queryFn: () => fetchDecoded(conversationUrl(ref), ConversationSchema),
+  const getThreads = useAction(api.github.prActions.getThreads);
+  const query = useQuery({
+    queryKey: keys.pullThreads(ref),
+    queryFn: async () => asReviewThreads(await getThreads(ref)),
   });
+  return query.data ?? EMPTY_THREADS;
 }
 
 export function useConversation(ref: PullRequestRef) {
-  return useQuery(conversationQuery(ref));
+  const getConversation = useAction(api.github.prActions.getConversationAction);
+  return useQuery({
+    queryKey: keys.pullConversation(ref),
+    queryFn: async () => asConversation(await getConversation(ref)),
+  });
 }
 
 const OPTIMISTIC_CONVERSATION_ID = "optimistic";
@@ -282,21 +228,29 @@ function dropOptimisticConversationComments(
   );
 }
 
+function conversationCommentsUrl({ owner, repo, number }: PullRequestRef) {
+  return `/api/github/repos/${owner}/${repo}/pulls/${number}/conversation-comments`;
+}
+
+/**
+ * Adding a top-level conversation (issue) comment has no Convex read model yet,
+ * so it stays on the HTTP endpoint. The optimistic append and rollback mirror
+ * the converted review-comment mutations.
+ */
 export function useAddConversationComment(ref: PullRequestRef) {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
-  const { queryKey } = conversationQuery(ref);
+  const queryKey = keys.pullConversation(ref);
   const mutation = useMutation({
     mutationFn: async (body: string): Promise<ConversationComment> => {
-      const response = await fetch(
-        `${commentsUrl(ref)}/conversation-comments`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ body }),
-        }
-      );
-      await ensureOk(response);
+      const response = await fetch(conversationCommentsUrl(ref), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+      if (!response.ok) {
+        throw new Error(`conversation-comments failed: ${response.status}`);
+      }
       return await Schema.decodeUnknownPromise(ConversationCommentSchema)(
         await response.json()
       );
@@ -313,14 +267,14 @@ export function useAddConversationComment(ref: PullRequestRef) {
         createdAt: new Date().toISOString(),
         githubUrl: "",
       };
-      queryClient.setQueryData(queryKey, (current) =>
+      queryClient.setQueryData<Conversation>(queryKey, (current) =>
         current
           ? { ...current, comments: [...current.comments, optimistic] }
           : current
       );
     },
     onError: (error) => {
-      queryClient.setQueryData(queryKey, (current) =>
+      queryClient.setQueryData<Conversation>(queryKey, (current) =>
         current
           ? {
               ...current,
@@ -343,19 +297,6 @@ export function useAddConversationComment(ref: PullRequestRef) {
 }
 
 const OPTIMISTIC_COMMENT_ID = -1;
-
-async function postJson(url: string, payload: unknown) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  await ensureOk(response);
-}
-
-function commentsUrl({ owner, repo, number }: PullRequestRef) {
-  return `/api/github/repos/${owner}/${repo}/pulls/${number}`;
-}
 
 function optimisticComment(body: string, pending: boolean) {
   return {
@@ -383,10 +324,11 @@ function dropOptimisticComments(threads: readonly ReviewThread[]) {
 
 export function useCreateComment(ref: PullRequestRef) {
   const queryClient = useQueryClient();
-  const { queryKey } = commentThreadsQuery(ref);
+  const create = useAction(api.github.prActions.createReviewComment);
+  const queryKey = keys.pullThreads(ref);
   const mutation = useMutation({
     mutationFn: (payload: CreateReviewComment) =>
-      postJson(`${commentsUrl(ref)}/comments`, payload),
+      create({ ...ref, ...payload }),
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey });
       const optimistic: ReviewThread = {
@@ -400,13 +342,13 @@ export function useCreateComment(ref: PullRequestRef) {
         viewerCanResolve: false,
         comments: [optimisticComment(payload.body, payload.pending)],
       };
-      queryClient.setQueryData(queryKey, (current) =>
-        current ? { threads: [...current.threads, optimistic] } : current
+      queryClient.setQueryData<readonly ReviewThread[]>(queryKey, (current) =>
+        current ? [...current, optimistic] : current
       );
     },
     onError: (error) => {
-      queryClient.setQueryData(queryKey, (current) =>
-        current ? { threads: dropOptimisticComments(current.threads) } : current
+      queryClient.setQueryData<readonly ReviewThread[]>(queryKey, (current) =>
+        current ? dropOptimisticComments(current) : current
       );
       reportMutationError(ref, "Couldn't post comment", error);
     },
@@ -414,7 +356,7 @@ export function useCreateComment(ref: PullRequestRef) {
       Promise.all([
         queryClient.invalidateQueries({ queryKey }),
         queryClient.invalidateQueries({
-          queryKey: pendingReviewQuery(ref).queryKey,
+          queryKey: keys.pullPendingReview(ref),
         }),
       ]),
   });
@@ -423,33 +365,32 @@ export function useCreateComment(ref: PullRequestRef) {
 
 export function useReplyToComment(ref: PullRequestRef) {
   const queryClient = useQueryClient();
-  const { queryKey } = commentThreadsQuery(ref);
+  const reply = useAction(api.github.prActions.replyToReviewComment);
+  const queryKey = keys.pullThreads(ref);
   const mutation = useMutation({
     mutationFn: (payload: { body: string; commentId: number }) =>
-      postJson(`${commentsUrl(ref)}/comment-replies`, payload),
+      reply({ ...ref, body: payload.body, commentId: payload.commentId }),
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey });
-      queryClient.setQueryData(queryKey, (current) =>
+      queryClient.setQueryData<readonly ReviewThread[]>(queryKey, (current) =>
         current
-          ? {
-              threads: current.threads.map((thread) =>
-                thread.comments[0]?.id === payload.commentId
-                  ? {
-                      ...thread,
-                      comments: [
-                        ...thread.comments,
-                        optimisticComment(payload.body, false),
-                      ],
-                    }
-                  : thread
-              ),
-            }
+          ? current.map((thread) =>
+              thread.comments[0]?.id === payload.commentId
+                ? {
+                    ...thread,
+                    comments: [
+                      ...thread.comments,
+                      optimisticComment(payload.body, false),
+                    ],
+                  }
+                : thread
+            )
           : current
       );
     },
     onError: (error) => {
-      queryClient.setQueryData(queryKey, (current) =>
-        current ? { threads: dropOptimisticComments(current.threads) } : current
+      queryClient.setQueryData<readonly ReviewThread[]>(queryKey, (current) =>
+        current ? dropOptimisticComments(current) : current
       );
       reportMutationError(ref, "Couldn't post reply", error);
     },
@@ -460,22 +401,22 @@ export function useReplyToComment(ref: PullRequestRef) {
 
 export function useResolveThread(ref: PullRequestRef) {
   const queryClient = useQueryClient();
-  const { queryKey } = commentThreadsQuery(ref);
+  const resolveAction = useAction(api.github.prActions.resolveReviewThread);
+  const queryKey = keys.pullThreads(ref);
   const mutation = useMutation({
     mutationFn: (payload: { resolved: boolean; threadId: string }) =>
-      postJson(`${commentsUrl(ref)}/comment-threads/resolve`, payload),
+      resolveAction(payload),
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey });
-      const previous = queryClient.getQueryData(queryKey);
-      queryClient.setQueryData(queryKey, (current) =>
+      const previous =
+        queryClient.getQueryData<readonly ReviewThread[]>(queryKey);
+      queryClient.setQueryData<readonly ReviewThread[]>(queryKey, (current) =>
         current
-          ? {
-              threads: current.threads.map((thread) =>
-                thread.id === payload.threadId
-                  ? { ...thread, isResolved: payload.resolved }
-                  : thread
-              ),
-            }
+          ? current.map((thread) =>
+              thread.id === payload.threadId
+                ? { ...thread, isResolved: payload.resolved }
+                : thread
+            )
           : current
       );
       return { previous };
@@ -500,55 +441,41 @@ export function useResolveThread(ref: PullRequestRef) {
   return { resolve: mutation.mutate, resolving: mutation.isPending };
 }
 
-function pendingReviewQuery(ref: PullRequestRef) {
-  return queryOptions({
-    queryKey: keys.pullPendingReview(ref),
-    queryFn: async (): Promise<PendingReview> => {
-      const response = await fetch(`${commentsUrl(ref)}/pending-review`);
-      if (response.status === 401) {
-        return { pendingId: null, commentCount: 0 };
-      }
-      await ensureOk(response);
-      return Schema.decodeUnknownPromise(PendingReviewSchema)(
-        await response.json()
-      );
-    },
-    retry: false,
-  });
-}
+const EMPTY_PENDING: PendingReview = { pendingId: null, commentCount: 0 };
 
 export function useReviewSubmission(ref: PullRequestRef) {
   const queryClient = useQueryClient();
-  const pending = useQuery(pendingReviewQuery(ref));
+  const getPending = useAction(api.github.prActions.getPending);
+  const submitAction = useAction(api.github.prActions.submitPendingReview);
+  const discardAction = useAction(api.github.prActions.discardPendingReview);
+  const pendingKey = keys.pullPendingReview(ref);
+  const pending = useQuery({
+    queryKey: pendingKey,
+    queryFn: async () => asPendingReview(await getPending(ref)),
+    retry: false,
+  });
   const invalidate = () =>
     Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: pendingReviewQuery(ref).queryKey,
-      }),
-      queryClient.invalidateQueries({
-        queryKey: commentThreadsQuery(ref).queryKey,
-      }),
+      queryClient.invalidateQueries({ queryKey: pendingKey }),
+      queryClient.invalidateQueries({ queryKey: keys.pullThreads(ref) }),
     ]);
   const submit = useMutation({
     mutationFn: (payload: SubmitReview) =>
-      postJson(`${commentsUrl(ref)}/pending-review/submit`, payload),
+      submitAction({ ...ref, body: payload.body, event: payload.event }),
     onError: (error) =>
       reportMutationError(ref, "Couldn't submit review", error),
     onSettled: invalidate,
   });
   const discard = useMutation({
-    mutationFn: () =>
-      postJson(`${commentsUrl(ref)}/pending-review/discard`, {}),
+    mutationFn: () => discardAction(ref),
     onError: (error) =>
       reportMutationError(ref, "Couldn't discard review", error),
     onSettled: invalidate,
   });
   return {
-    pendingReview: pending.data ?? { pendingId: null, commentCount: 0 },
+    pendingReview: pending.data ?? EMPTY_PENDING,
     refreshPendingReview: () =>
-      queryClient.invalidateQueries({
-        queryKey: pendingReviewQuery(ref).queryKey,
-      }),
+      queryClient.invalidateQueries({ queryKey: pendingKey }),
     submitReview: submit.mutate,
     submitting: submit.isPending,
     discardReview: discard.mutate,
@@ -557,8 +484,9 @@ export function useReviewSubmission(ref: PullRequestRef) {
 
 export function useMergePullRequest(ref: PullRequestRef) {
   const queryClient = useQueryClient();
+  const mergeAction = useAction(api.github.writes.merge);
   const merge = useMutation({
-    mutationFn: () => postJson(`${pullUrl(ref)}/merge`, {}),
+    mutationFn: () => mergeAction(ref),
     onSuccess: () => {
       trackEvent("pull_merged", {
         owner: ref.owner,
@@ -573,15 +501,28 @@ export function useMergePullRequest(ref: PullRequestRef) {
   return { merge: merge.mutate, merging: merge.isPending };
 }
 
-function viewedFilesQuery(ref: PullRequestRef) {
-  return queryOptions({
-    queryKey: keys.pullViewedFiles(ref),
+function viewedFilesUrl({ owner, repo, number }: PullRequestRef) {
+  return `/api/github/repos/${owner}/${repo}/pulls/${number}/viewed-files`;
+}
+
+/**
+ * Viewed-file state has no Convex read model yet, so it stays on the HTTP
+ * endpoint. Optimistic set/clear is applied to the cache and reconciled on
+ * settle.
+ */
+export function useViewedFiles(ref: PullRequestRef) {
+  const queryClient = useQueryClient();
+  const queryKey = keys.pullViewedFiles(ref);
+  const query = useQuery({
+    queryKey,
     queryFn: async (): Promise<ReadonlySet<string> | null> => {
       const response = await fetch(viewedFilesUrl(ref));
       if (response.status === 401) {
         return null;
       }
-      await ensureOk(response);
+      if (!response.ok) {
+        throw new Error(`viewed-files failed: ${response.status}`);
+      }
       const decoded = await Schema.decodeUnknownPromise(ViewedFilesSchema)(
         await response.json()
       );
@@ -595,11 +536,6 @@ function viewedFilesQuery(ref: PullRequestRef) {
     },
     retry: false,
   });
-}
-
-export function useViewedFiles(ref: PullRequestRef) {
-  const queryClient = useQueryClient();
-  const query = useQuery(viewedFilesQuery(ref));
   const mutationKey = ["viewed-files", ref.owner, ref.repo, ref.number];
   const mutation = useMutation({
     mutationKey,
@@ -609,40 +545,39 @@ export function useViewedFiles(ref: PullRequestRef) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(change),
       });
-      await ensureOk(response);
+      if (!response.ok) {
+        throw new Error(`viewed-files failed: ${response.status}`);
+      }
     },
     onMutate: async (change) => {
-      const { queryKey } = viewedFilesQuery(ref);
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData(queryKey);
-      queryClient.setQueryData(queryKey, (current) => {
-        if (!current) {
-          return current;
+      queryClient.setQueryData<ReadonlySet<string> | null>(
+        queryKey,
+        (current) => {
+          if (!current) {
+            return current;
+          }
+          const next = new Set(current);
+          if (change.viewed) {
+            next.add(change.path);
+          } else {
+            next.delete(change.path);
+          }
+          return next;
         }
-        const next = new Set(current);
-        if (change.viewed) {
-          next.add(change.path);
-        } else {
-          next.delete(change.path);
-        }
-        return next;
-      });
+      );
       return { previous };
     },
     onError: (error, _change, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(
-          viewedFilesQuery(ref).queryKey,
-          context.previous
-        );
+        queryClient.setQueryData(queryKey, context.previous);
       }
       reportMutationError(ref, "Couldn't update viewed state", error);
     },
     onSettled: () => {
       if (queryClient.isMutating({ mutationKey }) === 1) {
-        return queryClient.invalidateQueries({
-          queryKey: viewedFilesQuery(ref).queryKey,
-        });
+        return queryClient.invalidateQueries({ queryKey });
       }
     },
   });
@@ -654,31 +589,28 @@ export function useViewedFiles(ref: PullRequestRef) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ viewed: true }),
       });
-      await ensureOk(response);
+      if (!response.ok) {
+        throw new Error(`viewed-files failed: ${response.status}`);
+      }
     },
     onMutate: async (paths: readonly string[]) => {
-      const { queryKey } = viewedFilesQuery(ref);
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData(queryKey);
-      queryClient.setQueryData(queryKey, (current) =>
-        current ? new Set(paths) : current
+      queryClient.setQueryData<ReadonlySet<string> | null>(
+        queryKey,
+        (current) => (current ? new Set(paths) : current)
       );
       return { previous };
     },
     onError: (error, _paths, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(
-          viewedFilesQuery(ref).queryKey,
-          context.previous
-        );
+        queryClient.setQueryData(queryKey, context.previous);
       }
       reportMutationError(ref, "Couldn't mark all files viewed", error);
     },
     onSettled: () => {
       if (queryClient.isMutating({ mutationKey }) === 1) {
-        return queryClient.invalidateQueries({
-          queryKey: viewedFilesQuery(ref).queryKey,
-        });
+        return queryClient.invalidateQueries({ queryKey });
       }
     },
   });
@@ -703,42 +635,35 @@ interface ErrorCardContent {
   title: string;
 }
 
-function rateLimitDescription(body: ApiErrorBody) {
-  if (body.resetAt) {
-    const minutes = Math.max(
-      1,
-      Math.ceil((new Date(body.resetAt).getTime() - Date.now()) / 60_000)
-    );
-    return `GitHub's rate limit resets in about ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`;
-  }
-  if (body.retryAfterSeconds) {
-    return `GitHub asked us to retry in ${body.retryAfterSeconds} seconds.`;
-  }
-  return "GitHub is rate limiting requests. Try again shortly.";
-}
+/**
+ * Map a read failure to an error card. Convex actions surface GitHub's failure
+ * as an `Error` whose message carries the cause, so the card is chosen from that
+ * message rather than an HTTP status.
+ */
+const NOT_FOUND = /not found|PullRequestNotFound/i;
+const RATE_LIMITED = /rate limit|RateLimited/i;
+const UNAVAILABLE = /unavailable|GitHubUnavailable|timeout|GitHubTimeout/i;
 
 export function toErrorCardProps(
   error: unknown,
   onRetry: () => void
 ): ErrorCardContent {
-  if (error instanceof ApiError && error.status === 404) {
+  const message = errorMessage(error);
+  if (NOT_FOUND.test(message)) {
     return {
       title: "Pull request not found",
       description:
         "This pull request doesn't exist, or the repository is private.",
     };
   }
-  if (error instanceof ApiError && error.status === 429) {
+  if (RATE_LIMITED.test(message)) {
     return {
       title: "Rate limited by GitHub",
-      description: rateLimitDescription(error.body),
+      description: "GitHub is rate limiting requests. Try again shortly.",
       onRetry,
     };
   }
-  if (
-    error instanceof ApiError &&
-    (error.status === 502 || error.status === 504)
-  ) {
+  if (UNAVAILABLE.test(message)) {
     return {
       title: "GitHub is unavailable",
       description: "We couldn't reach GitHub (shock). It may be down or slow.",
@@ -748,7 +673,7 @@ export function toErrorCardProps(
   return {
     title: "Something went wrong",
     description: "We couldn't load this pull request.",
-    detail: error instanceof Error ? error.message : String(error),
+    detail: message,
     onRetry,
   };
 }

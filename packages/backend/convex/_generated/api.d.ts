@@ -21,6 +21,7 @@ import type * as github_installations from "../github/installations.js";
 import type * as github_materialize from "../github/materialize.js";
 import type * as github_pipelineBuilder from "../github/pipelineBuilder.js";
 import type * as github_pipelineHelpers from "../github/pipelineHelpers.js";
+import type * as github_prActions from "../github/prActions.js";
 import type * as github_prReads from "../github/prReads.js";
 import type * as github_project from "../github/project.js";
 import type * as github_projection from "../github/projection.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   "github/materialize": typeof github_materialize;
   "github/pipelineBuilder": typeof github_pipelineBuilder;
   "github/pipelineHelpers": typeof github_pipelineHelpers;
+  "github/prActions": typeof github_prActions;
   "github/prReads": typeof github_prReads;
   "github/project": typeof github_project;
   "github/projection": typeof github_projection;

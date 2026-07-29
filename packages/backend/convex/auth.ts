@@ -9,6 +9,12 @@ import type { DataModel } from "./_generated/dataModel";
 
 const siteUrl = process.env.SITE_URL ?? "http://localhost:3006";
 
+/** Every origin the client may call auth from — comma-separated in env. */
+const trustedOrigins = (process.env.AUTH_TRUSTED_ORIGINS ?? siteUrl)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter((origin) => origin.length > 0);
+
 /**
  * The public origin Better Auth builds OAuth redirects against. In production
  * this is the deployment's own CONVEX_SITE_URL; in tunneled local dev, set
@@ -33,7 +39,7 @@ function githubProvider() {
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
   ({
     baseURL: authBaseUrl,
-    trustedOrigins: [siteUrl],
+    trustedOrigins,
     database: authComponent.adapter(ctx),
     session: {
       /**
