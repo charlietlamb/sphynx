@@ -1,38 +1,9 @@
-import {
-  type DiscoveredRepo,
-  PipelineSchema,
-  QueueSchema,
-  type RepoFlow,
-  RepoFlowSchema,
-  ReposSchema,
-} from "@sphynx/schema/review-queue";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "@sphynx/backend/convex/_generated/api";
+import type { RepoFlow } from "@sphynx/schema/review-queue";
 import { useQuery } from "@tanstack/react-query";
-import { Schema } from "effect";
 import type { RepoOption } from "@/components/dashboard/repo-switcher";
 import { isContested, isMergeable, repoKeyOf } from "@/lib/attention";
-import { fetchGithub } from "@/lib/github-api";
-import { keys } from "@/lib/query/keys";
-
-async function fetchPipeline(installationId: number | null) {
-  const response = await fetchGithub("/pipeline", "pipeline", installationId);
-  return Schema.decodeUnknownPromise(PipelineSchema)(await response.json());
-}
-
-async function fetchRepos(installationId: number | null) {
-  const response = await fetchGithub("/repos", "repos", installationId);
-  return Schema.decodeUnknownPromise(ReposSchema)(await response.json());
-}
-
-export function toDiscoveredRepoOption(repo: DiscoveredRepo): RepoOption {
-  return {
-    key: repoKeyOf(repo),
-    owner: repo.owner,
-    repo: repo.repo,
-    openCount: repo.openPulls,
-    mergeable: 0,
-    contested: 0,
-  };
-}
 
 export function toRepoOption(flow: RepoFlow): RepoOption {
   let mergeable = 0;
@@ -55,71 +26,35 @@ export function toRepoOption(flow: RepoFlow): RepoOption {
   };
 }
 
-async function fetchQueue(installationId: number | null) {
-  const response = await fetchGithub("/queue", "queue", installationId);
-  return Schema.decodeUnknownPromise(QueueSchema)(await response.json());
-}
-
-async function fetchRepoFlow(
-  installationId: number | null,
-  owner: string,
-  repo: string
-) {
-  const response = await fetchGithub(
-    `/repos/${owner}/${repo}/flow`,
-    "repo flow",
-    installationId
-  );
-  return Schema.decodeUnknownPromise(RepoFlowSchema)(await response.json());
-}
-
 /**
- * The key carries identity only. Freshness is pushed: the server materializes
- * the read model from webhooks and notifies over SSE, and `useReadModelStream`
- * invalidates these queries on that signal. There is no wall-clock poll — a read
- * is an instant Neon query, and it only refetches when the model actually moves.
+ * The dashboard pipeline, live from Convex. A Convex query subscribes over a
+ * WebSocket, so any write to the read model (webhook, materialize, reconcile)
+ * repaints subscribers automatically — no wall-clock poll, no invalidation.
+ * `"skip"` gates the subscription until an installation is known.
  */
 export function usePipeline(installationId: number | null, enabled: boolean) {
   return useQuery({
-    queryKey: keys.pipeline(installationId),
-    queryFn: () => fetchPipeline(installationId),
-    enabled,
+    ...convexQuery(
+      api.github.reader.getPipeline,
+      enabled && installationId !== null ? { installationId } : "skip"
+    ),
   });
 }
 
-/**
- * The queue without the promotion rail. It skips the per-repo compare fan-out,
- * so it resolves in roughly a third of the time and lets the queue paint while
- * the rail is still loading.
- */
+/** The queue without the promotion rail — paints while the rail loads. */
 export function useQueue(installationId: number | null, enabled: boolean) {
   return useQuery({
-    queryKey: keys.queue(installationId),
-    queryFn: () => fetchQueue(installationId),
-    enabled,
+    ...convexQuery(
+      api.github.reader.getQueue,
+      enabled && installationId !== null ? { installationId } : "skip"
+    ),
   });
 }
 
 /**
- * Every repo the installation can see, so the switcher lists quiet repos the
- * pipeline omits. Slower-moving than the pipeline (repo access rarely changes),
- * so it does not share the pipeline's SSE-driven invalidation.
- */
-export function useRepos(installationId: number | null, enabled: boolean) {
-  return useQuery({
-    queryKey: keys.repos(installationId),
-    queryFn: () => fetchRepos(installationId),
-    enabled,
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-/**
- * One repo's flow, fetched on demand when the selected repo has no flow in the
- * installation pipeline yet — a freshly added or quiet repo. Renders that repo
- * without waiting on the whole-installation build, and the server write-through
- * means the pipeline picks it up on the next read. Shares the pipeline's
- * SSE-driven invalidation via the repo-flow key.
+ * One repo's open pulls, fetched on demand when the selected repo has no flow in
+ * the installation pipeline yet — a freshly added or quiet repo. Live like the
+ * pipeline.
  */
 export function useRepoFlow(
   installationId: number | null,
@@ -128,8 +63,11 @@ export function useRepoFlow(
   enabled: boolean
 ) {
   return useQuery({
-    queryKey: keys.repoFlow(installationId, owner, repo),
-    queryFn: () => fetchRepoFlow(installationId, owner ?? "", repo ?? ""),
-    enabled: enabled && owner !== null && repo !== null,
+    ...convexQuery(
+      api.github.reader.getRepoPulls,
+      enabled && installationId !== null && owner !== null && repo !== null
+        ? { installationId, owner, repo }
+        : "skip"
+    ),
   });
 }

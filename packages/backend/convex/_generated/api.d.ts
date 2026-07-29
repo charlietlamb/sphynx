@@ -17,6 +17,7 @@ import type * as github_gate from "../github/gate.js";
 import type * as github_githubClient from "../github/githubClient.js";
 import type * as github_githubErrors from "../github/githubErrors.js";
 import type * as github_ingest from "../github/ingest.js";
+import type * as github_installations from "../github/installations.js";
 import type * as github_materialize from "../github/materialize.js";
 import type * as github_pipelineBuilder from "../github/pipelineBuilder.js";
 import type * as github_pipelineHelpers from "../github/pipelineHelpers.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   "github/githubClient": typeof github_githubClient;
   "github/githubErrors": typeof github_githubErrors;
   "github/ingest": typeof github_ingest;
+  "github/installations": typeof github_installations;
   "github/materialize": typeof github_materialize;
   "github/pipelineBuilder": typeof github_pipelineBuilder;
   "github/pipelineHelpers": typeof github_pipelineHelpers;

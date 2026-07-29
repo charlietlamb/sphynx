@@ -8,6 +8,7 @@ import {
 import { toRepoOption, usePipeline } from "@/components/dashboard/use-pipeline";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useSession } from "@/lib/auth-client";
+import { asRepoFlows } from "@/lib/read-model";
 
 export function PullRequestSwitcher({
   pullRequestRef,
@@ -23,7 +24,8 @@ export function PullRequestSwitcher({
 
   const repos = useMemo(() => {
     const options: RepoOption[] = [];
-    for (const flow of pipeline.data?.repos ?? []) {
+    const flows = asRepoFlows(pipeline.data?.repos ?? []);
+    for (const flow of flows) {
       if (flow.openPulls.length > 0) {
         options.push(toRepoOption(flow));
       }

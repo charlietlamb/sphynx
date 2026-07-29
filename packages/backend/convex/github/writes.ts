@@ -2,7 +2,7 @@
 
 import { Effect } from "effect";
 import { v } from "convex/values";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import { action } from "../_generated/server";
 import {
@@ -22,6 +22,14 @@ async function installationToken(
     installationId,
     now: Date.now(),
   });
+}
+
+/** Resolve the installation that owns a repo from the read model. */
+async function installationFor(
+  ctx: ActionCtx,
+  owner: string,
+): Promise<number | null> {
+  return await ctx.runQuery(api.github.reader.installationForOwner, { owner });
 }
 
 /**
@@ -48,36 +56,31 @@ async function refreshAfterWrite(
   });
 }
 
+async function afterWrite(
+  ctx: ActionCtx,
+  owner: string,
+  repo: string,
+  number: number,
+) {
+  const installationId = await installationFor(ctx, owner);
+  if (installationId !== null) {
+    await refreshAfterWrite(ctx, installationId, owner, repo, number);
+  }
+}
+
 export const merge = action({
-  args: {
-    installationId: v.number(),
-    owner: v.string(),
-    repo: v.string(),
-    number: v.number(),
-  },
+  args: { owner: v.string(), repo: v.string(), number: v.number() },
   returns: v.null(),
   handler: async (ctx, args) => {
     const token = await userToken(ctx);
-    await Effect.runPromise(
-      mergePull(
-        { owner: args.owner, repo: args.repo, number: args.number },
-        token,
-      ),
-    );
-    await refreshAfterWrite(
-      ctx,
-      args.installationId,
-      args.owner,
-      args.repo,
-      args.number,
-    );
+    await Effect.runPromise(mergePull(args, token));
+    await afterWrite(ctx, args.owner, args.repo, args.number);
     return null;
   },
 });
 
 export const block = action({
   args: {
-    installationId: v.number(),
     owner: v.string(),
     repo: v.string(),
     number: v.number(),
@@ -93,20 +96,13 @@ export const block = action({
         token,
       ),
     );
-    await refreshAfterWrite(
-      ctx,
-      args.installationId,
-      args.owner,
-      args.repo,
-      args.number,
-    );
+    await afterWrite(ctx, args.owner, args.repo, args.number);
     return null;
   },
 });
 
 export const promote = action({
   args: {
-    installationId: v.number(),
     owner: v.string(),
     repo: v.string(),
     from: v.string(),
@@ -117,22 +113,9 @@ export const promote = action({
   handler: async (ctx, args) => {
     const token = await userToken(ctx);
     const number = await Effect.runPromise(
-      createPull(
-        args.owner,
-        args.repo,
-        args.from,
-        args.to,
-        args.title,
-        token,
-      ),
+      createPull(args.owner, args.repo, args.from, args.to, args.title, token),
     );
-    await refreshAfterWrite(
-      ctx,
-      args.installationId,
-      args.owner,
-      args.repo,
-      number,
-    );
+    await afterWrite(ctx, args.owner, args.repo, number);
     return { number };
   },
 });

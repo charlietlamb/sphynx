@@ -1,8 +1,14 @@
 /// <reference types="vite/client" />
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
+import type { ConvexQueryClient } from "@convex-dev/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { RootDocument } from "@/components/layout/root-document";
 import { RootErrorComponent } from "@/components/layout/root-error";
 import { RootNotFound } from "@/components/layout/root-not-found";
+import { authClient } from "@/lib/auth-client";
+import { getToken } from "@/lib/auth-server";
 import { loadMirroredCss } from "@/lib/mirrored-theme";
 import { getServerSettings } from "@/lib/server/settings-cookie";
 import { CODE_THEMES, clientSettings } from "@/lib/settings";
@@ -11,7 +17,21 @@ import "@fontsource-variable/geist-mono";
 import "@fontsource-variable/funnel-display";
 import "../styles/globals.css";
 
-export const Route = createRootRoute({
+const fetchToken = createServerFn({ method: "GET" }).handler(() => getToken());
+
+interface RouterContext {
+  convexQueryClient: ConvexQueryClient;
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: async (ctx) => {
+    const token = await fetchToken();
+    if (token) {
+      ctx.context.convexQueryClient.serverHttpClient?.setAuth(token);
+    }
+    return { token };
+  },
   loader: async () => {
     const settings =
       typeof document === "undefined"
@@ -41,9 +61,21 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   const { settings, mirroredCss } = Route.useLoaderData();
+  const { token, convexQueryClient, queryClient } = Route.useRouteContext();
   return (
-    <RootDocument initialMirroredCss={mirroredCss} initialSettings={settings}>
-      <Outlet />
-    </RootDocument>
+    <QueryClientProvider client={queryClient}>
+      <ConvexBetterAuthProvider
+        authClient={authClient}
+        client={convexQueryClient.convexClient}
+        initialToken={token}
+      >
+        <RootDocument
+          initialMirroredCss={mirroredCss}
+          initialSettings={settings}
+        >
+          <Outlet />
+        </RootDocument>
+      </ConvexBetterAuthProvider>
+    </QueryClientProvider>
   );
 }

@@ -49,6 +49,7 @@ import { usePipeline } from "@/components/dashboard/use-pipeline";
 import { FileTypeIcon } from "@/components/pull-request/file-type-icon";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useSession } from "@/lib/auth-client";
+import { asRepoFlows } from "@/lib/read-model";
 import { CODE_THEMES } from "@/lib/settings";
 
 const ICONS: Record<string, ReactNode> = {
@@ -152,7 +153,10 @@ export default function CommandPalette() {
     setQuery("");
   };
 
-  const flows = useMemo(() => pipeline.data?.repos ?? [], [pipeline.data]);
+  const flows = useMemo(
+    () => asRepoFlows(pipeline.data?.repos ?? []),
+    [pipeline.data]
+  );
 
   const groups = useMemo(
     () =>

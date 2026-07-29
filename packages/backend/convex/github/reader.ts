@@ -113,20 +113,21 @@ export const installationForOwner = query({
 
 const workbenchEventValidator = v.object({
   id: v.string(),
+  at: v.string(),
+  actor: v.object({ login: v.string(), avatarUrl: v.string() }),
   kind: v.string(),
-  actor: v.union(v.string(), v.null()),
-  actorAvatarUrl: v.union(v.string(), v.null()),
-  pullNumber: v.union(v.number(), v.null()),
-  title: v.union(v.string(), v.null()),
+  pull: v.union(
+    v.object({ number: v.number(), title: v.union(v.string(), v.null()) }),
+    v.null(),
+  ),
   detail: v.union(v.string(), v.null()),
   url: v.union(v.string(), v.null()),
-  occurredAt: v.number(),
 });
 
-/** The workbench feed for a repo — newest first, capped. */
+/** The workbench feed for a repo — newest first, capped, in the feed shape. */
 export const readWorkbench = query({
   args: { installationId: v.number(), owner: v.string(), repo: v.string() },
-  returns: v.array(workbenchEventValidator),
+  returns: v.object({ events: v.array(workbenchEventValidator) }),
   handler: async (ctx, args) => {
     const rows = await ctx.db
       .query("workbenchEvent")
@@ -138,16 +139,19 @@ export const readWorkbench = query({
       )
       .order("desc")
       .take(100);
-    return rows.map((row) => ({
-      id: row.eventId,
-      kind: row.kind,
-      actor: row.actor,
-      actorAvatarUrl: row.actorAvatarUrl,
-      pullNumber: row.pullNumber,
-      title: row.title,
-      detail: row.detail,
-      url: row.url,
-      occurredAt: row.occurredAt,
-    }));
+    return {
+      events: rows.map((row) => ({
+        id: row.eventId,
+        at: new Date(row.occurredAt).toISOString(),
+        actor: { login: row.actor ?? "", avatarUrl: row.actorAvatarUrl ?? "" },
+        kind: row.kind,
+        pull:
+          row.pullNumber === null
+            ? null
+            : { number: row.pullNumber, title: row.title },
+        detail: row.detail,
+        url: row.url,
+      })),
+    };
   },
 });

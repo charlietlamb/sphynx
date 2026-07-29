@@ -1,10 +1,9 @@
-import { CreatedPullSchema } from "@sphynx/schema/review-queue";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@sphynx/backend/convex/_generated/api";
+import { useMutation } from "@tanstack/react-query";
+import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { useSettings } from "@/components/settings/settings-provider";
 import { logWorkbenchEvent } from "@/components/workbench/workbench-store";
-import { postDecoded } from "@/lib/api";
-import { keys } from "@/lib/query/keys";
 
 interface PromoteInput {
   from: string;
@@ -12,15 +11,17 @@ interface PromoteInput {
 }
 
 export function usePromote(owner: string, repo: string) {
-  const queryClient = useQueryClient();
   const { settings } = useSettings();
+  const promoteAction = useAction(api.github.writes.promote);
   return useMutation({
     mutationFn: ({ from, to }: PromoteInput) =>
-      postDecoded(
-        `/api/github/repos/${owner}/${repo}/promote`,
-        CreatedPullSchema,
-        { from, to }
-      ),
+      promoteAction({
+        owner,
+        repo,
+        from,
+        to,
+        title: `Release ${from} to ${to}`,
+      }),
     onSuccess: (created, { from, to }) => {
       logWorkbenchEvent({
         owner,
@@ -33,14 +34,6 @@ export function usePromote(owner: string, repo: string) {
           description: `Release ${from} to ${to}`,
         });
       }
-      /**
-       * Refetch only the repo's own subtree. The installation queue/pipeline is
-       * the webhook-lagged read model: refetching it now reads the model before
-       * the `opened` webhook has materialized the new pull, so the just-created
-       * PR would briefly be absent from the queue. The SSE `dirty` signal brings
-       * it in once the row actually lands.
-       */
-      queryClient.invalidateQueries({ queryKey: keys.repo({ owner, repo }) });
     },
   });
 }

@@ -2,7 +2,10 @@ import type { QueuePull, RepoFlow } from "@sphynx/schema/review-queue";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDialog } from "@/components/dashboard/dashboard-dialogs";
-import { withoutMerged } from "@/components/dashboard/pending-merges";
+import {
+  type PendingMerges,
+  withoutMerged,
+} from "@/components/dashboard/pending-merges";
 import {
   reconcilePendingMerges,
   usePendingMerges,
@@ -11,15 +14,12 @@ import type { RepoOption } from "@/components/dashboard/repo-switcher";
 import { useDashboardKeys } from "@/components/dashboard/use-dashboard-keys";
 import { useInstallations } from "@/components/dashboard/use-installations";
 import {
-  toDiscoveredRepoOption,
   toRepoOption,
   usePipeline,
   useQueue,
   useRepoFlow,
-  useRepos,
 } from "@/components/dashboard/use-pipeline";
 import { usePullSearch } from "@/components/dashboard/use-pull-search";
-import { useReadModelStream } from "@/components/dashboard/use-read-model-stream";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useWorkbench } from "@/components/workbench/use-workbench";
 import {
@@ -31,11 +31,69 @@ import {
   repoKeyOf,
 } from "@/lib/attention";
 import { useSession } from "@/lib/auth-client";
+import { asPipeline, asQueuePulls } from "@/lib/read-model";
 
 function cycle(index: number, delta: number, length: number) {
   return (index + delta + length) % length;
 }
 
+/** The focused pull key: the current one if still in view, else the first. */
+function resolveFocus(focusedKey: string | null, order: readonly string[]) {
+  if (focusedKey && order.includes(focusedKey)) {
+    return focusedKey;
+  }
+  return order[0] ?? null;
+}
+
+/**
+ * The repo flows to show, busiest first: the full pipeline once it lands, else
+ * the lighter queue with empty stages/gaps so the list paints before the rail.
+ * Tombstoned (just-merged) pulls are filtered out, and repos with no open pulls
+ * are dropped.
+ */
+function buildFlows(
+  pipelineData: { repos: readonly RepoFlow[] } | undefined,
+  queueData: { repos: readonly RepoFlow[] } | undefined,
+  pendingMerges: PendingMerges
+): readonly RepoFlow[] {
+  const full = pipelineData
+    ? withoutMerged(pipelineData, pendingMerges).repos
+    : undefined;
+  const queued = queueData ? withoutMerged(queueData, pendingMerges).repos : [];
+  const source: readonly RepoFlow[] =
+    full ?? queued.map((flow) => ({ ...flow, stages: [], gaps: [] }));
+  return source
+    .filter((flow) => flow.openPulls.length > 0)
+    .sort((a, b) => b.openPulls.length - a.openPulls.length);
+}
+
+/**
+ * The repo flow to render: the pipeline's own flow when the selected repo has
+ * open pulls, a minimal flow built from the on-demand pulls for a quiet repo, or
+ * the busiest repo as a fallback.
+ */
+function selectFlow(
+  pipelineFlow: RepoFlow | null,
+  quietRepo: RepoOption | null,
+  quietPulls: unknown,
+  flows: readonly RepoFlow[]
+): RepoFlow | null {
+  if (pipelineFlow) {
+    return pipelineFlow;
+  }
+  if (quietRepo) {
+    return {
+      owner: quietRepo.owner,
+      repo: quietRepo.repo,
+      stages: [],
+      openPulls: asQueuePulls(quietPulls),
+      gaps: [],
+    };
+  }
+  return flows[0] ?? null;
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the dashboard composition root wires ~10 hooks and derives the view state; pure logic is already extracted into buildFlows/selectFlow/resolveFocus and splitting further would fragment cohesive state.
 export function useDashboardState() {
   const navigate = useNavigate();
   const { data: session, isPending: sessionPending } = useSession();
@@ -66,9 +124,15 @@ export function useDashboardState() {
 
   const queue0 = useQueue(installationId, ready);
   const pipeline = usePipeline(installationId, ready);
-  const reposQuery = useRepos(installationId, ready);
-  useReadModelStream(installationId, ready);
   const pendingMerges = usePendingMerges();
+
+  /**
+   * Convex return types are structurally identical to the schema but deeply
+   * readonly. Narrow to the mutable schema shapes once at the hook boundary so
+   * downstream helpers keep their existing signatures.
+   */
+  const pipelineData = pipeline.data ? asPipeline(pipeline.data) : undefined;
+  const queueData = queue0.data ? asPipeline(queue0.data) : undefined;
 
   /**
    * A merge is confirmed by GitHub before its webhook materializes into the
@@ -77,11 +141,11 @@ export function useDashboardState() {
    * pull, so it suppresses the pull for exactly the stale window and no longer.
    */
   useEffect(() => {
-    const latest = pipeline.data ?? queue0.data;
+    const latest = pipelineData ?? queueData;
     if (latest) {
       reconcilePendingMerges(latest);
     }
-  }, [pipeline.data, queue0.data]);
+  }, [pipelineData, queueData]);
   const dialogs = useDialog();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
@@ -95,42 +159,17 @@ export function useDashboardState() {
    * empty stages and gaps. Once the full pipeline lands it replaces this, and
    * the rail fills in without the queue ever having been blocked on it.
    */
-  const flows = useMemo(() => {
-    const full = pipeline.data
-      ? withoutMerged(pipeline.data, pendingMerges).repos
-      : undefined;
-    const queued = queue0.data
-      ? withoutMerged(queue0.data, pendingMerges).repos
-      : [];
-    const source: readonly RepoFlow[] =
-      full ??
-      queued.map((flow) => ({
-        ...flow,
-        stages: [],
-        gaps: [],
-      }));
-    const active = source.filter((flow) => flow.openPulls.length > 0);
-    return [...active].sort((a, b) => b.openPulls.length - a.openPulls.length);
-  }, [pipeline.data, queue0.data, pendingMerges]);
+  const flows = useMemo(
+    () => buildFlows(pipelineData, queueData, pendingMerges),
+    [pipelineData, queueData, pendingMerges]
+  );
 
   /**
-   * The switcher lists every accessible repo, not just pull-bearing ones. Flows
-   * supply live counts; the discovered list fills in the quiet repos the
-   * pipeline omits. Flow order (busiest first) is preserved, quiet repos follow.
+   * The pipeline is the source of repos: every flow with open pulls becomes a
+   * switcher entry, live counts included, busiest first. Quiet repos (no open
+   * pulls) are omitted — they reappear the moment a pull lands.
    */
-  const repos = useMemo(() => {
-    const fromFlows = flows.map(toRepoOption);
-    const seen = new Set(fromFlows.map((option) => option.key));
-    const quiet: RepoOption[] = [];
-    for (const repo of reposQuery.data?.repos ?? []) {
-      const option = toDiscoveredRepoOption(repo);
-      if (!seen.has(option.key)) {
-        quiet.push(option);
-      }
-    }
-    quiet.sort((a, b) => a.repo.localeCompare(b.repo));
-    return [...fromFlows, ...quiet];
-  }, [flows, reposQuery.data]);
+  const repos = useMemo<RepoOption[]>(() => flows.map(toRepoOption), [flows]);
 
   const pipelineFlow = useMemo(
     () => flows.find((candidate) => repoKeyOf(candidate) === repoKey) ?? null,
@@ -157,15 +196,10 @@ export function useDashboardState() {
     ready
   );
 
-  const flow = useMemo(() => {
-    if (pipelineFlow) {
-      return pipelineFlow;
-    }
-    if (quietRepo) {
-      return repoFlowQuery.data ?? null;
-    }
-    return flows[0] ?? null;
-  }, [pipelineFlow, quietRepo, repoFlowQuery.data, flows]);
+  const flow = useMemo<RepoFlow | null>(
+    () => selectFlow(pipelineFlow, quietRepo, repoFlowQuery.data ?? [], flows),
+    [pipelineFlow, quietRepo, repoFlowQuery.data, flows]
+  );
 
   const fullQueue = useMemo(
     () => (flow ? buildBranchQueue(flow) : null),
@@ -217,12 +251,7 @@ export function useDashboardState() {
 
   const order = search.active ? searchOrder : (queue?.order ?? []);
 
-  const focused = (() => {
-    if (focusedKey && order.includes(focusedKey)) {
-      return focusedKey;
-    }
-    return order[0] ?? null;
-  })();
+  const focused = resolveFocus(focusedKey, order);
 
   const focusedPull =
     (search.active ? search.pulls : (flow?.openPulls ?? [])).find(
@@ -298,15 +327,17 @@ export function useDashboardState() {
     }
   };
 
+  const canActOnFocused = authed && focusedPull?.state === "open";
+
   useDashboardKeys({
     active: dialogs.stack.length === 0 && !workbench.open,
     onMerge: () => {
-      if (authed && focusedPull?.state === "open") {
+      if (canActOnFocused) {
         dialogs.open("mergePull", { pull: focusedPull });
       }
     },
     onBlock: () => {
-      if (authed && focusedPull?.state === "open") {
+      if (canActOnFocused) {
         dialogs.open("blockPull", { pull: focusedPull });
       }
     },
@@ -329,11 +360,11 @@ export function useDashboardState() {
     onWorkbench: () => workbench.toggle(),
   });
 
+  const flowKey = flow ? repoKeyOf(flow) : null;
   const selectedRepo =
     repos.find((option) => option.key === repoKey) ??
-    (flow
-      ? (repos.find((option) => option.key === repoKeyOf(flow)) ?? null)
-      : null);
+    repos.find((option) => option.key === flowKey) ??
+    null;
 
   return {
     allRepos,
