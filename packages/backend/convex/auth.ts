@@ -1,6 +1,7 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import { type BetterAuthOptions, betterAuth } from "better-auth/minimal";
+import { admin } from "better-auth/plugins";
 import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
@@ -20,6 +21,10 @@ const trustedOrigins = (process.env.AUTH_TRUSTED_ORIGINS ?? siteUrl)
  * AUTH_PUBLIC_URL to the ngrok URL so the GitHub callback matches.
  */
 const authBaseUrl = process.env.AUTH_PUBLIC_URL ?? process.env.CONVEX_SITE_URL;
+const impersonatorIds = (process.env.BETTER_AUTH_IMPERSONATOR_IDS ?? "")
+  .split(",")
+  .map((id) => id.trim())
+  .filter(Boolean);
 
 export const authComponent = createClient<DataModel, typeof authSchema>(
   components.betterAuth,
@@ -33,6 +38,22 @@ function githubProvider() {
     return {};
   }
   return { github: { clientId, clientSecret } };
+}
+
+function impersonationPlugin() {
+  const plugin = admin({
+    adminUserIds: impersonatorIds,
+    impersonationSessionDuration: 30 * 60,
+  });
+  return {
+    ...plugin,
+    endpoints: {
+      impersonateUser: plugin.endpoints.impersonateUser,
+      listUsers: plugin.endpoints.listUsers,
+      stopImpersonating: plugin.endpoints.stopImpersonating,
+      userHasPermission: plugin.endpoints.userHasPermission,
+    },
+  };
 }
 
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
@@ -49,7 +70,11 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       cookieCache: { enabled: true, maxAge: 300 },
     },
     socialProviders: githubProvider(),
-    plugins: [crossDomain({ siteUrl }), convex({ authConfig })],
+    plugins: [
+      crossDomain({ siteUrl }),
+      impersonationPlugin(),
+      convex({ authConfig }),
+    ],
   }) satisfies BetterAuthOptions;
 
 export const createAuth = (ctx: GenericCtx<DataModel>) =>

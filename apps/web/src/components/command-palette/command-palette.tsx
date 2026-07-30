@@ -15,6 +15,7 @@ import {
   SquaresFourIcon,
   StackIcon,
   ToolboxIcon,
+  UserIcon,
 } from "@phosphor-icons/react";
 import type { QueuePull } from "@sphynx/schema/review-queue";
 import {
@@ -45,6 +46,7 @@ import {
   type PalettePage,
   resolvePage,
 } from "@/components/command-palette/palette-commands";
+import { useImpersonation } from "@/components/command-palette/use-impersonation";
 import { useInstallations } from "@/components/dashboard/use-installations";
 import { usePipeline } from "@/components/dashboard/use-pipeline";
 import { FileTypeIcon } from "@/components/pull-request/file-type-icon";
@@ -67,6 +69,7 @@ const ICONS: Record<string, ReactNode> = {
   settings: <GearIcon weight="fill" />,
   conversation: <ChatCircleIcon weight="fill" />,
   theme: <MoonIcon weight="fill" />,
+  impersonate: <UserIcon weight="fill" />,
   viewed: <CheckCircleIcon weight="fill" />,
   workbench: <ToolboxIcon weight="fill" />,
 };
@@ -131,6 +134,12 @@ export default function CommandPalette() {
   const pathname = useLocation({ select: (location) => location.pathname });
   const { data: session } = useSession();
   const authed = Boolean(session?.user);
+  const impersonation = useImpersonation({
+    active: open,
+    impersonatedBy: session?.session.impersonatedBy,
+    query: mode === "impersonate" ? query : "",
+    userId: session?.user.id,
+  });
   const { settings, update } = useSettings();
   const installations = useInstallations(
     settings.selectedInstallation,
@@ -168,10 +177,26 @@ export default function CommandPalette() {
     [installations.isError, pipeline.data, pipeline.isError]
   );
 
-  const groups = useMemo(
-    () =>
-      mergeGroups(
-        buildGlobalGroups({
+  const groups = useMemo(() => {
+    const adminCommands: PaletteCommand[] = [];
+    if (impersonation.isImpersonating) {
+      adminCommands.push({
+        id: "stop-impersonating",
+        iconKey: "impersonate",
+        label: "Stop impersonating",
+        run: impersonation.stop,
+      });
+    } else if (impersonation.canImpersonate) {
+      adminCommands.push({
+        id: "impersonate-user",
+        iconKey: "impersonate",
+        label: "Impersonate user",
+        mode: "impersonate",
+      });
+    }
+    return mergeGroups(
+      [
+        ...buildGlobalGroups({
           hasPipeline: flows.length > 0,
           onDashboard: () => navigate({ to: "/" }),
           onSettings: null,
@@ -179,10 +204,21 @@ export default function CommandPalette() {
             setTheme(resolvedTheme === "dark" ? "light" : "dark"),
           showDashboardLink: pathname !== "/",
         }),
-        contributions
-      ),
-    [flows.length, navigate, setTheme, resolvedTheme, pathname, contributions]
-  );
+        { id: "admin", label: "Admin", commands: adminCommands },
+      ],
+      contributions
+    );
+  }, [
+    flows.length,
+    navigate,
+    setTheme,
+    resolvedTheme,
+    pathname,
+    contributions,
+    impersonation.canImpersonate,
+    impersonation.isImpersonating,
+    impersonation.stop,
+  ]);
 
   const pages = useMemo<PalettePage[]>(
     () => [
@@ -215,8 +251,28 @@ export default function CommandPalette() {
           (id) => update({ codeTheme: `${id}` })
         ),
       },
+      {
+        id: "impersonate",
+        placeholder: "Search users by name or email",
+        commands: impersonation.users.map((user) => ({
+          id: `impersonate-${user.id}`,
+          iconKey: "impersonate",
+          label: user.name,
+          hint: user.email,
+          keywords: [user.email],
+          run: () => impersonation.start(user.id),
+        })),
+      },
     ],
-    [flows, update, pathname, navigate, settings.codeTheme]
+    [
+      flows,
+      update,
+      pathname,
+      navigate,
+      settings.codeTheme,
+      impersonation.start,
+      impersonation.users,
+    ]
   );
 
   const page = mode === "root" ? null : resolvePage(mode, pages, contributions);
@@ -249,7 +305,11 @@ export default function CommandPalette() {
           value={query}
         />
         <CommandList>
-          <CommandEmpty>Nothing found.</CommandEmpty>
+          <CommandEmpty>
+            {mode === "impersonate"
+              ? impersonation.emptyMessage
+              : "Nothing found."}
+          </CommandEmpty>
           {page ? (
             <CommandGroup>
               {page.commands.map((command) => (

@@ -1,6 +1,12 @@
 import type { QueuePull, RepoFlow } from "@sphynx/schema/review-queue";
 
-export type PaletteMode = "root" | "repos" | "pulls" | "code-theme" | "files";
+export type PaletteMode =
+  | "root"
+  | "repos"
+  | "pulls"
+  | "code-theme"
+  | "files"
+  | "impersonate";
 
 export interface PaletteCommand {
   checked?: boolean;
@@ -40,6 +46,7 @@ type PaletteIconKey =
   | "diff"
   | "file"
   | "github"
+  | "impersonate"
   | "merge"
   | "pull"
   | "repo"
@@ -56,6 +63,7 @@ const GROUP_ORDER = [
   "pulls",
   "navigation",
   "preferences",
+  "admin",
 ] as const;
 
 export function mergeGroups(
