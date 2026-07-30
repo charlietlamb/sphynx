@@ -13,8 +13,10 @@ import { ReauthRequired } from "@/components/dashboard/reauth-required";
 import { RepoSwitcher } from "@/components/dashboard/repo-switcher";
 import { SwitcherSkeleton } from "@/components/dashboard/switcher-skeleton";
 import { useDashboardState } from "@/components/dashboard/use-dashboard-state";
+import { ErrorCard } from "@/components/layout/error-card";
 import { WorkbenchSheet } from "@/components/workbench/workbench-sheet";
 import { WorkbenchTrigger } from "@/components/workbench/workbench-trigger";
+import { installErrorDetail } from "@/lib/auth-error";
 
 export function DashboardView() {
   const {
@@ -32,6 +34,7 @@ export function DashboardView() {
     focusedPull,
     installationId,
     installations,
+    installError,
     needsInstall,
     needsReauth,
     selectInstallation,
@@ -52,6 +55,17 @@ export function DashboardView() {
 
   if (needsReauth) {
     return <ReauthRequired />;
+  }
+
+  if (installError) {
+    return (
+      <ErrorCard
+        description="Sphynx couldn't load your GitHub installations. This is usually GitHub being briefly unavailable."
+        detail={installErrorDetail(installError)}
+        onRetry={() => window.location.reload()}
+        title="Couldn't reach GitHub"
+      />
+    );
   }
 
   if (needsInstall) {

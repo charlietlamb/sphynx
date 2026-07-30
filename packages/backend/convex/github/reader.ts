@@ -7,7 +7,7 @@ import {
   requireRepository,
   requireUser,
 } from "./access";
-import { MAX_INSTALLATION_REPOSITORIES, MAX_PIPELINE_PULLS } from "./limits";
+import { MAX_PIPELINE_PULLS } from "./limits";
 import { toRepoFlows } from "./readModel";
 import { pipelineValidator, workbenchEventKindValidator } from "./validators";
 
@@ -58,15 +58,10 @@ async function openPulls(ctx: QueryCtx, installationId: number) {
 }
 
 async function reposFor(ctx: QueryCtx, installationId: number) {
-  const rows = await ctx.db
+  return await ctx.db
     .query("reviewRepo")
     .withIndex("by_installation", (q) => q.eq("installationId", installationId))
-    .take(MAX_INSTALLATION_REPOSITORIES + 1);
-  return withinLimit(
-    rows,
-    MAX_INSTALLATION_REPOSITORIES,
-    "Installation repositories"
-  );
+    .collect();
 }
 
 /**

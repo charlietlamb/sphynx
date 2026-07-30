@@ -21,6 +21,7 @@ export function useInstallations(selected: number | null, enabled: boolean) {
       installations.find((entry) => entry.id === selected) ??
       installations[0] ??
       null,
+    error: server.error,
     installations,
     isError: server.isError,
     isPending: server.isPending,

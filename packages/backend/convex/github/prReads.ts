@@ -5,6 +5,7 @@ import {
   makeGitHubClient,
 } from "./githubClient";
 import { type GitHubError, GitHubUnavailable } from "./githubErrors";
+import { lastPageFrom, nextPageFrom } from "./pagination";
 import { type PullRequestRef, pullPath } from "./refs";
 import { buildSymbolIndex, type SymbolIndexPayload } from "./symbolIndex";
 
@@ -300,23 +301,6 @@ const toFile = (
 
 const encodeFilePath = (path: string) =>
   path.split("/").map(encodeURIComponent).join("/");
-
-const LINK_URL = /<([^>]+)>/;
-
-const pageFrom = (link: string | null, rel: string) => {
-  const target = link
-    ?.split(",")
-    .find((part) => part.includes(`rel="${rel}"`))
-    ?.match(LINK_URL)?.[1];
-  if (!target) {
-    return null;
-  }
-  const page = Number(new URL(target).searchParams.get("page"));
-  return Number.isInteger(page) ? page : null;
-};
-
-const nextPageFrom = (link: string | null) => pageFrom(link, "next");
-const lastPageFrom = (link: string | null) => pageFrom(link, "last");
 
 const CONVERSATION_QUERY = `
 query($owner: String!, $name: String!, $number: Int!) {

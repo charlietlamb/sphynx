@@ -2,7 +2,7 @@ import { Effect, Schema } from "effect";
 import type { QueuePull } from "./domain";
 import { decodeBody, type GitHubClient } from "./githubClient";
 import { type GitHubError, GitHubUnavailable } from "./githubErrors";
-import { MAX_INSTALLATION_REPOSITORIES, MAX_PIPELINE_PULLS } from "./limits";
+import { MAX_PIPELINE_PULLS } from "./limits";
 import {
   PULL_FIELDS_FRAGMENT,
   RawPullSchema,
@@ -205,13 +205,6 @@ ${PULL_FIELDS_FRAGMENT}`,
           nextPage: number | null;
         } = yield* reposPage(token, page);
         repositories.push(...result.repositories);
-        if (repositories.length > MAX_INSTALLATION_REPOSITORIES) {
-          return yield* Effect.fail(
-            new GitHubUnavailable({
-              message: `Installation exceeds the ${MAX_INSTALLATION_REPOSITORIES}-repository materialization limit`,
-            })
-          );
-        }
         nextPage = result.nextPage;
         page += 1;
       }

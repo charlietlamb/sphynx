@@ -6,10 +6,9 @@ import { internal } from "../_generated/api";
 import { action } from "../_generated/server";
 import { authComponent } from "../auth";
 import { configFromEnv, makeGitHubClient } from "./githubClient";
-import {
-  MAX_INSTALLATION_REPOSITORIES,
-  MAX_USER_INSTALLATIONS,
-} from "./limits";
+import { GitHubUnavailable } from "./githubErrors";
+import { MAX_USER_INSTALLATIONS } from "./limits";
+import { nextPageFrom } from "./pagination";
 import { userToken } from "./userToken";
 
 const InstallationListSchema = Schema.Struct({
@@ -41,27 +40,68 @@ const RepositoryListSchema = Schema.Struct({
 
 const github = makeGitHubClient(configFromEnv());
 
-async function repositoryKeys(token: string, installationId: number) {
-  const body = await Effect.runPromise(
-    github.restJson(
+const repositoriesPage = (
+  token: string,
+  installationId: number,
+  page: number
+) =>
+  github
+    .rest(
       token,
-      `/user/installations/${installationId}/repositories?per_page=100`,
-      RepositoryListSchema,
-      "Invalid installation repositories"
+      "GET",
+      `/user/installations/${installationId}/repositories?per_page=100&page=${page}`
     )
-  );
-  if (
-    body.total_count > body.repositories.length ||
-    body.repositories.length > MAX_INSTALLATION_REPOSITORIES
-  ) {
-    throw new Error(
-      `More than ${MAX_INSTALLATION_REPOSITORIES} repositories per GitHub App installation are not supported`
+    .pipe(
+      Effect.flatMap((response) =>
+        Effect.tryPromise({
+          try: () => response.json(),
+          catch: () =>
+            new GitHubUnavailable({
+              message: "Invalid installation repositories",
+            }),
+        }).pipe(
+          Effect.flatMap((json) =>
+            Schema.decodeUnknown(RepositoryListSchema)(json).pipe(
+              Effect.mapError(
+                () =>
+                  new GitHubUnavailable({
+                    message: "Invalid installation repositories",
+                  })
+              )
+            )
+          ),
+          Effect.map((body) => ({ body, link: response.header("link") }))
+        )
+      )
     );
-  }
-  return body.repositories.map(
-    (repository) =>
-      `${installationId}:${repository.owner.login.toLowerCase()}:${repository.name.toLowerCase()}`
-  );
+
+/**
+ * Every repository the installation can see, walked page by page over the
+ * `rel="next"` link header. Unbounded — a large org simply pages through more
+ * repositories.
+ */
+const collectRepositoryKeys = (token: string, installationId: number) =>
+  Effect.gen(function* () {
+    const keys: string[] = [];
+    let page: number | null = 1;
+    while (page !== null) {
+      const { body, link } = yield* repositoriesPage(
+        token,
+        installationId,
+        page
+      );
+      for (const repository of body.repositories) {
+        keys.push(
+          `${installationId}:${repository.owner.login.toLowerCase()}:${repository.name.toLowerCase()}`
+        );
+      }
+      page = nextPageFrom(link);
+    }
+    return keys;
+  });
+
+async function repositoryKeys(token: string, installationId: number) {
+  return await Effect.runPromise(collectRepositoryKeys(token, installationId));
 }
 
 /**

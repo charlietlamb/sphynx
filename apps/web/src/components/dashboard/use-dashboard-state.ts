@@ -26,6 +26,7 @@ import {
   repoKeyOf,
 } from "@/lib/attention";
 import { useSession } from "@/lib/auth-client";
+import { isReauthError } from "@/lib/auth-error";
 
 function cycle(index: number, delta: number, length: number) {
   return (index + delta + length) % length;
@@ -56,6 +57,21 @@ function resolveFocus(focusedKey: string | null, order: readonly string[]) {
 }
 
 /**
+ * Split an installations-lookup failure into a reauth prompt (genuine auth
+ * failure) versus a surfaced error (GitHub down, rate limited). Neither fires
+ * until the lookup has settled with an error.
+ */
+function classifyOrgsError(settled: boolean, isError: boolean, error: unknown) {
+  if (!(settled && isError)) {
+    return { needsReauth: false, installError: null };
+  }
+  if (isReauthError(error)) {
+    return { needsReauth: true, installError: null };
+  }
+  return { needsReauth: false, installError: error };
+}
+
+/**
  * The repo flows to show, busiest first. Tombstoned (just-merged) pulls are
  * filtered out, and repos with no open pulls are dropped.
  */
@@ -82,8 +98,11 @@ export function useDashboardState() {
   const settled = authed && !(sessionPending || orgs.isPending);
   /** Signed in, installations resolved, but the App is on no organization. */
   const needsInstall = settled && !orgs.isError && orgs.active === null;
-  /** The lookup failed, usually because GitHub needs a fresh sign-in. */
-  const needsReauth = settled && orgs.isError;
+  const { needsReauth, installError } = classifyOrgsError(
+    settled,
+    orgs.isError,
+    orgs.error
+  );
 
   const pipeline = usePipeline(installationId, ready);
   const pendingMerges = usePendingMerges();
@@ -312,6 +331,7 @@ export function useDashboardState() {
     installationId,
     installations: orgs.installations,
     activeInstallation: orgs.active,
+    installError,
     needsInstall,
     needsReauth,
     selectInstallation,

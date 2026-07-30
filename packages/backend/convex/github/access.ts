@@ -2,10 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../_generated/server";
-import {
-  MAX_INSTALLATION_REPOSITORIES,
-  MAX_USER_INSTALLATIONS,
-} from "./limits";
+import { MAX_USER_INSTALLATIONS, REPO_GRANT_DELETE_BATCH } from "./limits";
 import { repoKeyOf } from "./rows";
 
 export const ACCESS_TTL_MS = 30 * 60_000;
@@ -54,13 +51,7 @@ export async function repositoryKeysForInstallation(
         .eq("installationId", installationId)
         .eq("verifiedAt", access.verifiedAt)
     )
-    .take(MAX_INSTALLATION_REPOSITORIES + 1);
-  if (rows.length > MAX_INSTALLATION_REPOSITORIES) {
-    throw new ConvexError({
-      code: "CAPACITY_EXCEEDED",
-      message: `More than ${MAX_INSTALLATION_REPOSITORIES} repositories are not supported`,
-    });
-  }
+    .collect();
   return new Set(rows.map((row) => row.repoKey));
 }
 
@@ -225,11 +216,11 @@ export const deleteRepositoryGrants = internalMutation({
           .eq("installationId", args.installationId)
           .eq("verifiedAt", args.verifiedAt)
       )
-      .take(MAX_INSTALLATION_REPOSITORIES);
+      .take(REPO_GRANT_DELETE_BATCH);
     await Promise.all(
       rows.map((row) => ctx.db.delete("userRepository", row._id))
     );
-    if (rows.length === MAX_INSTALLATION_REPOSITORIES) {
+    if (rows.length === REPO_GRANT_DELETE_BATCH) {
       await ctx.scheduler.runAfter(
         0,
         internal.github.access.deleteRepositoryGrants,
@@ -249,11 +240,6 @@ export const syncRepositories = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    if (args.repoKeys.length > MAX_INSTALLATION_REPOSITORIES) {
-      throw new Error(
-        `More than ${MAX_INSTALLATION_REPOSITORIES} repositories are not supported`
-      );
-    }
     const access = await ctx.db
       .query("userInstallation")
       .withIndex("by_user_and_installation", (q) =>
@@ -268,7 +254,7 @@ export const syncRepositories = internalMutation({
       .withIndex("by_user_and_installation_and_verifiedAt", (q) =>
         q.eq("userId", args.userId).eq("installationId", args.installationId)
       )
-      .take(MAX_INSTALLATION_REPOSITORIES + 1);
+      .collect();
     await Promise.all(
       existing.map((row) => ctx.db.delete("userRepository", row._id))
     );
@@ -340,10 +326,8 @@ export const repositoryKeysForUserInstallation = internalQuery({
           .eq("installationId", args.installationId)
           .eq("verifiedAt", access.verifiedAt)
       )
-      .take(MAX_INSTALLATION_REPOSITORIES + 1);
-    return rows
-      .slice(0, MAX_INSTALLATION_REPOSITORIES)
-      .map((row) => row.repoKey);
+      .collect();
+    return rows.map((row) => row.repoKey);
   },
 });
 
