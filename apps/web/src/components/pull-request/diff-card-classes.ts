@@ -22,11 +22,14 @@ export const CARD_CLASSES = cn(
   "[&_diffs-container]:pb-2.5",
   "[&_diffs-container]:shadow-xs",
   "[&_diffs-container]:transition-colors",
-  // Clip pierre's full-width line fills to the rounded corners. `clip-path`
-  // rounds the content without making the container a scroll/containing block the
-  // way `overflow: hidden` would — which would rebind the sticky file header to
-  // the container and break the pin.
-  "[&_diffs-container]:[clip-path:inset(0_round_var(--radius))]",
+  // Round pierre's full-width line fills to the card corners. The fills live in
+  // per-hunk `[data-code]` elements that scroll horizontally with square corners,
+  // so on a long line they bleed past the card's rounded right edge. `overflow-x:
+  // clip` clips them to this container's `border-radius`. `clip` (unlike
+  // `hidden`) creates no scroll container, so the sticky file header — which pins
+  // against the outer vertical `overflow-y-auto` scroller, not this element — is
+  // unaffected.
+  "[&_diffs-container]:overflow-x-clip",
   "[&_diffs-container]:after:pointer-events-none",
   "[&_diffs-container]:after:absolute",
   "[&_diffs-container]:after:inset-0",

@@ -26,6 +26,7 @@ import type * as github_installations from "../github/installations.js";
 import type * as github_limits from "../github/limits.js";
 import type * as github_materializationLease from "../github/materializationLease.js";
 import type * as github_materialize from "../github/materialize.js";
+import type * as github_pagination from "../github/pagination.js";
 import type * as github_pipelineBuilder from "../github/pipelineBuilder.js";
 import type * as github_pipelineHelpers from "../github/pipelineHelpers.js";
 import type * as github_prActions from "../github/prActions.js";
@@ -85,6 +86,7 @@ declare const fullApi: ApiFromModules<{
   "github/limits": typeof github_limits;
   "github/materializationLease": typeof github_materializationLease;
   "github/materialize": typeof github_materialize;
+  "github/pagination": typeof github_pagination;
   "github/pipelineBuilder": typeof github_pipelineBuilder;
   "github/pipelineHelpers": typeof github_pipelineHelpers;
   "github/prActions": typeof github_prActions;
