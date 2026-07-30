@@ -70,7 +70,7 @@ export function QueueRow({
   return (
     <button
       className={cn(
-        "group relative -mx-4 flex h-11 w-[calc(100%+2rem)] items-center gap-2.5 border-border/40 border-b pr-[26px] text-left",
+        "group relative -mx-4 flex h-11 w-[calc(100%+2rem)] items-center gap-2.5 border-border border-b pr-[26px] text-left",
         focused
           ? "z-[1] -mt-px border-border border-t bg-primary/10"
           : "transition-colors hover:bg-alpha-4"

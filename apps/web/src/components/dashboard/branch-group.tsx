@@ -4,7 +4,6 @@ import { StackRows } from "@/components/dashboard/stack-rows";
 import type { BranchGroup as BranchGroupData } from "@/lib/attention";
 
 interface BranchGroupProps {
-  first: boolean;
   focusedKey: string | null;
   group: BranchGroupData;
   now: number;
@@ -13,7 +12,6 @@ interface BranchGroupProps {
 }
 
 export function BranchGroup({
-  first,
   focusedKey,
   group,
   now,
@@ -22,12 +20,7 @@ export function BranchGroup({
 }: BranchGroupProps) {
   return (
     <div className="flex flex-col">
-      <p
-        className={cn(
-          "sticky top-11 z-[9] -mx-4 flex h-9 items-center gap-2 border-border border-b bg-card px-[26px]",
-          !first && "border-t"
-        )}
-      >
+      <p className="sticky top-0 z-[9] -mx-4 flex h-9 items-center gap-2 border-border border-b bg-card px-[26px]">
         <span
           className={cn(
             "font-heading font-medium text-[13px] tracking-tight",

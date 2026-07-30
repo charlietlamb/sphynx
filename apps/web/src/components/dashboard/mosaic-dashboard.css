@@ -143,7 +143,7 @@
 
 .sphynx-mosaic .mosaic-split:hover .mosaic-split-line,
 .sphynx-mosaic .mosaic-split.-active .mosaic-split-line {
-  background: color-mix(in oklab, var(--primary) 60%, var(--border));
+  background: color-mix(in oklab, var(--muted-foreground) 45%, var(--border));
 }
 
 .sphynx-mosaic .mosaic-split.-row {

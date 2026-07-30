@@ -64,11 +64,7 @@ export function MosaicDashboardShell({
         {railFooter}
       </PaneCard>
     ),
-    queue: (
-      <PaneCard className="no-scrollbar h-full overflow-y-auto overflow-x-hidden">
-        {queue}
-      </PaneCard>
-    ),
+    queue: <PaneCard className="h-full">{queue}</PaneCard>,
     dossier,
   };
 

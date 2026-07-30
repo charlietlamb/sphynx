@@ -63,7 +63,10 @@ export function ConversationSkeleton() {
           </div>
         </div>
       </PaneCard>
-      <PaneCard className="no-scrollbar hidden w-[26rem] shrink-0 overflow-y-auto lg:flex">
+      <PaneCard
+        className="no-scrollbar hidden w-[26rem] shrink-0 lg:flex"
+        scroll
+      >
         <div className="flex flex-col gap-2 border-border border-b px-4 pb-2">
           <SectionHeader icon={headerIcon} label="Overview" />
           <div className="flex items-center gap-5 py-0.5">

@@ -68,8 +68,8 @@ export function QueuePane({
 }: QueuePaneProps) {
   const total = queue.groups.reduce((sum, group) => sum + group.total, 0);
   return (
-    <div className="flex min-h-full flex-col px-4 pb-2">
-      <div className="sticky top-0 z-10 -mx-4 flex h-11 shrink-0 items-center gap-3 rounded-t-[calc(var(--radius)-1px)] border-border border-b bg-card px-4">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex h-11 shrink-0 items-center gap-3 rounded-t-[calc(var(--radius)-1px)] border-border border-b bg-card px-4">
         <PaneHeaderLabel
           count={search.active ? search.totalCount : total}
           icon={<GitPullRequestIcon weight="fill" />}
@@ -81,35 +81,37 @@ export function QueuePane({
           query={searchQuery}
         />
       </div>
-      {search.active ? (
-        <>
-          <SearchScopes
-            allRepos={allRepos}
-            onChange={onSearch}
-            onToggleRepos={onToggleRepos}
-            query={searchQuery}
-            showing={search.pulls.length}
-            total={search.totalCount}
-          />
-          <SearchResults
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-2">
+        {search.active ? (
+          <>
+            <SearchScopes
+              allRepos={allRepos}
+              onChange={onSearch}
+              onToggleRepos={onToggleRepos}
+              query={searchQuery}
+              showing={search.pulls.length}
+              total={search.totalCount}
+            />
+            <SearchResults
+              focusedKey={focusedKey}
+              now={now}
+              onFocus={onFocus}
+              onOpen={onOpen}
+              search={search}
+            />
+          </>
+        ) : (
+          <OpenQueue
+            filter={filter}
             focusedKey={focusedKey}
             now={now}
+            onFilter={onFilter}
             onFocus={onFocus}
             onOpen={onOpen}
-            search={search}
+            queue={queue}
           />
-        </>
-      ) : (
-        <OpenQueue
-          filter={filter}
-          focusedKey={focusedKey}
-          now={now}
-          onFilter={onFilter}
-          onFocus={onFocus}
-          onOpen={onOpen}
-          queue={queue}
-        />
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -159,7 +161,7 @@ function SearchResults({
     );
   }
   return (
-    <div className="fade-in flex animate-in flex-col duration-150">
+    <div className="flex flex-col">
       {search.pulls.map((pull) => {
         const key = pullKey(pull);
         return (
@@ -222,10 +224,9 @@ function OpenQueue({
     );
   }
   return (
-    <div className="fade-in flex animate-in flex-col duration-150">
-      {queue.groups.map((group, index) => (
+    <div className="flex flex-col">
+      {queue.groups.map((group) => (
         <BranchGroup
-          first={index === 0}
           focusedKey={focusedKey}
           group={group}
           key={group.branch}

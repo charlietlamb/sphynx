@@ -1,6 +1,5 @@
 import { CheckCircleIcon, HourglassMediumIcon } from "@phosphor-icons/react";
 import type { StageGap } from "@sphynx/schema/review-queue";
-import { cn } from "@sphynx/ui/lib/utils";
 import { RailPromotion } from "@/components/dashboard/rail-promotion";
 import { ageDays, shortAge } from "@/lib/age";
 import { plural } from "@/lib/claims";
@@ -57,6 +56,24 @@ export function RailGapQueue({
   const extra = gap.pulls.length - shown.length;
   const oldest = gap.pulls.at(-1)?.mergedAt;
   const oldestDays = oldest ? Math.round(ageDays(oldest, now)) : null;
+  const meta: { key: string; label: string; className?: string }[] = [];
+  if (oldestDays) {
+    meta.push({
+      key: "oldest",
+      label: `${oldestDays}d oldest`,
+      className:
+        oldestDays >= STALE_GAP_DAYS ? "font-medium text-amber-500" : undefined,
+    });
+  }
+  if (extra > 0) {
+    meta.push({ key: "more", label: `+${extra} more` });
+  }
+  if (gap.directCommits > 0) {
+    meta.push({
+      key: "commits",
+      label: plural(gap.directCommits, "direct commit"),
+    });
+  }
   return (
     <div className="relative py-0.5 pl-7">
       <span
@@ -75,42 +92,35 @@ export function RailGapQueue({
       </p>
       {shown.map((pull) => (
         <button
-          className="flex h-6 w-full min-w-0 items-center gap-2 rounded-sm text-left transition-colors hover:bg-alpha-4"
+          className="flex h-7 w-full min-w-0 items-center gap-2 rounded-sm text-left transition-colors hover:bg-alpha-4"
           key={pull.number}
           onClick={() => onOpenNumber(pull.number)}
           type="button"
         >
-          <span className="shrink-0 font-mono text-[10px] text-muted-foreground/50 tabular-nums">
+          <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70 tabular-nums">
             #{pull.number}
           </span>
-          <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+          <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
             {pull.title}
           </span>
-          <span className="shrink-0 text-[10px] text-muted-foreground/40 tabular-nums">
+          <span className="shrink-0 text-[11px] text-muted-foreground/60 tabular-nums">
             {pull.mergedAt ? shortAge(pull.mergedAt, now) : ""}
           </span>
         </button>
       ))}
-      {oldestDays !== null && oldestDays > 0 ? (
-        <p
-          className={cn(
-            "py-0.5 text-[10px]",
-            oldestDays >= STALE_GAP_DAYS
-              ? "text-amber-500"
-              : "text-muted-foreground/40"
-          )}
-        >
-          oldest waiting {oldestDays}d
-        </p>
-      ) : null}
-      {extra > 0 || gap.directCommits > 0 ? (
-        <p className="py-0.5 text-[10px] text-muted-foreground/40">
-          {extra > 0 ? `${extra} more` : ""}
-          {extra > 0 && gap.directCommits > 0 ? " · " : ""}
-          {gap.directCommits > 0
-            ? plural(gap.directCommits, "direct commit")
-            : ""}
-        </p>
+      {meta.length > 0 ? (
+        <div className="flex items-center gap-1.5 py-0.5 text-[11px] text-muted-foreground/70 tabular-nums">
+          {meta.map((entry, index) => (
+            <span className="flex items-center gap-1.5" key={entry.key}>
+              {index > 0 ? (
+                <span aria-hidden className="text-muted-foreground/30">
+                  ·
+                </span>
+              ) : null}
+              <span className={entry.className}>{entry.label}</span>
+            </span>
+          ))}
+        </div>
       ) : null}
       <RailPromotion
         canAct={canAct}
