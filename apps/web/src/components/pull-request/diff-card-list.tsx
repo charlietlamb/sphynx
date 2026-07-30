@@ -283,7 +283,7 @@ export function DiffCardList({
     <div className="flex min-h-0 min-w-0 flex-1 flex-col" ref={rootRef}>
       <CodeView
         className={cn(
-          "min-h-0 w-full flex-1 overflow-y-auto overscroll-contain outline-none",
+          "min-h-0 w-full flex-1 overflow-y-auto overflow-x-clip overscroll-contain outline-none",
           CARD_CLASSES
         )}
         items={items}
