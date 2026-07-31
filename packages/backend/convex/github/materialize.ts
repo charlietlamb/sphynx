@@ -15,6 +15,26 @@ const SEED_REPOS = 10;
 const PULL_WRITE_BATCH = 25;
 
 /**
+ * Release the materialization lease this run holds. Delegates to the lease
+ * mutation, which — if a later delivery flagged the lease `pending` while this
+ * run was in flight — reschedules exactly one fresh materialize so a burst of
+ * merges still converges on a clean rebuild instead of orphaning the pending
+ * flag. Called on every exit that doesn't reach `complete`.
+ */
+function releaseLease(
+  ctx: ActionCtx,
+  installationId: number,
+  runId: string,
+  seed: boolean
+) {
+  return ctx.runMutation(internal.github.materializationLease.release, {
+    installationId,
+    runId,
+    seed,
+  });
+}
+
+/**
  * Seed the workbench feed with recent Events-API history for the first repos.
  * Steady-state feed updates arrive via webhooks; this only runs at backfill /
  * resync. Idempotent on the Events-API id, best-effort per repo.
@@ -176,7 +196,11 @@ export const materialize = internalAction({
           internal.github.materializationLease.renew,
           { installationId: args.installationId, now: Date.now(), runId }
         );
+        // The lease was stolen (expired and re-claimed by a newer run). That run
+        // owns the rebuild now, so stop — but release so any `pending` flag it
+        // carries still reschedules one final clean run.
         if (!renewed) {
+          await releaseLease(ctx, args.installationId, runId, args.seed);
           return { repoCount };
         }
       }
@@ -188,6 +212,7 @@ export const materialize = internalAction({
           runId,
         }))
       ) {
+        await releaseLease(ctx, args.installationId, runId, args.seed);
         return { repoCount };
       }
       if (args.seed) {
@@ -207,11 +232,7 @@ export const materialize = internalAction({
         });
       }
     } catch (error) {
-      await ctx.runMutation(internal.github.materializationLease.release, {
-        installationId: args.installationId,
-        runId,
-        seed: args.seed,
-      });
+      await releaseLease(ctx, args.installationId, runId, args.seed);
       throw error;
     }
     return { repoCount };

@@ -118,12 +118,11 @@ async function executeJob(ctx: ActionCtx, job: WebhookJob) {
   if (job.headClose) {
     await ctx.runMutation(internal.github.writer.deletePullHead, job.headClose);
     // A merge/close changes the promotion rail (stage gaps, branch list), which
-    // only the installation materialize recomputes. It is leased and coalesced,
-    // so firing it here keeps the rail live without a full poll.
-    await ctx.runAction(internal.github.materialize.materialize, {
-      installationId: job.headClose.installationId,
-      seed: false,
-    });
+    // only the installation materialize recomputes. Schedule it rather than run
+    // it inline: a burst of merges must not each block this webhook on a
+    // multi-second full rebuild, and scheduling lets the lease coalesce the burst
+    // into one clean run instead of a queue of competing inline calls.
+    await scheduleRailRecompute(ctx, job.headClose.installationId);
   } else if (job.headMove) {
     await ctx.runMutation(internal.github.writer.writePullHead, job.headMove);
   }
@@ -131,16 +130,19 @@ async function executeJob(ctx: ActionCtx, job: WebhookJob) {
     await ctx.runMutation(internal.github.workbench.writeWorkbenchEvents, {
       events: [job.workbench],
     });
-    // A push or branch change moves the promotion rail (stage gaps ahead-by,
-    // branch list). Recompute it off the same coalesced, leased materialize the
-    // merge path uses, so the rail tracks commits landing on dev/main.
+    // A push or branch change moves the promotion rail; recompute it off the same
+    // scheduled, coalesced materialize the merge path uses.
     if (RAIL_KINDS.has(job.workbench.kind) && !job.headClose) {
-      await ctx.runAction(internal.github.materialize.materialize, {
-        installationId: job.workbench.installationId,
-        seed: false,
-      });
+      await scheduleRailRecompute(ctx, job.workbench.installationId);
     }
   }
+}
+
+function scheduleRailRecompute(ctx: ActionCtx, installationId: number) {
+  return ctx.scheduler.runAfter(0, internal.github.materialize.materialize, {
+    installationId,
+    seed: false,
+  });
 }
 
 const RAIL_KINDS = new Set(["push", "branch-created", "branch-deleted"]);
