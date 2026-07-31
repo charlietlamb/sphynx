@@ -22,14 +22,16 @@ export const CARD_CLASSES = cn(
   "[&_diffs-container]:pb-2.5",
   "[&_diffs-container]:shadow-xs",
   "[&_diffs-container]:transition-colors",
-  // Round pierre's full-width line fills to the card corners. The fills live in
-  // per-hunk `[data-code]` elements that scroll horizontally with square corners,
-  // so on a long line they bleed past the card's rounded right edge. `overflow-x:
-  // clip` clips them to this container's `border-radius`. `clip` (unlike
-  // `hidden`) creates no scroll container, so the sticky file header — which pins
-  // against the outer vertical `overflow-y-auto` scroller, not this element — is
-  // unaffected.
-  "[&_diffs-container]:overflow-x-clip",
+  // Round pierre's full-width line fills to the card corners. The fills render in
+  // this element's shadow DOM (`[data-code]`, square corners, `overflow-x:
+  // scroll`), which light-DOM CSS can't reach — so the only way to round them is
+  // to clip the host to its own `border-radius`. `border-radius` clips a corner
+  // only on an axis whose overflow is not `visible`, so both axes must be `clip`;
+  // with `overflow-y: visible` the square shadow corners showed through the
+  // rounded top/bottom. `clip` (unlike `hidden`) creates no scroll container, and
+  // the vertical scroll + sticky header live on the outer `overflow-y-auto`
+  // ancestor, not here, so clipping both axes here is safe.
+  "[&_diffs-container]:overflow-clip",
   "[&_diffs-container]:after:pointer-events-none",
   "[&_diffs-container]:after:absolute",
   "[&_diffs-container]:after:inset-0",
