@@ -4,7 +4,7 @@ import { RailPromotion } from "@/components/dashboard/rail-promotion";
 import { ageDays, shortAge } from "@/lib/age";
 import { plural } from "@/lib/claims";
 
-const MAX_ROWS = 3;
+const MAX_ROWS = 10;
 const STALE_GAP_DAYS = 5;
 
 interface RailGapQueueProps {
