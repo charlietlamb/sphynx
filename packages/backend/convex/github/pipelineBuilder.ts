@@ -6,6 +6,7 @@ import {
   makeGitHubClient,
 } from "./githubClient";
 import { type GitHubError, GitHubUnavailable } from "./githubErrors";
+import { nextPageFrom } from "./pagination";
 import {
   commitPullNumbers,
   dropStaleMiddleStages,
@@ -43,12 +44,24 @@ type RepoRefs = typeof RepoRefsSchema.Type;
 
 const CompareSchema = Schema.Struct({
   ahead_by: Schema.Number,
+  total_commits: Schema.optional(Schema.Number),
   commits: Schema.Array(
     Schema.Struct({
       commit: Schema.Struct({ message: Schema.String }),
     })
   ),
 });
+
+type Compare = typeof CompareSchema.Type;
+
+/**
+ * How many `/compare` commit pages to walk before giving up on collecting every
+ * commit message. `ahead_by` is authoritative regardless, so a gap larger than
+ * this still shows the correct count — only promoted-PR detection from commit
+ * messages is bounded. Not a hard cap that fails the rail (the old 100-commit
+ * throw froze the whole read model once `dev` ran far ahead of `main`).
+ */
+const MAX_COMPARE_PAGES = 20;
 
 /**
  * The `lookupPulls` GraphQL selection requests only
@@ -103,31 +116,78 @@ function initialChain(refs: RepoRefs) {
 }
 
 const makePipelineBuilder = (client: GitHubClient, queue: ReviewQueue) => {
+  const comparePage = (
+    token: string,
+    owner: string,
+    repo: string,
+    upper: string,
+    lower: string,
+    page: number
+  ) =>
+    client
+      .rest(
+        token,
+        "GET",
+        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/compare/${encodeURIComponent(upper)}...${encodeURIComponent(lower)}?per_page=100&page=${page}`
+      )
+      .pipe(
+        Effect.flatMap((response) =>
+          Effect.tryPromise({
+            try: () => response.json(),
+            catch: () =>
+              new GitHubUnavailable({ message: "Invalid compare response" }),
+          }).pipe(
+            Effect.flatMap((json) =>
+              Schema.decodeUnknown(CompareSchema)(json).pipe(
+                Effect.mapError(
+                  () =>
+                    new GitHubUnavailable({
+                      message: "Invalid compare response",
+                    })
+                )
+              )
+            ),
+            Effect.map((body) => ({ body, link: response.header("link") }))
+          )
+        )
+      );
+
+  /**
+   * Compare two refs, walking the commit pages so a large gap is described in
+   * full. `ahead_by` is taken from the first page (authoritative); commits are
+   * accumulated up to `MAX_COMPARE_PAGES` and never made to fail the rail — a gap
+   * beyond that many pages simply detects promoted PRs from the commits it has.
+   */
   const restCompare = (
     token: string,
     owner: string,
     repo: string,
     upper: string,
     lower: string
-  ) =>
-    client
-      .restJson(
-        token,
-        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/compare/${encodeURIComponent(upper)}...${encodeURIComponent(lower)}?per_page=100`,
-        CompareSchema,
-        "Invalid compare response"
-      )
-      .pipe(
-        Effect.flatMap((compare) =>
-          compare.ahead_by <= compare.commits.length
-            ? Effect.succeed(compare)
-            : Effect.fail(
-                new GitHubUnavailable({
-                  message: `${owner}/${repo} stage gap exceeds the 100-commit limit`,
-                })
-              )
-        )
-      );
+  ): Effect.Effect<Compare, GitHubError> =>
+    Effect.gen(function* () {
+      const messages: { commit: { message: string } }[] = [];
+      let aheadBy = 0;
+      let page = 1;
+      let hasNext = true;
+      while (hasNext && page <= MAX_COMPARE_PAGES) {
+        const { body, link } = yield* comparePage(
+          token,
+          owner,
+          repo,
+          upper,
+          lower,
+          page
+        );
+        if (page === 1) {
+          aheadBy = body.ahead_by;
+        }
+        messages.push(...body.commits);
+        hasNext = nextPageFrom(link) !== null;
+        page += 1;
+      }
+      return { ahead_by: aheadBy, commits: messages };
+    });
 
   const lookupPulls = (
     token: string,
