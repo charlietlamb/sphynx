@@ -19,8 +19,14 @@ export function RailPromotion({
   repo,
 }: RailPromotionProps) {
   const promote = usePromote(owner, repo);
-  if (gap.promotionPull !== null) {
-    const promotionPull = gap.promotionPull;
+  // The pipeline is a live query, so once the "pr opened" webhook lands the gap
+  // gains `promotionPull` and this flips on its own. But that takes a second or
+  // two, during which `promote.isPending` has already cleared — so treat a
+  // just-succeeded promote as open immediately, using the number the action
+  // returned. Otherwise the button re-enables in that window and a second click
+  // tries to open a duplicate release pr and errors.
+  const promotionPull = gap.promotionPull ?? promote.data?.number ?? null;
+  if (promotionPull !== null) {
     return (
       <button
         className="mt-1 flex h-7 w-full items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-2 text-[11px] text-primary transition-colors hover:bg-primary/10"
