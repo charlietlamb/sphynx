@@ -42,6 +42,31 @@ function errorMessage(error: unknown): string {
 }
 
 /**
+ * Errors that will never resolve by retrying — the PR is gone, the user lost
+ * access, or GitHub is rate limiting. These should surface an error card, not
+ * spin in a skeleton.
+ */
+const PERMANENT_ERROR =
+  /not found|PullRequestNotFound|Unauthenticated|Unauthorized|FORBIDDEN|not accessible|rate limit|RateLimited/i;
+
+/**
+ * Retry transient failures — a Convex "Server Error" while the websocket
+ * reconnects or its auth token refreshes, or a momentary GitHub blip — for
+ * longer than TanStack's default three attempts, because the socket recovers on
+ * its own within seconds. Without this the PR header hard-gates on `getSummary`
+ * and sits in its skeleton forever when a reconnect eats the in-flight call.
+ * Permanent errors stop immediately so their error card shows.
+ */
+function retryTransient(failureCount: number, error: unknown): boolean {
+  if (PERMANENT_ERROR.test(errorMessage(error))) {
+    return false;
+  }
+  return failureCount < 6;
+}
+
+const RETRY_DELAY = (attempt: number) => Math.min(1000 * 2 ** attempt, 15_000);
+
+/**
  * Surfaces a failed write, and remembers it when GitHub refused because the
  * app cannot reach the repository, so the page can explain why.
  */
@@ -71,6 +96,8 @@ function pullRequestQuery(
       return summary;
     },
     placeholderData: placeholder,
+    retry: retryTransient,
+    retryDelay: RETRY_DELAY,
   });
 }
 
@@ -106,6 +133,8 @@ export function usePullRequest(ref: PullRequestRef) {
     queryKey: keys.pullPatches(ref),
     queryFn: () => getPatches(ref),
     staleTime: Number.POSITIVE_INFINITY,
+    retry: retryTransient,
+    retryDelay: RETRY_DELAY,
   });
   return { pullRequest, patches };
 }
@@ -186,6 +215,8 @@ export function useCommentThreads(ref: PullRequestRef) {
   const query = useQuery({
     queryKey: keys.pullThreads(ref),
     queryFn: () => getThreads(ref),
+    retry: retryTransient,
+    retryDelay: RETRY_DELAY,
   });
   return query.data ?? EMPTY_THREADS;
 }
@@ -195,6 +226,8 @@ export function useConversation(ref: PullRequestRef) {
   return useQuery({
     queryKey: keys.pullConversation(ref),
     queryFn: () => getConversation(ref),
+    retry: retryTransient,
+    retryDelay: RETRY_DELAY,
   });
 }
 
@@ -495,7 +528,8 @@ export function useViewedFiles(ref: PullRequestRef): ViewedFilesState {
       }
       return viewed;
     },
-    retry: false,
+    retry: retryTransient,
+    retryDelay: RETRY_DELAY,
   });
   const mutationKey = ["viewed-files", ref.owner, ref.repo, ref.number];
   const mutation = useMutation({
