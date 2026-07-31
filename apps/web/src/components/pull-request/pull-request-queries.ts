@@ -32,6 +32,7 @@ import { seededSummary } from "@/components/pull-request/summary-seed";
 import { isAccessBlocked } from "@/lib/access-block";
 import { trackEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/auth-client";
+import { limitConcurrency } from "@/lib/concurrency-limit";
 import { convexQueryClient } from "@/lib/convex";
 import { keys } from "@/lib/query/keys";
 
@@ -167,8 +168,24 @@ export function fileContentsQuery(
   });
 }
 
+/**
+ * A single process-wide, concurrency-limited binding of the file-contents
+ * action. Both the expanded-file and import-graph hooks fetch one file per
+ * changed path; on a large PR that is dozens of actions at once, which overruns
+ * Convex's per-client in-flight-action cap and stalls the whole websocket. One
+ * shared limiter drains them a few at a time so the header and diffs stay live.
+ */
+const boundedFileContents: FileContentsAction = limitConcurrency(
+  (args) =>
+    convexQueryClient.convexClient.action(
+      api.github.prActions.getFileContentsAction,
+      args
+    ),
+  5
+);
+
 export function useFileContentsAction(): FileContentsAction {
-  return useAction(api.github.prActions.getFileContentsAction);
+  return boundedFileContents;
 }
 
 export function useFileContents(
