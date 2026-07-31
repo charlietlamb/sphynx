@@ -16,7 +16,8 @@ interface RepoRef {
 export const keys = {
   all: ["gh"] as const,
 
-  installations: () => [...keys.all, "installations"] as const,
+  installations: (userId: string | null) =>
+    [...keys.all, "installations", userId] as const,
   installation: (id: number | null) =>
     [...keys.all, "installation", id] as const,
   search: (id: number | null, query: string) =>

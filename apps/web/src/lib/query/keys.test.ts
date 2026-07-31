@@ -37,6 +37,10 @@ describe("query keys", () => {
     expect(keys.search(1, "is:pr")).not.toEqual(keys.search(2, "is:pr"));
   });
 
+  test("different users do not share installations", () => {
+    expect(keys.installations("a")).not.toEqual(keys.installations("b"));
+  });
+
   test("different repos do not collide", () => {
     expect(keys.repo({ owner: "a", repo: "b" })).not.toEqual(
       keys.repo({ owner: "a", repo: "c" })

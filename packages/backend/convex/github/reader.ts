@@ -57,11 +57,16 @@ async function openPulls(ctx: QueryCtx, installationId: number) {
   return withinLimit(rows, MAX_PIPELINE_PULLS, "Installation pull queue");
 }
 
-async function reposFor(ctx: QueryCtx, installationId: number) {
-  return await ctx.db
-    .query("reviewRepo")
-    .withIndex("by_installation", (q) => q.eq("installationId", installationId))
-    .collect();
+async function reposFor(ctx: QueryCtx, repoKeys: readonly string[]) {
+  const rows = await Promise.all(
+    repoKeys.map((key) =>
+      ctx.db
+        .query("reviewRepo")
+        .withIndex("by_key", (q) => q.eq("key", key))
+        .unique()
+    )
+  );
+  return rows.filter((row) => row !== null);
 }
 
 /**
@@ -73,13 +78,8 @@ export const getPipeline = query({
   args: { installationId: v.number() },
   returns: pipelineValidator,
   handler: async (ctx, args) => {
-    const allowed = await repositoryKeysForInstallation(
-      ctx,
-      args.installationId
-    );
-    const [pulls, repos, gapRows] = await Promise.all([
+    const [pulls, gapRows] = await Promise.all([
       openPulls(ctx, args.installationId),
-      reposFor(ctx, args.installationId),
       ctx.db
         .query("stageGap")
         .withIndex("by_installation", (q) =>
@@ -88,6 +88,16 @@ export const getPipeline = query({
         .take(MAX_STAGE_GAPS + 1),
     ]);
     const gaps = withinLimit(gapRows, MAX_STAGE_GAPS, "Pipeline stage gaps");
+    const repoKeys = [
+      ...new Set([
+        ...pulls.map((pull) => pull.repoKey),
+        ...gaps.map((gap) => gap.repoKey),
+      ]),
+    ];
+    const [allowed, repos] = await Promise.all([
+      repositoryKeysForInstallation(ctx, args.installationId, repoKeys),
+      reposFor(ctx, repoKeys),
+    ]);
     return {
       repos: toRepoFlows(
         pulls.filter((pull) => allowed.has(pull.repoKey)),

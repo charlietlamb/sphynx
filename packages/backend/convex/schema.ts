@@ -161,6 +161,9 @@ export default defineSchema({
     userId: v.string(),
     installationId: v.number(),
     accountLogin: v.string(),
+    accountType: v.optional(v.string()),
+    avatarUrl: v.optional(v.union(v.string(), v.null())),
+    repositorySelection: v.optional(v.string()),
     verifiedAt: v.number(),
   })
     .index("by_user", ["userId"])
@@ -177,11 +180,25 @@ export default defineSchema({
       "installationId",
       "verifiedAt",
     ])
-    .index("by_user_and_installation_and_repo", [
+    .index("by_user_and_installation_and_repo_and_verifiedAt", [
       "userId",
       "installationId",
       "repoKey",
-    ]),
+      "verifiedAt",
+    ])
+    .index("by_user_and_verifiedAt", ["userId", "verifiedAt"]),
+
+  userAccessRefresh: defineTable({
+    userId: v.string(),
+    runId: v.string(),
+    status: v.union(
+      v.literal("refreshing"),
+      v.literal("completed"),
+      v.literal("aborted")
+    ),
+    verifiedAt: v.number(),
+    leaseExpiresAt: v.number(),
+  }).index("by_user", ["userId"]),
 
   installationToken: defineTable({
     installationId: v.number(),

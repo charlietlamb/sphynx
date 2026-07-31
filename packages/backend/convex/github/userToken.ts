@@ -2,6 +2,7 @@ import { ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import { authComponent, createAuth } from "../auth";
+import { refreshUserAccess } from "./refreshAccess";
 
 /**
  * A live GitHub user access token (ghu_) for the signed-in user, refreshing it
@@ -53,15 +54,24 @@ export async function userTokenForRepository(
   cost = 1
 ): Promise<string> {
   const user = await authComponent.getAuthUser(ctx);
-  const installationId = await ctx.runQuery(
+  let installationId = await ctx.runQuery(
     internal.github.access.installationForRepo,
     { userId: user._id, owner, repo }
   );
   if (installationId === null) {
-    throw new ConvexError({
-      code: "FORBIDDEN",
-      message: "You do not have access to this repository",
-    });
+    const token = await tokenForUser(ctx, user._id, cost);
+    await refreshUserAccess(ctx, user._id, token);
+    installationId = await ctx.runQuery(
+      internal.github.access.installationForRepo,
+      { userId: user._id, owner, repo }
+    );
+    if (installationId === null) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "You do not have access to this repository",
+      });
+    }
+    return token;
   }
   return await tokenForUser(ctx, user._id, cost);
 }

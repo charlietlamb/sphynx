@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as github_access from "../github/access.js";
+import type * as github_accessContract from "../github/accessContract.js";
 import type * as github_appAuth from "../github/appAuth.js";
 import type * as github_appJwt from "../github/appJwt.js";
 import type * as github_conversationWrite from "../github/conversationWrite.js";
@@ -41,6 +42,7 @@ import type * as github_readModel from "../github/readModel.js";
 import type * as github_reader from "../github/reader.js";
 import type * as github_reconcile from "../github/reconcile.js";
 import type * as github_refresh from "../github/refresh.js";
+import type * as github_refreshAccess from "../github/refreshAccess.js";
 import type * as github_refs from "../github/refs.js";
 import type * as github_reviewQueue from "../github/reviewQueue.js";
 import type * as github_reviews from "../github/reviews.js";
@@ -71,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   crons: typeof crons;
   "github/access": typeof github_access;
+  "github/accessContract": typeof github_accessContract;
   "github/appAuth": typeof github_appAuth;
   "github/appJwt": typeof github_appJwt;
   "github/conversationWrite": typeof github_conversationWrite;
@@ -101,6 +104,7 @@ declare const fullApi: ApiFromModules<{
   "github/reader": typeof github_reader;
   "github/reconcile": typeof github_reconcile;
   "github/refresh": typeof github_refresh;
+  "github/refreshAccess": typeof github_refreshAccess;
   "github/refs": typeof github_refs;
   "github/reviewQueue": typeof github_reviewQueue;
   "github/reviews": typeof github_reviews;

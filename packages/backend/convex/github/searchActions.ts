@@ -7,6 +7,7 @@ import { action } from "../_generated/server";
 import { authComponent } from "../auth";
 import type { QueuePull } from "./domain";
 import { validateRef } from "./input";
+import { refreshUserAccess } from "./refreshAccess";
 import { repoKeyOf } from "./rows";
 import { userToken, userTokenForRepository } from "./userToken";
 import { queuePullValidator } from "./validators";
@@ -36,20 +37,34 @@ export const search = action({
       });
     }
     const user = await authComponent.getAuthUser(ctx);
-    const grants: Set<string> = new Set(
-      await ctx.runQuery(
-        internal.github.access.repositoryKeysForUserInstallation,
-        { userId: user._id, installationId: args.installationId }
-      )
+    const token = await userToken(ctx);
+    let canAccess = await ctx.runQuery(
+      internal.github.access.canAccessInstallation,
+      { userId: user._id, installationId: args.installationId }
     );
-    if (grants.size === 0) {
+    if (!canAccess) {
+      await refreshUserAccess(ctx, user._id, token);
+      canAccess = await ctx.runQuery(
+        internal.github.access.canAccessInstallation,
+        { userId: user._id, installationId: args.installationId }
+      );
+    }
+    if (!canAccess) {
       throw new ConvexError({
         code: "FORBIDDEN",
         message: "You do not have access to this installation",
       });
     }
-    const token = await userToken(ctx);
     const result = await Effect.runPromise(searchPulls(query, limit, token));
+    const grants = new Set(
+      await ctx.runQuery(internal.github.access.filterRepositoryKeys, {
+        userId: user._id,
+        installationId: args.installationId,
+        repoKeys: result.pulls.map((pull) =>
+          repoKeyOf(args.installationId, pull.owner, pull.repo)
+        ),
+      })
+    );
     const pulls: QueuePull[] = result.pulls.filter((pull) =>
       grants.has(repoKeyOf(args.installationId, pull.owner, pull.repo))
     );
