@@ -1,4 +1,4 @@
-import { CheckCircleIcon, HourglassMediumIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon } from "@phosphor-icons/react";
 import type { StageGap } from "@sphynx/schema/review-queue";
 import { RailPromotion } from "@/components/dashboard/rail-promotion";
 import { ageDays, shortAge } from "@/lib/age";
@@ -80,16 +80,6 @@ export function RailGapQueue({
         aria-hidden
         className="absolute top-0 bottom-0 left-[13px] w-[2px] bg-amber-500/70"
       />
-      <p className="flex items-center gap-1.5 py-0.5 font-medium text-[11px] text-foreground">
-        <HourglassMediumIcon
-          className="size-3.5 shrink-0 text-amber-500"
-          weight="fill"
-        />
-        waiting for <span className="font-mono">{gap.to}</span>
-        <span className="text-muted-foreground/70 tabular-nums">
-          {gap.pulls.length > 0 ? gap.pulls.length : gap.aheadBy}
-        </span>
-      </p>
       {shown.map((pull) => (
         <button
           className="flex h-7 w-full min-w-0 items-center gap-2 rounded-sm text-left transition-colors hover:bg-alpha-4"
