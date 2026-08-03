@@ -32,6 +32,7 @@ import { seededSummary } from "@/components/pull-request/summary-seed";
 import { isAccessBlocked } from "@/lib/access-block";
 import { trackEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/auth-client";
+import { isPermanentReadError } from "@/lib/auth-error";
 import { limitConcurrency } from "@/lib/concurrency-limit";
 import { convexQueryClient } from "@/lib/convex";
 import { keys } from "@/lib/query/keys";
@@ -43,29 +44,31 @@ function errorMessage(error: unknown): string {
 }
 
 /**
- * Errors that will never resolve by retrying — the PR is gone, the user lost
- * access, or GitHub is rate limiting. These should surface an error card, not
- * spin in a skeleton.
- */
-const PERMANENT_ERROR =
-  /not found|PullRequestNotFound|Unauthenticated|Unauthorized|FORBIDDEN|not accessible|rate limit|RateLimited/i;
-
-/**
- * Retry transient failures — a Convex "Server Error" while the websocket
- * reconnects or its auth token refreshes, or a momentary GitHub blip — for
- * longer than TanStack's default three attempts, because the socket recovers on
- * its own within seconds. Without this the PR header hard-gates on `getSummary`
- * and sits in its skeleton forever when a reconnect eats the in-flight call.
- * Permanent errors stop immediately so their error card shows.
+ * Retry transient failures for longer than TanStack's default three attempts,
+ * because the recoverable ones self-heal within seconds: a Convex "Server Error"
+ * mid-reconnect, a momentary GitHub blip, and — the common one on the PR page —
+ * the `"Unauthenticated"` that a read throws when it fires before the Convex
+ * socket has finished authenticating on a fresh load. That auth race is exactly
+ * why the header used to stick in its skeleton; it is transient, so it retries.
+ * Only genuine access/not-found/rate-limit errors stop, surfacing an error card.
  */
 function retryTransient(failureCount: number, error: unknown): boolean {
-  if (PERMANENT_ERROR.test(errorMessage(error))) {
+  if (isPermanentReadError(error)) {
     return false;
   }
   return failureCount < 6;
 }
 
-const RETRY_DELAY = (attempt: number) => Math.min(1000 * 2 ** attempt, 15_000);
+/**
+ * The first two retries fire fast (150ms, 400ms) so the auth-not-ready race
+ * clears the instant the socket authenticates, rather than making the header sit
+ * a full second before its first retry. Later attempts back off to spare a
+ * genuinely struggling backend.
+ */
+const RETRY_DELAY = (attempt: number) =>
+  attempt < 2
+    ? 150 * 2 ** attempt + 100
+    : Math.min(1000 * 2 ** attempt, 15_000);
 
 /**
  * Surfaces a failed write, and remembers it when GitHub refused because the
