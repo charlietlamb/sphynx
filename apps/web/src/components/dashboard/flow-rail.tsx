@@ -1,5 +1,6 @@
 import { GitBranchIcon } from "@phosphor-icons/react";
 import type { RepoFlow } from "@sphynx/schema/review-queue";
+import { RailBackflow } from "@/components/dashboard/rail-backflow";
 import { RailBranch } from "@/components/dashboard/rail-branch";
 import { RailGapQueue } from "@/components/dashboard/rail-gap-queue";
 import { SectionHeader } from "@/components/layout/section-header";
@@ -33,6 +34,9 @@ export function FlowRail({
   const tributaries = items.filter((item) => !item.isStage);
   const stages = items.filter((item) => item.isStage);
   const hints = hintMap(items);
+  const base = flow.stages[0] ?? null;
+  const top = flow.stages.at(-1) ?? null;
+  const canBackflow = base !== null && top !== null && base !== top;
   return (
     <div className="flex flex-col">
       <SectionHeader
@@ -94,6 +98,19 @@ export function FlowRail({
             </div>
           );
         })}
+        {canBackflow && base && top ? (
+          <div className="pt-2 pl-7">
+            <RailBackflow
+              canAct={canAct}
+              from={top}
+              onOpenNumber={onOpenNumber}
+              openPulls={flow.openPulls}
+              owner={flow.owner}
+              repo={flow.repo}
+              to={base}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );
