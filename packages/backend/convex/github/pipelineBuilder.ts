@@ -64,16 +64,17 @@ type Compare = typeof CompareSchema.Type;
 const MAX_COMPARE_PAGES = 20;
 
 /**
- * The `lookupPulls` GraphQL selection requests only
- * `{ number title mergedAt author { login avatarUrl } }` — no `body` — so this
- * decodes exactly that shape. It is mapped to the domain `PromotedPull` (which
- * carries `body`) with `body: null`, since a promoted pull is only ever rendered
- * by number/title in the gap view.
+ * The `lookupPulls` GraphQL selection requests
+ * `{ number title baseRefName mergedAt author { login avatarUrl } }` — no `body`
+ * — so this decodes exactly that shape. `baseRefName` gates a pull to the gap it
+ * actually promotes into; it is dropped when mapping to the domain `PromotedPull`
+ * (which carries `body: null`), since the gap view only renders number/title.
  */
 const LookupPullSchema = Schema.NullOr(
   Schema.Struct({
     number: Schema.Number,
     title: Schema.String,
+    baseRefName: Schema.String,
     mergedAt: Schema.NullishOr(Schema.String),
     author: Schema.NullOr(
       Schema.Struct({
@@ -189,10 +190,19 @@ const makePipelineBuilder = (client: GitHubClient, queue: ReviewQueue) => {
       return { ahead_by: aheadBy, commits: messages };
     });
 
+  /**
+   * Resolve the pull numbers parsed from a gap's compare commits to promoted
+   * pulls, keeping only those whose base is the gap's target (`upper`). A commit
+   * message carries a `#N` regardless of that pull's direction, so a backmerge
+   * that landed on `lower` (e.g. a main → dev sync) would otherwise surface as a
+   * `lower → upper` promotion. Filtering on the fetched base ref drops it at the
+   * source, so the same pull can't appear on both the promotion and backflow rows.
+   */
   const lookupPulls = (
     token: string,
     owner: string,
     repo: string,
+    upper: string,
     numbers: readonly number[]
   ): Effect.Effect<PromotedPull[], GitHubError> => {
     if (numbers.length === 0) {
@@ -201,7 +211,7 @@ const makePipelineBuilder = (client: GitHubClient, queue: ReviewQueue) => {
     const selections = numbers
       .map(
         (number, index) =>
-          `pr${index}: pullRequest(number: ${number}) { number title mergedAt author { login avatarUrl } }`
+          `pr${index}: pullRequest(number: ${number}) { number title baseRefName mergedAt author { login avatarUrl } }`
       )
       .join("\n");
     const document = `
@@ -222,6 +232,7 @@ query($owner: String!, $name: String!) {
       Effect.map((data) =>
         Object.values(data.repository ?? {})
           .filter((node): node is LookupPull => node !== null)
+          .filter((node) => node.baseRefName === upper)
           .map(toPromotedPull)
           .sort((a, b) => (b.mergedAt ?? "").localeCompare(a.mergedAt ?? ""))
       )
@@ -248,6 +259,7 @@ query($owner: String!, $name: String!) {
           token,
           owner,
           repo,
+          upper,
           numbers.slice(0, MAX_GAP_PULLS)
         ).pipe(
           Effect.map((pulls) => ({
