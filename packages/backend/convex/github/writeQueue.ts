@@ -19,6 +19,14 @@ interface SearchResults {
   readonly totalCount: number;
 }
 
+/**
+ * How a pull is merged. Promotions squash to keep a stage's history linear, but
+ * a backflow sync must merge (a real merge commit) so the source branch becomes
+ * an ancestor of the target — a squash leaves the source perpetually "ahead" by
+ * commit graph, so the sync-down prompt would never clear.
+ */
+export type MergeMethod = "squash" | "merge";
+
 const CreatedPullSchema = Schema.Struct({ number: Schema.Number });
 
 const PULL_BODY_QUERY = `query($owner: String!, $repo: String!, $number: Int!) {
@@ -82,14 +90,18 @@ function isPullNode(node: unknown): node is typeof SearchPullNodeSchema.Type {
 const makeWriteQueue = (client: GitHubClient) => {
   const mergePull = (
     ref: PullRequestRef,
-    token: string
+    token: string,
+    method: MergeMethod = "squash"
   ): Effect.Effect<void, GitHubError> =>
     client
-      .rest(token, "PUT", pullPath(ref, "/merge"), { merge_method: "squash" })
+      .rest(token, "PUT", pullPath(ref, "/merge"), { merge_method: method })
       .pipe(
         Effect.asVoid,
         Effect.withSpan("GitHubWriteQueue.mergePull"),
-        Effect.annotateLogs({ "github.repo": `${ref.owner}/${ref.repo}` })
+        Effect.annotateLogs({
+          "github.repo": `${ref.owner}/${ref.repo}`,
+          "github.mergeMethod": method,
+        })
       );
 
   const blockPull = (
@@ -188,9 +200,14 @@ const makeWriteQueue = (client: GitHubClient) => {
 
 export const mergePull = (
   ref: PullRequestRef,
-  token: string
+  token: string,
+  method: MergeMethod = "squash"
 ): Effect.Effect<void, GitHubError> =>
-  makeWriteQueue(makeGitHubClient(configFromEnv())).mergePull(ref, token);
+  makeWriteQueue(makeGitHubClient(configFromEnv())).mergePull(
+    ref,
+    token,
+    method
+  );
 
 export const blockPull = (
   ref: PullRequestRef,

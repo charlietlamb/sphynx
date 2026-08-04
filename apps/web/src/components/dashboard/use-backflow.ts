@@ -67,7 +67,11 @@ export function useBackflow({ owner, repo, from, to }: BackflowRepo) {
   });
 
   const merge = useMutation({
-    mutationFn: (number: number) => mergeAction({ owner, repo, number }),
+    // A backflow must merge as a real merge commit, not a squash: squashing the
+    // sync leaves the source branch perpetually ahead of the target by commit
+    // graph, so the sync-down prompt would never clear.
+    mutationFn: (number: number) =>
+      mergeAction({ owner, repo, number, method: "merge" }),
     onSuccess: (_data, number) => {
       if (settings.confirmActions) {
         toast.success(`Merged #${number}`, {

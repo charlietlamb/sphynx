@@ -50,12 +50,23 @@ async function afterWrite(
 }
 
 export const merge = action({
-  args: { owner: v.string(), repo: v.string(), number: v.number() },
+  args: {
+    owner: v.string(),
+    repo: v.string(),
+    number: v.number(),
+    method: v.optional(v.union(v.literal("squash"), v.literal("merge"))),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     validateRef(args);
     const token = await userTokenForRepository(ctx, args.owner, args.repo);
-    await Effect.runPromise(mergePull(args, token));
+    await Effect.runPromise(
+      mergePull(
+        { owner: args.owner, repo: args.repo, number: args.number },
+        token,
+        args.method ?? "squash"
+      )
+    );
     await afterWrite(ctx, args.owner, args.repo, args.number);
     return null;
   },
