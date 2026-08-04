@@ -1,26 +1,17 @@
 import { cn } from "@sphynx/ui/lib/utils";
 
 /**
- * The diff-card chrome. The card border is drawn as an `::after` overlay so it
- * paints on top of pierre's full-width line fills (the green/red backgrounds
- * reach the card edge and would otherwise cover a plain border on the sides).
- * The overlay's radius rounds all four corners without an `overflow: hidden`
- * that would break the sticky file header.
- *
- * The overlay is anchored to the whole `diffs-container`, so once you scroll
- * into a file its top edge (and rounded top corners) scroll out of view while
- * pierre pins the file header (`DiffCardHeader`) at the top. So the card's top
- * chrome — top border, side borders, rounded top corners — lives on the header
- * itself (see `diff-card-header.tsx`), which is the element visible at the pinned
- * top; the `::after` overlay handles the rest of the frame and coincides with the
- * header's border at rest, so there is no double line.
+ * The diff-card chrome. The whole card frame — all four borders and rounded
+ * corners — is a single `::after` overlay on `diffs-container`, painted on top of
+ * pierre's full-width line fills (the green/red backgrounds reach the card edge
+ * and would otherwise cover a plain border). One element owns the frame, so the
+ * file header (`diff-card-header.tsx`) draws only its bottom divider — no second
+ * set of side/top borders offset by a pixel, which used to double the outline at
+ * the top corners.
  */
 export const CARD_CLASSES = cn(
   "[&_diffs-container]:relative",
-  // Only the bottom corners round: the top butts flush against the pinned file
-  // header (which owns the rounded top), so the code fills run edge-to-edge under
-  // it like GitHub, with no inset rounding or card-coloured gap at the seam.
-  "[&_diffs-container]:rounded-b-lg",
+  "[&_diffs-container]:rounded-lg",
   "[&_diffs-container]:bg-card",
   "[&_diffs-container]:shadow-xs",
   "[&_diffs-container]:transition-colors",
@@ -35,8 +26,7 @@ export const CARD_CLASSES = cn(
   "[&_diffs-container]:after:absolute",
   "[&_diffs-container]:after:inset-0",
   "[&_diffs-container]:after:z-[5]",
-  "[&_diffs-container]:after:rounded-b-lg",
-  "[&_diffs-container]:after:border-x",
-  "[&_diffs-container]:after:border-b",
+  "[&_diffs-container]:after:rounded-lg",
+  "[&_diffs-container]:after:border",
   "[&_diffs-container]:after:border-border"
 );
