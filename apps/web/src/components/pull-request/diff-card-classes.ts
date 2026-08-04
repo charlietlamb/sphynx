@@ -25,16 +25,15 @@ export const CARD_CLASSES = cn(
   "[&_diffs-container]:shadow-xs",
   "[&_diffs-container]:transition-colors",
   // Round pierre's full-width line fills to the card corners. The fills render in
-  // this element's shadow DOM (`[data-code]`, square corners, `overflow-x:
-  // scroll`), which light-DOM CSS can't reach — so the only way to round them is
-  // to clip the host to its own `border-radius`. `border-radius` clips a corner
-  // only on an axis whose overflow is not `visible`, so both axes must be `clip`;
-  // with `overflow-y: visible` the square shadow corners showed through the
-  // rounded bottom. `clip` (unlike `hidden`) creates no scroll container, and
-  // the vertical scroll + sticky header live on the outer `overflow-y-auto`
-  // ancestor, not here, so clipping both axes here is safe. No bottom padding, so
-  // the last line's fill reaches the rounded bottom edge with no gap.
-  "[&_diffs-container]:overflow-clip",
+  // this element's shadow DOM (`[data-code]`, square corners) inside a horizontal
+  // scroll container with a sticky gutter — and `overflow: clip` alone does NOT
+  // mask those, because a descendant that is itself a scroll/sticky context
+  // paints against its own containing block and its square corner leaks past the
+  // host's rounded corner (the bleed users saw while scrolled). `clip-path` has
+  // no such carve-out: it clips the element's whole painted result, descendants
+  // included, to the rounded rectangle. `inset(0 round …)` rounds only the bottom
+  // corners to match `rounded-b-lg`; the flush top meets the pinned header.
+  "[&_diffs-container]:[clip-path:inset(0_round_0_0_var(--radius-lg)_var(--radius-lg))]",
   "[&_diffs-container]:after:pointer-events-none",
   "[&_diffs-container]:after:absolute",
   "[&_diffs-container]:after:inset-0",
