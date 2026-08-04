@@ -28,28 +28,17 @@ import type { ReviewCommenting } from "@/components/pull-request/use-review-comm
 const CARD_LAYOUT = { paddingTop: 0, paddingBottom: 0, gap: 10 };
 
 /**
- * Two shadow-DOM corrections for the diff card, injected through pierre's own
- * `unsafeCSS` so they land in each container's shadow root:
- *
- * 1. Square the pinned file header's top corners. Its rounded corners leave a
- *    transparent notch that the diff-line fills paint through while scrolling — a
- *    green/red sliver at the card's top corner, plus the repaint it forces. The
- *    header is opaque, so squaring it covers the notch; the card's overlay keeps
- *    the visible rounding.
- * 2. Inset the code grid 1px each side. The full-width addition/deletion fills
- *    otherwise paint to the card edge, over the top of the card's `border-x`
- *    overlay, so the body's side border reads as a colour bleed that doesn't line
- *    up with the header's border. Insetting the fill lets the grey border show on
- *    both sides, continuous with the header's.
+ * Square the pinned file header's top corners inside pierre's shadow DOM. Its
+ * rounded corners leave a transparent notch that the diff-line fills behind it
+ * paint through while scrolling — a green/red sliver at the card's top corner,
+ * plus the repaint it forces. The header is opaque, so squaring it covers the
+ * notch; the card's own overlay keeps the visible rounding. Passed through
+ * pierre's `unsafeCSS`, which injects it into each container's shadow root.
  */
 const DIFF_SHADOW_CSS = `
 [data-diffs-header][data-sticky] {
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
-}
-[data-code] {
-  margin-inline: 1px;
-  width: calc(100% - 2px) !important;
 }
 `;
 
