@@ -7,6 +7,7 @@ import { BranchChip } from "@/components/layout/branch-chip";
 import { DiffStat } from "@/components/pull-request/diff-stat";
 import { useDiffTrailSlot } from "@/components/pull-request/diff-trail-slot";
 import { PullRequestMergeButton } from "@/components/pull-request/pull-request-merge-button";
+import { PullRequestStack } from "@/components/pull-request/pull-request-stack";
 import { PullRequestSwitcher } from "@/components/pull-request/pull-request-switcher";
 import { plural } from "@/lib/claims";
 
@@ -74,6 +75,13 @@ export function PullRequestHeader({
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-muted-foreground text-sm">
         <StatusPill label={label} tone={tone} />
+        <PullRequestStack
+          pullRequestRef={{
+            owner: repository.owner,
+            repo: repository.name,
+            number: pullRequest.number,
+          }}
+        />
         {author ? (
           <GithubProfile
             avatarUrl={author.avatarUrl}
