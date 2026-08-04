@@ -24,16 +24,13 @@ export const CARD_CLASSES = cn(
   "[&_diffs-container]:bg-card",
   "[&_diffs-container]:shadow-xs",
   "[&_diffs-container]:transition-colors",
-  // Round pierre's full-width line fills to the card corners. The fills render in
-  // this element's shadow DOM (`[data-code]`, square corners) inside a horizontal
-  // scroll container with a sticky gutter — and `overflow: clip` alone does NOT
-  // mask those, because a descendant that is itself a scroll/sticky context
-  // paints against its own containing block and its square corner leaks past the
-  // host's rounded corner (the bleed users saw while scrolled). `clip-path` has
-  // no such carve-out: it clips the element's whole painted result, descendants
-  // included, to the rounded rectangle. `inset(0 round …)` rounds only the bottom
-  // corners to match `rounded-b-lg`; the flush top meets the pinned header.
-  "[&_diffs-container]:[clip-path:inset(0_round_0_0_var(--radius-lg)_var(--radius-lg))]",
+  // Clip pierre's full-width line fills (green/red backgrounds that reach the card
+  // edge) to the rounded card. The fills render in this element's shadow DOM; a
+  // light-DOM clip on the host rounds the settled corners. The transient sliver
+  // that used to bleed past the top corner while scrolling was pierre's rounded
+  // sticky header painting its notch over the fill behind it — squared away via
+  // pierre's `unsafeCSS` option in `diff-card-list`, not here.
+  "[&_diffs-container]:overflow-clip",
   "[&_diffs-container]:after:pointer-events-none",
   "[&_diffs-container]:after:absolute",
   "[&_diffs-container]:after:inset-0",

@@ -47,13 +47,13 @@ const longBody = Array.from(
 ).join("\n");
 
 const wideBody = Array.from(
-  { length: 120 },
+  { length: 80 },
   (_, i) =>
-    `+  const veryLongVariableName_${i + 1} = computeSomethingWithAReallyLongExpression(argumentOne_${i + 1}, argumentTwo_${i + 1}, argumentThree_${i + 1}, argumentFour_${i + 1});`
+    `+  const veryLongVariableName_${i + 1} = computeSomethingWithAReallyLongExpression(argumentOne_${i + 1}, argumentTwo_${i + 1}, argumentThree_${i + 1}, argumentFour_${i + 1}, argumentFive_${i + 1});`
 ).join("\n");
 
 const FILES: PullRequestFile[] = [
-  file("src/wide/overflow.ts", { additions: 120, changes: 120 }),
+  file("src/wide/overflow.ts", { additions: 80, changes: 80 }),
   file("index.ts", { additions: 1, changes: 1 }),
   file("src/strategy/arbitrage.ts", { additions: 83, changes: 83 }),
   file("src/strategy/arbitrage.test.ts", { additions: 285, changes: 285 }),
@@ -66,7 +66,7 @@ const FILES: PullRequestFile[] = [
 ];
 
 const PATCHES: PatchMap = new Map([
-  ["src/wide/overflow.ts", `@@ -0,0 +1,120 @@\n${wideBody}`],
+  ["src/wide/overflow.ts", `@@ -0,0 +1,80 @@\n${wideBody}`],
   [
     "index.ts",
     '@@ -0,0 +1,2 @@\n+export * from "./src/odds-api/index.ts";\n+export * from "./src/strategy/index.ts";',

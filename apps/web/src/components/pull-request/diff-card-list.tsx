@@ -27,6 +27,21 @@ import type { ReviewCommenting } from "@/components/pull-request/use-review-comm
 
 const CARD_LAYOUT = { paddingTop: 0, paddingBottom: 0, gap: 10 };
 
+/**
+ * Square the pinned file header's top corners inside pierre's shadow DOM. Its
+ * rounded corners leave a transparent notch that the diff-line fills behind it
+ * paint through while scrolling — a green/red sliver at the card's top corner,
+ * plus the repaint it forces. The header is opaque, so squaring it covers the
+ * notch; the card's own overlay keeps the visible rounding. Passed through
+ * pierre's `unsafeCSS`, which injects it into each container's shadow root.
+ */
+const DIFF_SHADOW_CSS = `
+[data-diffs-header][data-sticky] {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+`;
+
 const COLLAPSED_HEADER_HEIGHT = 47;
 const COLLAPSED_ITEM_METRICS = {
   diffHeaderHeight: COLLAPSED_HEADER_HEIGHT,
@@ -179,6 +194,7 @@ export function DiffCardList({
       stickyHeaders: true,
       layout: CARD_LAYOUT,
       itemMetrics: COLLAPSED_ITEM_METRICS,
+      unsafeCSS: DIFF_SHADOW_CSS,
     }),
     [symbolOptions]
   );
