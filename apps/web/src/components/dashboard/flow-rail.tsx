@@ -36,7 +36,10 @@ export function FlowRail({
   const hints = hintMap(items);
   const base = flow.stages[0] ?? null;
   const top = flow.stages.at(-1) ?? null;
-  const canBackflow = base !== null && top !== null && base !== top;
+  const backflowGap =
+    base !== null && top !== null && base !== top
+      ? (flow.gaps.find((gap) => gap.from === top && gap.to === base) ?? null)
+      : null;
   return (
     <div className="flex flex-col">
       <SectionHeader
@@ -73,7 +76,8 @@ export function FlowRail({
         ))}
         {stages.map((item) => {
           const gap = flow.gaps.find(
-            (candidate) => candidate.from === item.branch
+            (candidate) =>
+              candidate.from === item.branch && candidate !== backflowGap
           );
           return (
             <div className="flex flex-col" key={item.branch}>
@@ -98,18 +102,16 @@ export function FlowRail({
             </div>
           );
         })}
-        {canBackflow && base && top ? (
-          <div className="pt-2 pl-7">
-            <RailBackflow
-              canAct={canAct}
-              from={top}
-              onOpenNumber={onOpenNumber}
-              openPulls={flow.openPulls}
-              owner={flow.owner}
-              repo={flow.repo}
-              to={base}
-            />
-          </div>
+        {backflowGap ? (
+          <RailBackflow
+            canAct={canAct}
+            gap={backflowGap}
+            now={now}
+            onOpenNumber={onOpenNumber}
+            openPulls={flow.openPulls}
+            owner={flow.owner}
+            repo={flow.repo}
+          />
         ) : null}
       </div>
     </div>

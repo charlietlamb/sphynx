@@ -1,19 +1,40 @@
 const PR_NUMBER_PATTERN = /#(\d+)\b/;
 
 /**
- * Keep only the pulls that actually promote into a gap's target branch. A gap
- * scrapes `#N` from every commit in its `lower...upper` compare, but a backmerge
- * that landed on `lower` (e.g. a `main -> dev` sync, whose merge commit is a new
- * commit on dev) leaves its `#N` in that compare too. Such a pull has
- * `baseRefName === lower`, not `upper`, so filtering on the target base drops it
- * — otherwise the same pull surfaces both as its backflow control and as a
- * phantom `lower -> upper` promotion.
+ * Drop the backmerge pulls from a gap's promotion list. A `lower -> upper` gap
+ * scrapes `#N` from every commit in its `lower...upper` compare — the merge
+ * commits of the pulls that landed on `lower` and are waiting to promote up. A
+ * real promotion has a feature head merged into `lower` (`base === lower`); a
+ * backmerge that synced `upper` back down into `lower` also lands on `lower`, so
+ * its `#N` is in the compare too, but its head is `upper`. Keying on the head
+ * being `upper` drops exactly those, leaving genuine promotions untouched —
+ * where keying on the base cannot tell them apart (both merge into `lower`).
  */
-export function promotionPullsForGap<T extends { baseRefName: string }>(
+export function promotionPullsForGap<T extends { headRefName: string }>(
   pulls: readonly T[],
   target: string
 ): T[] {
-  return pulls.filter((pull) => pull.baseRefName === target);
+  return pulls.filter((pull) => pull.headRefName !== target);
+}
+
+/**
+ * The `[source, target]` pairs a stage chain produces gaps for: each adjacent
+ * upward promotion (`dev -> staging -> main`), plus one downward backflow from
+ * the top stage to the bottom (`main -> dev`) so a hotfix that landed on the top
+ * can be synced back down. The backflow is omitted for a single-stage chain,
+ * where top and bottom coincide.
+ */
+export function gapPairs(stages: readonly string[]): [string, string][] {
+  const pairs: [string, string][] = [];
+  for (let index = 0; index < stages.length - 1; index += 1) {
+    pairs.push([stages[index] ?? "", stages[index + 1] ?? ""]);
+  }
+  const bottom = stages[0];
+  const top = stages.at(-1);
+  if (top !== undefined && bottom !== undefined && top !== bottom) {
+    pairs.push([top, bottom]);
+  }
+  return pairs;
 }
 
 export function commitPullNumbers(messages: readonly string[]) {

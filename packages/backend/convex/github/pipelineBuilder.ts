@@ -10,6 +10,7 @@ import { nextPageFrom } from "./pagination";
 import {
   commitPullNumbers,
   dropStaleMiddleStages,
+  gapPairs,
   promotionPullsForGap,
   stageChain,
 } from "./pipelineHelpers";
@@ -66,16 +67,17 @@ const MAX_COMPARE_PAGES = 20;
 
 /**
  * The `lookupPulls` GraphQL selection requests
- * `{ number title baseRefName mergedAt author { login avatarUrl } }` — no `body`
- * — so this decodes exactly that shape. `baseRefName` gates a pull to the gap it
- * actually promotes into; it is dropped when mapping to the domain `PromotedPull`
- * (which carries `body: null`), since the gap view only renders number/title.
+ * `{ number title headRefName mergedAt author { login avatarUrl } }` — no `body`
+ * — so this decodes exactly that shape. `headRefName` gates out backmerge pulls
+ * (whose head is the gap target); it is dropped when mapping to the domain
+ * `PromotedPull` (which carries `body: null`), since the gap view only renders
+ * number/title.
  */
 const LookupPullSchema = Schema.NullOr(
   Schema.Struct({
     number: Schema.Number,
     title: Schema.String,
-    baseRefName: Schema.String,
+    headRefName: Schema.String,
     mergedAt: Schema.NullishOr(Schema.String),
     author: Schema.NullOr(
       Schema.Struct({
@@ -193,11 +195,12 @@ const makePipelineBuilder = (client: GitHubClient, queue: ReviewQueue) => {
 
   /**
    * Resolve the pull numbers parsed from a gap's compare commits to promoted
-   * pulls, keeping only those whose base is the gap's target (`upper`). A commit
+   * pulls, dropping backmerges (whose head is the gap target `upper`). A commit
    * message carries a `#N` regardless of that pull's direction, so a backmerge
-   * that landed on `lower` (e.g. a main → dev sync) would otherwise surface as a
-   * `lower → upper` promotion. Filtering on the fetched base ref drops it at the
-   * source, so the same pull can't appear on both the promotion and backflow rows.
+   * that synced `upper` back into `lower` (e.g. a main → dev sync) leaves its
+   * `#N` in the `lower...upper` compare too. Its head is `upper`, so keying on
+   * that drops it at the source — a real promotion's head is a feature branch, so
+   * it stays. The same pull can't then appear on both promotion and backflow rows.
    */
   const lookupPulls = (
     token: string,
@@ -212,7 +215,7 @@ const makePipelineBuilder = (client: GitHubClient, queue: ReviewQueue) => {
     const selections = numbers
       .map(
         (number, index) =>
-          `pr${index}: pullRequest(number: ${number}) { number title baseRefName mergedAt author { login avatarUrl } }`
+          `pr${index}: pullRequest(number: ${number}) { number title headRefName mergedAt author { login avatarUrl } }`
       )
       .join("\n");
     const document = `
@@ -327,9 +330,7 @@ query($owner: String!, $name: String!) {
         dropStaleMiddleStages(initial, aheadOfMiddle)
       ),
       Effect.flatMap((stages) => {
-        const pairs = stages
-          .slice(0, -1)
-          .map((stage, index) => [stage, stages[index + 1] ?? ""] as const);
+        const pairs = gapPairs(stages);
         return Effect.forEach(
           pairs,
           ([lower, upper]) =>
