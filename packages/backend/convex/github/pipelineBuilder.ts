@@ -10,6 +10,7 @@ import { nextPageFrom } from "./pagination";
 import {
   commitPullNumbers,
   dropStaleMiddleStages,
+  promotionPullsForGap,
   stageChain,
 } from "./pipelineHelpers";
 import { makeReviewQueue, type ReviewQueue, repoKey } from "./reviewQueue";
@@ -229,13 +230,14 @@ query($owner: String!, $name: String!) {
       ),
     });
     return client.query(token, schema, document, { owner, name: repo }).pipe(
-      Effect.map((data) =>
-        Object.values(data.repository ?? {})
-          .filter((node): node is LookupPull => node !== null)
-          .filter((node) => node.baseRefName === upper)
+      Effect.map((data) => {
+        const nodes = Object.values(data.repository ?? {}).filter(
+          (node): node is LookupPull => node !== null
+        );
+        return promotionPullsForGap(nodes, upper)
           .map(toPromotedPull)
-          .sort((a, b) => (b.mergedAt ?? "").localeCompare(a.mergedAt ?? ""))
-      )
+          .sort((a, b) => (b.mergedAt ?? "").localeCompare(a.mergedAt ?? ""));
+      })
     );
   };
 

@@ -2,6 +2,7 @@ import { CheckCircleIcon } from "@phosphor-icons/react";
 import type { StageGap } from "@sphynx/schema/review-queue";
 import { RailPromotion } from "@/components/dashboard/rail-promotion";
 import { ageDays, shortAge } from "@/lib/age";
+import { hasPromotableWork } from "@/lib/attention";
 import { plural } from "@/lib/claims";
 
 const MAX_ROWS = 10;
@@ -24,7 +25,7 @@ export function RailGapQueue({
   owner,
   repo,
 }: RailGapQueueProps) {
-  if (gap.aheadBy === 0) {
+  if (!hasPromotableWork(gap)) {
     return (
       <div className="relative pl-7">
         <div className="flex h-7 items-center gap-1.5">
@@ -40,15 +41,6 @@ export function RailGapQueue({
             in sync with <span className="font-mono">{gap.to}</span>
           </p>
         </div>
-        {gap.promotionPull === null ? null : (
-          <RailPromotion
-            canAct={canAct}
-            gap={gap}
-            onOpenNumber={onOpenNumber}
-            owner={owner}
-            repo={repo}
-          />
-        )}
       </div>
     );
   }

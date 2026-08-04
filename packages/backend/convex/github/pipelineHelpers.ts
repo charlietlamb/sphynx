@@ -1,5 +1,21 @@
 const PR_NUMBER_PATTERN = /#(\d+)\b/;
 
+/**
+ * Keep only the pulls that actually promote into a gap's target branch. A gap
+ * scrapes `#N` from every commit in its `lower...upper` compare, but a backmerge
+ * that landed on `lower` (e.g. a `main -> dev` sync, whose merge commit is a new
+ * commit on dev) leaves its `#N` in that compare too. Such a pull has
+ * `baseRefName === lower`, not `upper`, so filtering on the target base drops it
+ * — otherwise the same pull surfaces both as its backflow control and as a
+ * phantom `lower -> upper` promotion.
+ */
+export function promotionPullsForGap<T extends { baseRefName: string }>(
+  pulls: readonly T[],
+  target: string
+): T[] {
+  return pulls.filter((pull) => pull.baseRefName === target);
+}
+
 export function commitPullNumbers(messages: readonly string[]) {
   const numbers: number[] = [];
   let direct = 0;

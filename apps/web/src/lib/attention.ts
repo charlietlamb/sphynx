@@ -1,5 +1,23 @@
-import type { QueuePull, RepoFlow } from "@sphynx/schema/review-queue";
+import type {
+  QueuePull,
+  RepoFlow,
+  StageGap,
+} from "@sphynx/schema/review-queue";
 import { parseScoreRatio } from "@/lib/score";
+
+/**
+ * Whether a gap has anything to promote. `aheadBy` counts every commit `to` is
+ * missing, which after a backmerge includes that sync's own merge commit — so a
+ * gap can read `aheadBy > 0` while carrying no promotable pulls and no direct
+ * commits. The promotable signal is the pulls and direct commits themselves,
+ * plus an already-open promotion pull; a gap with none of those is in sync, even
+ * if a stray merge commit leaves it nominally ahead.
+ */
+export function hasPromotableWork(gap: StageGap): boolean {
+  return (
+    gap.pulls.length > 0 || gap.directCommits > 0 || gap.promotionPull !== null
+  );
+}
 
 export type SizeClass = "xs" | "s" | "m" | "l" | "xl";
 

@@ -1,12 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import type {
+  PromotedPull,
   QueuePull,
   RepoFlow,
   ReviewerVerdict,
+  StageGap,
 } from "@sphynx/schema/review-queue";
 import {
   buildBranchQueue,
   filterQueue,
+  hasPromotableWork,
   pullScores,
   railBranches,
   sizeClass,
@@ -248,5 +251,49 @@ describe("railBranches", () => {
   test("reports an empty ci rollup for a stage with no open pulls", () => {
     const items = railBranches(flow([]), buildBranchQueue(flow([])));
     expect(items[0]?.ci).toEqual({ failing: 0, running: 0, passing: 0 });
+  });
+});
+
+const promoted = (number: number): PromotedPull => ({
+  number,
+  title: `#${number}`,
+  body: null,
+  author: null,
+  mergedAt: "2026-08-04T09:00:00Z",
+});
+
+const gap = (overrides: Partial<StageGap>): StageGap => ({
+  from: "dev",
+  to: "main",
+  aheadBy: 0,
+  pulls: [],
+  directCommits: 0,
+  promotionPull: null,
+  ...overrides,
+});
+
+describe("hasPromotableWork", () => {
+  test("a backmerge-only gap is not promotable even when ahead", () => {
+    expect(hasPromotableWork(gap({ aheadBy: 1 }))).toBe(false);
+  });
+
+  test("a gap with promotable pulls is promotable", () => {
+    expect(
+      hasPromotableWork(gap({ aheadBy: 3, pulls: [promoted(2570)] }))
+    ).toBe(true);
+  });
+
+  test("direct commits count as promotable", () => {
+    expect(hasPromotableWork(gap({ aheadBy: 2, directCommits: 2 }))).toBe(true);
+  });
+
+  test("an already-open promotion pull is promotable at zero ahead", () => {
+    expect(hasPromotableWork(gap({ aheadBy: 0, promotionPull: 99 }))).toBe(
+      true
+    );
+  });
+
+  test("a truly synced gap is not promotable", () => {
+    expect(hasPromotableWork(gap({}))).toBe(false);
   });
 });
