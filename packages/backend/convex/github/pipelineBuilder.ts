@@ -8,8 +8,8 @@ import {
 import { type GitHubError, GitHubUnavailable } from "./githubErrors";
 import { nextPageFrom } from "./pagination";
 import {
-  commitPullNumbers,
   dropStaleMiddleStages,
+  gapCommitSummary,
   gapPairs,
   promotionPullsForGap,
   stageChain,
@@ -49,7 +49,11 @@ const CompareSchema = Schema.Struct({
   total_commits: Schema.optional(Schema.Number),
   commits: Schema.Array(
     Schema.Struct({
+      sha: Schema.String,
       commit: Schema.Struct({ message: Schema.String }),
+      parents: Schema.optional(
+        Schema.Array(Schema.Struct({ sha: Schema.String }))
+      ),
     })
   ),
 });
@@ -170,7 +174,7 @@ const makePipelineBuilder = (client: GitHubClient, queue: ReviewQueue) => {
     lower: string
   ): Effect.Effect<Compare, GitHubError> =>
     Effect.gen(function* () {
-      const messages: { commit: { message: string } }[] = [];
+      const commits: Compare["commits"][number][] = [];
       let aheadBy = 0;
       let page = 1;
       let hasNext = true;
@@ -186,11 +190,11 @@ const makePipelineBuilder = (client: GitHubClient, queue: ReviewQueue) => {
         if (page === 1) {
           aheadBy = body.ahead_by;
         }
-        messages.push(...body.commits);
+        commits.push(...body.commits);
         hasNext = nextPageFrom(link) !== null;
         page += 1;
       }
-      return { ahead_by: aheadBy, commits: messages };
+      return { ahead_by: aheadBy, commits };
     });
 
   /**
@@ -254,8 +258,12 @@ query($owner: String!, $name: String!) {
   ): Effect.Effect<StageGap, GitHubError> =>
     restCompare(token, owner, repo, upper, lower).pipe(
       Effect.flatMap((compare) => {
-        const { numbers, direct } = commitPullNumbers(
-          compare.commits.map((entry) => entry.commit.message)
+        const { numbers, direct } = gapCommitSummary(
+          compare.commits.map((entry) => ({
+            sha: entry.sha,
+            message: entry.commit.message,
+            parents: entry.parents,
+          }))
         );
         const promotion = openPulls.find(
           (pull) => pull.headRefName === lower && pull.baseRefName === upper

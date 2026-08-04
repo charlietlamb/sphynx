@@ -37,22 +37,70 @@ export function gapPairs(stages: readonly string[]): [string, string][] {
   return pairs;
 }
 
+function pullNumberIn(message: string): number | null {
+  const firstLine = message.split("\n")[0] ?? "";
+  const match = PR_NUMBER_PATTERN.exec(firstLine);
+  return match ? Number(match[1]) : null;
+}
+
 export function commitPullNumbers(messages: readonly string[]) {
   const numbers: number[] = [];
   let direct = 0;
   const seen = new Set<number>();
   for (const message of messages) {
-    const firstLine = message.split("\n")[0] ?? "";
-    const match = PR_NUMBER_PATTERN.exec(firstLine);
-    if (match) {
-      const number = Number(match[1]);
-      if (!seen.has(number)) {
-        seen.add(number);
-        numbers.push(number);
-      }
-    } else {
+    const number = pullNumberIn(message);
+    if (number === null) {
       direct += 1;
+    } else if (!seen.has(number)) {
+      seen.add(number);
+      numbers.push(number);
     }
+  }
+  return { numbers, direct };
+}
+
+export interface GapCommit {
+  message: string;
+  parents?: readonly { sha: string }[];
+  sha: string;
+}
+
+/**
+ * The pull numbers and true direct-commit count for a gap's compare. "Direct"
+ * means landed straight on the branch, so a PR's internal commits must not
+ * count. A merge-committed PR puts its feature commits on the branch's history
+ * but only through the merge commit's *second* parent, so walking the branch's
+ * first-parent chain (from the newest commit back through `parents[0]`) visits
+ * only the mainline: squash/merge-PR commits (which carry `#N`) and genuine
+ * direct commits (which do not). Second-parent PR internals are skipped, which
+ * is what stops a merge-committed PR from inflating the direct count. When the
+ * compare omits `parents` every commit is treated as mainline — the old
+ * message-only behaviour, since there is nothing better to go on.
+ */
+export function gapCommitSummary(commits: readonly GapCommit[]): {
+  numbers: number[];
+  direct: number;
+} {
+  if (commits.length === 0 || commits.some((commit) => !commit.parents)) {
+    return commitPullNumbers(commits.map((commit) => commit.message));
+  }
+  const bySha = new Map(commits.map((commit) => [commit.sha, commit]));
+  const numbers: number[] = [];
+  const seen = new Set<number>();
+  let direct = 0;
+  let cursor: GapCommit | undefined = commits.at(-1);
+  const walked = new Set<string>();
+  while (cursor && !walked.has(cursor.sha)) {
+    walked.add(cursor.sha);
+    const number = pullNumberIn(cursor.message);
+    if (number === null) {
+      direct += 1;
+    } else if (!seen.has(number)) {
+      seen.add(number);
+      numbers.push(number);
+    }
+    const firstParent = cursor.parents?.[0]?.sha;
+    cursor = firstParent ? bySha.get(firstParent) : undefined;
   }
   return { numbers, direct };
 }

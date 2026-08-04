@@ -1,9 +1,55 @@
 import { describe, expect, test } from "vitest";
 import {
   commitPullNumbers,
+  gapCommitSummary,
   gapPairs,
   promotionPullsForGap,
 } from "./pipelineHelpers";
+
+describe("gapCommitSummary", () => {
+  const commit = (sha: string, message: string, parents: string[]) => ({
+    sha,
+    message,
+    parents: parents.map((p) => ({ sha: p })),
+  });
+
+  test("a merge-committed PR does not inflate the direct count", () => {
+    // dev mainline (oldest -> newest): base, then #2576's three feature commits
+    // reachable only via the merge commit's second parent, then the merge commit.
+    const commits = [
+      commit("feat1", "wip: start", ["base"]),
+      commit("feat2", "wip: more", ["feat1"]),
+      commit("feat3", "wip: done", ["feat2"]),
+      commit("merge", "Merge pull request #2576 from x", ["base", "feat3"]),
+    ];
+    const { numbers, direct } = gapCommitSummary(commits);
+    expect(numbers).toEqual([2576]);
+    expect(direct).toBe(0);
+  });
+
+  test("genuine direct commits on the mainline are counted", () => {
+    const commits = [
+      commit("d1", "hotfix typo", ["base"]),
+      commit("sq", "feat: thing (#2570)", ["d1"]),
+      commit("d2", "bump version", ["sq"]),
+    ];
+    const { numbers, direct } = gapCommitSummary(commits);
+    expect(numbers).toEqual([2570]);
+    expect(direct).toBe(2);
+  });
+
+  test("falls back to message-only when parents are absent", () => {
+    const commits = [
+      { sha: "a", message: "feat: x (#1)" },
+      { sha: "b", message: "direct" },
+    ];
+    expect(gapCommitSummary(commits)).toEqual({ numbers: [1], direct: 1 });
+  });
+
+  test("empty compare is empty", () => {
+    expect(gapCommitSummary([])).toEqual({ numbers: [], direct: 0 });
+  });
+});
 
 describe("gapPairs", () => {
   test("adds a backflow pair from the top stage to the bottom", () => {
