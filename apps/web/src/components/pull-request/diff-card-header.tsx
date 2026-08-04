@@ -31,7 +31,7 @@ export function DiffCardHeader({
   viewedDisabled,
 }: DiffCardHeaderProps) {
   return (
-    <span className="flex h-11 min-w-0 flex-1 items-center gap-2.5 border-border border-b bg-card px-4 text-sm">
+    <span className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-t-lg border-border border-x border-t border-b bg-card px-4 text-sm">
       <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/60 [&_svg]:size-3">
         <FileTypeIcon className="text-foreground" path={path} />
       </span>
