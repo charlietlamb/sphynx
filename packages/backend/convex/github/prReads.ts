@@ -5,6 +5,7 @@ import {
   makeGitHubClient,
 } from "./githubClient";
 import { type GitHubError, GitHubUnavailable } from "./githubErrors";
+import { FullDatabaseId } from "./githubScalars";
 import { lastPageFrom, nextPageFrom } from "./pagination";
 import { type PullRequestRef, pullPath } from "./refs";
 import { buildSymbolIndex, type SymbolIndexPayload } from "./symbolIndex";
@@ -378,7 +379,7 @@ query($owner: String!, $name: String!, $number: Int!) {
 
 const RawConversationCommentSchema = Schema.Struct({
   id: Schema.String,
-  fullDatabaseId: Schema.NullishOr(Schema.String),
+  fullDatabaseId: FullDatabaseId,
   body: Schema.String,
   bodyHTML: Schema.String,
   createdAt: Schema.String,
@@ -396,7 +397,7 @@ const RawReviewAuthorSchema = Schema.Struct({
 
 const RawConversationReviewSchema = Schema.Struct({
   id: Schema.String,
-  fullDatabaseId: Schema.NullishOr(Schema.String),
+  fullDatabaseId: FullDatabaseId,
   state: Schema.String,
   body: Schema.String,
   bodyHTML: Schema.String,
@@ -716,7 +717,7 @@ const PageInfoSchema = Schema.Struct({
 });
 
 const ThreadCommentSchema = Schema.Struct({
-  fullDatabaseId: Schema.NullishOr(Schema.String),
+  fullDatabaseId: FullDatabaseId,
   body: Schema.String,
   state: Schema.NullishOr(Schema.String),
   createdAt: Schema.String,

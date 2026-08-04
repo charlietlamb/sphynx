@@ -5,6 +5,7 @@ import type {
   ReviewerVerdict,
   ThreadPreview,
 } from "./domain";
+import { FullDatabaseId } from "./githubScalars";
 import {
   blockerFor,
   decide,
@@ -86,7 +87,7 @@ const RawThreadSchema = Schema.Struct({
   comments: Schema.Struct({
     nodes: Schema.Array(
       Schema.Struct({
-        fullDatabaseId: Schema.NullishOr(Schema.String),
+        fullDatabaseId: FullDatabaseId,
         body: Schema.String,
         author: ActorSchema,
       })
@@ -275,7 +276,7 @@ function threadPreviews(threads: readonly RawThread[]) {
     if (!body) {
       continue;
     }
-    const rootCommentId = first.fullDatabaseId ?? null;
+    const rootCommentId = first.fullDatabaseId;
     previews.push({
       author: first.author
         ? {

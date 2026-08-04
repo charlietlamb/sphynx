@@ -19,6 +19,7 @@ import type * as github_domain from "../github/domain.js";
 import type * as github_gate from "../github/gate.js";
 import type * as github_githubClient from "../github/githubClient.js";
 import type * as github_githubErrors from "../github/githubErrors.js";
+import type * as github_githubScalars from "../github/githubScalars.js";
 import type * as github_ingest from "../github/ingest.js";
 import type * as github_input from "../github/input.js";
 import type * as github_installationState from "../github/installationState.js";
@@ -81,6 +82,7 @@ declare const fullApi: ApiFromModules<{
   "github/gate": typeof github_gate;
   "github/githubClient": typeof github_githubClient;
   "github/githubErrors": typeof github_githubErrors;
+  "github/githubScalars": typeof github_githubScalars;
   "github/ingest": typeof github_ingest;
   "github/input": typeof github_input;
   "github/installationState": typeof github_installationState;
