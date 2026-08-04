@@ -17,9 +17,11 @@ import { cn } from "@sphynx/ui/lib/utils";
  */
 export const CARD_CLASSES = cn(
   "[&_diffs-container]:relative",
-  "[&_diffs-container]:rounded-lg",
+  // Only the bottom corners round: the top butts flush against the pinned file
+  // header (which owns the rounded top), so the code fills run edge-to-edge under
+  // it like GitHub, with no inset rounding or card-coloured gap at the seam.
+  "[&_diffs-container]:rounded-b-lg",
   "[&_diffs-container]:bg-card",
-  "[&_diffs-container]:pb-2.5",
   "[&_diffs-container]:shadow-xs",
   "[&_diffs-container]:transition-colors",
   // Round pierre's full-width line fills to the card corners. The fills render in
@@ -28,15 +30,17 @@ export const CARD_CLASSES = cn(
   // to clip the host to its own `border-radius`. `border-radius` clips a corner
   // only on an axis whose overflow is not `visible`, so both axes must be `clip`;
   // with `overflow-y: visible` the square shadow corners showed through the
-  // rounded top/bottom. `clip` (unlike `hidden`) creates no scroll container, and
+  // rounded bottom. `clip` (unlike `hidden`) creates no scroll container, and
   // the vertical scroll + sticky header live on the outer `overflow-y-auto`
-  // ancestor, not here, so clipping both axes here is safe.
+  // ancestor, not here, so clipping both axes here is safe. No bottom padding, so
+  // the last line's fill reaches the rounded bottom edge with no gap.
   "[&_diffs-container]:overflow-clip",
   "[&_diffs-container]:after:pointer-events-none",
   "[&_diffs-container]:after:absolute",
   "[&_diffs-container]:after:inset-0",
   "[&_diffs-container]:after:z-[5]",
-  "[&_diffs-container]:after:rounded-lg",
-  "[&_diffs-container]:after:border",
+  "[&_diffs-container]:after:rounded-b-lg",
+  "[&_diffs-container]:after:border-x",
+  "[&_diffs-container]:after:border-b",
   "[&_diffs-container]:after:border-border"
 );
