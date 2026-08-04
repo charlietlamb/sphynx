@@ -9,7 +9,12 @@ import {
 } from "./access";
 import { MAX_PIPELINE_PULLS } from "./limits";
 import { toRepoFlows } from "./readModel";
-import { pipelineValidator, workbenchEventKindValidator } from "./validators";
+import { pullKeyOf, repoKeyOf } from "./rows";
+import {
+  pipelineValidator,
+  pullSummarySeedValidator,
+  workbenchEventKindValidator,
+} from "./validators";
 
 const MAX_HEAD_MATCHES = 100;
 const MAX_STAGE_GAPS = 150;
@@ -120,6 +125,57 @@ export const installationForOwner = query({
       args.owner,
       args.repo
     );
+  },
+});
+
+/**
+ * A partial pull summary from the read model, to paint the PR header on the
+ * first frame — on a direct load or reload, not only when arriving from the
+ * dashboard. The live GitHub `getSummary` still fills the fields the read model
+ * does not carry (body, head/base shas, commit and comment counts). Returns null
+ * when the read model has never seen the pull, so the header falls back to the
+ * live fetch alone.
+ */
+export const pullSummarySeed = query({
+  args: { owner: v.string(), repo: v.string(), number: v.number() },
+  returns: v.union(pullSummarySeedValidator, v.null()),
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const installationId = await grantedInstallationForRepo(
+      ctx,
+      user._id,
+      args.owner,
+      args.repo
+    );
+    if (installationId === null) {
+      return null;
+    }
+    const key = pullKeyOf(
+      repoKeyOf(installationId, args.owner, args.repo),
+      args.number
+    );
+    const pull = await ctx.db
+      .query("reviewPull")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (pull === null) {
+      return null;
+    }
+    return {
+      owner: pull.owner,
+      repo: pull.repo,
+      number: pull.number,
+      title: pull.title,
+      state: pull.state,
+      draft: pull.isDraft,
+      author: pull.author,
+      baseRef: pull.baseRef,
+      headRef: pull.headRef,
+      additions: pull.additions,
+      deletions: pull.deletions,
+      changedFiles: pull.changedFiles,
+      mergedAt: pull.mergedAt,
+    };
   },
 });
 

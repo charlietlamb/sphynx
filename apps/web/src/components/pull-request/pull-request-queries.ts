@@ -1,3 +1,4 @@
+import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@sphynx/backend/convex/_generated/api";
 import type {
   CreateReviewComment,
@@ -28,7 +29,10 @@ import {
   clearAccessBlock,
   recordAccessBlock,
 } from "@/components/pull-request/access-block-store";
-import { seededSummary } from "@/components/pull-request/summary-seed";
+import {
+  seededSummary,
+  summaryFromSeed,
+} from "@/components/pull-request/summary-seed";
 import { isAccessBlocked } from "@/lib/access-block";
 import { trackEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/auth-client";
@@ -128,9 +132,20 @@ export function usePullRequest(ref: PullRequestRef) {
   const queryClient = useQueryClient();
   const getSummary = useAction(api.github.prActions.getSummary);
   const getPatches = useAction(api.github.prActions.getPatches);
+  // Two seeds so the header never hard-gates on the live GitHub summary: the
+  // dashboard cache (instant when arriving from a row) and the read model (a
+  // live query that also covers a direct load or reload). Either paints the
+  // header on the first frame; the live summary then fills the rest.
+  const seed = useQuery(
+    convexQuery(api.github.reader.pullSummarySeed, {
+      owner: ref.owner,
+      repo: ref.repo,
+      number: ref.number,
+    })
+  );
   const placeholder = useMemo(
-    () => seededSummary(queryClient, ref),
-    [queryClient, ref]
+    () => seededSummary(queryClient, ref) ?? summaryFromSeed(seed.data),
+    [queryClient, ref, seed.data]
   );
   const pullRequest = useQuery(pullRequestQuery(ref, getSummary, placeholder));
   const patches = useQuery({

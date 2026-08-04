@@ -98,3 +98,63 @@ export function seededSummary(
     githubUrl: `https://github.com/${pull.owner}/${pull.repo}/pull/${pull.number}`,
   };
 }
+
+export interface PullSummarySeed {
+  additions: number;
+  author: { login: string; avatarUrl: string | null } | null;
+  baseRef: string;
+  changedFiles: number;
+  deletions: number;
+  draft: boolean;
+  headRef: string;
+  mergedAt: string | null;
+  number: number;
+  owner: string;
+  repo: string;
+  state: "open" | "closed" | "merged";
+  title: string;
+}
+
+/**
+ * A `PullRequestSummary` synthesized from the read-model seed, so the header
+ * paints on the first frame of any load — direct, reload, or from the dashboard.
+ * The fields the read model does not carry (body, shas, commit/comment counts,
+ * created time) are placeheld and filled the moment the live summary resolves.
+ */
+export function summaryFromSeed(
+  seed: PullSummarySeed | null | undefined
+): PullRequestSummary | undefined {
+  if (!seed) {
+    return;
+  }
+  return {
+    repository: {
+      id: 0,
+      owner: seed.owner,
+      name: seed.repo,
+      url: `https://github.com/${seed.owner}/${seed.repo}`,
+    },
+    number: seed.number,
+    title: seed.title,
+    body: null,
+    state: seed.state,
+    draft: seed.draft,
+    author: seed.author
+      ? { login: seed.author.login, avatarUrl: seed.author.avatarUrl ?? "" }
+      : null,
+    base: { ref: seed.baseRef, sha: "" },
+    head: { ref: seed.headRef, sha: "" },
+    stats: {
+      commits: 0,
+      changedFiles: seed.changedFiles,
+      additions: seed.additions,
+      deletions: seed.deletions,
+      comments: 0,
+      reviewComments: 0,
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    mergedAt: seed.mergedAt,
+    githubUrl: `https://github.com/${seed.owner}/${seed.repo}/pull/${seed.number}`,
+  };
+}

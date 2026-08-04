@@ -37,6 +37,26 @@ export const githubUserValidator = v.object({
   avatarUrl: v.union(v.string(), v.null()),
 });
 
+/**
+ * The read-model fields that seed the PR header before the live summary lands.
+ * A subset of `PullRequestSummary`; the client fills the rest with placeholders.
+ */
+export const pullSummarySeedValidator = v.object({
+  owner: v.string(),
+  repo: v.string(),
+  number: v.number(),
+  title: v.string(),
+  state: pullStateValidator,
+  draft: v.boolean(),
+  author: v.union(githubUserValidator, v.null()),
+  baseRef: v.string(),
+  headRef: v.string(),
+  additions: v.number(),
+  deletions: v.number(),
+  changedFiles: v.number(),
+  mergedAt: v.union(v.string(), v.null()),
+});
+
 export const reviewerVerdictValidator = v.object({
   name: v.string(),
   kind: sourceKindValidator,
