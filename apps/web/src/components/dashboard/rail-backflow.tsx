@@ -38,14 +38,23 @@ export function RailBackflow({
     (pull) => pull.headRefName === from && pull.baseRefName === to
   );
   // The read model gains the pull a second or two after the "pr opened" webhook
-  // lands, so bridge that window with the number the open action returned.
-  const syncPull = existing?.number ?? open.data?.number ?? null;
+  // lands, so bridge that window with the number the open action returned. But a
+  // just-merged pull lingers the same way — `open.data` still holds its number
+  // and the read model still lists it as open for ~1s — so a clean merge would
+  // leave the buttons up. Drop the merged number from both sources; once the
+  // read model catches up `existing` clears on its own and the control is gone.
+  const mergedNumber = merge.isSuccess ? (merge.variables ?? null) : null;
+  const openNumber = open.data?.number ?? null;
+  const existingNumber =
+    existing && existing.number !== mergedNumber ? existing.number : null;
+  const pendingOpenNumber = openNumber === mergedNumber ? null : openNumber;
+  const syncPull = existingNumber ?? pendingOpenNumber;
 
   if (syncPull !== null) {
     return (
-      <div className="mt-1 flex flex-col gap-1">
+      <div className="mt-1 flex items-center gap-1">
         <button
-          className="flex h-7 w-full items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-2 text-[11px] text-primary transition-colors hover:bg-primary/10"
+          className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-2 text-[11px] text-primary transition-colors hover:bg-primary/10"
           onClick={() => onOpenNumber(syncPull)}
           type="button"
         >
@@ -58,7 +67,6 @@ export function RailBackflow({
           </span>
         </button>
         <SignalTip
-          className="block"
           label={
             canAct
               ? `Merge the sync of ${from} into ${to}`
@@ -66,18 +74,18 @@ export function RailBackflow({
           }
         >
           <button
-            className="input-bevel-shadow flex h-7 w-full items-center gap-1.5 rounded-md border border-border bg-background px-2 text-[11px] transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+            aria-label={`Merge #${syncPull}`}
+            className="input-bevel-shadow flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
             disabled={!canAct || merge.isPending}
             onClick={() => merge.mutate(syncPull)}
             type="button"
           >
             <GitMergeIcon
-              className="size-3.5 shrink-0 text-muted-foreground"
+              className={
+                merge.isPending ? "size-3.5 animate-pulse" : "size-3.5"
+              }
               weight="bold"
             />
-            <span className="min-w-0 flex-1 truncate text-left text-foreground">
-              {merge.isPending ? "merging…" : `merge #${syncPull}`}
-            </span>
           </button>
         </SignalTip>
       </div>
