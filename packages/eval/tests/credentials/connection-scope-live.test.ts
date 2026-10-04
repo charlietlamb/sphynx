@@ -88,21 +88,17 @@ describe.skipIf(skipWithoutDatabase())(
       const outcome = await run(
         Effect.gen(function* () {
           const repository = yield* CredentialConnectionRepository;
-          const created = yield* repository.insert(
-            actorOf(owner),
-            {
-              authMethodId: "auth-json",
-              id: `credentialConnection_scope_${suffix}`,
-              integrationId: "opencode",
-              name: "Owned",
-              organizationId: owner,
-              ownerUserId: userId,
-              scope: "organization",
-              sealedPayload: "sealed",
-              status: "active",
-            },
-            true
-          );
+          const created = yield* repository.insert(actorOf(owner), {
+            authMethodId: "auth-json",
+            id: `credentialConnection_scope_${suffix}`,
+            integrationId: "opencode",
+            name: "Owned",
+            organizationId: owner,
+            ownerUserId: userId,
+            scope: "organization",
+            sealedPayload: "sealed",
+            status: "active",
+          });
           const asIntruder = actorOf(intruder);
 
           return {
@@ -126,21 +122,17 @@ describe.skipIf(skipWithoutDatabase())(
       const outcome = await run(
         Effect.gen(function* () {
           const repository = yield* CredentialConnectionRepository;
-          const created = yield* repository.insert(
-            actorOf(owner),
-            {
-              authMethodId: "api-key",
-              id: `credentialConnection_touch_${suffix}`,
-              integrationId: "e2b",
-              name: "Owned",
-              organizationId: owner,
-              ownerUserId: userId,
-              scope: "organization",
-              sealedPayload: "sealed",
-              status: "active",
-            },
-            true
-          );
+          const created = yield* repository.insert(actorOf(owner), {
+            authMethodId: "api-key",
+            id: `credentialConnection_touch_${suffix}`,
+            integrationId: "e2b",
+            name: "Owned",
+            organizationId: owner,
+            ownerUserId: userId,
+            scope: "organization",
+            sealedPayload: "sealed",
+            status: "active",
+          });
 
           yield* repository.touch(intruder, created.id, new Date());
 

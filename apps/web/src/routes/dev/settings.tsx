@@ -89,6 +89,7 @@ function SettingsPreview() {
               loading={false}
               onDisconnect={() => undefined}
               onEdit={() => undefined}
+              onReconnect={() => undefined}
               onRemove={() => undefined}
               rows={ENVIRONMENT}
             />

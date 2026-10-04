@@ -1,9 +1,10 @@
+import type { EnvEntry } from "@sphynx/schema/domain/env-file";
 import {
   RESERVED_VARIABLE_PREFIX,
+  VARIABLE_LIMITS,
   VariableName,
 } from "@sphynx/schema/domain/environment";
 import { Schema } from "effect";
-import type { EnvEntry } from "@/lib/settings/env-lines";
 
 export interface DraftRow {
   readonly id: string;
@@ -24,6 +25,9 @@ export interface ExistingVariable {
 }
 
 const isVariableName = Schema.is(VariableName);
+
+export const looksLikeEnv = (text: string) =>
+  text.includes("\n") || text.includes("=");
 
 export const draftRow = (entry: Partial<EnvEntry> = {}): DraftRow => ({
   id: crypto.randomUUID(),
@@ -67,6 +71,15 @@ export const rowProblem = (
   scope: string
 ): RowProblem | null => {
   const name = rows[index]?.name.trim() ?? "";
+  const value = rows[index]?.value ?? "";
+
+  if (value.length > VARIABLE_LIMITS.valueChars) {
+    return {
+      field: "value",
+      message: `Values hold at most ${VARIABLE_LIMITS.valueChars.toLocaleString("en-US")} characters`,
+      tone: "error",
+    };
+  }
 
   if (name === "") {
     return null;
@@ -103,3 +116,11 @@ export const completeRows = (rows: readonly DraftRow[]) =>
   rows
     .map((row) => ({ name: row.name.trim(), value: row.value }))
     .filter((row) => row.name !== "" && row.value !== "");
+
+export const tooMany = (complete: readonly unknown[]) => {
+  const over = complete.length - VARIABLE_LIMITS.perRequest;
+
+  return over > 0
+    ? `Add up to ${VARIABLE_LIMITS.perRequest} at a time. Remove ${over} to continue.`
+    : null;
+};

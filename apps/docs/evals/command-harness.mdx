@@ -88,11 +88,11 @@ Print one JSON object per line on stdout. Lines with a known `_tag` are recorded
 | `FileChange` | Absolute paths written |
 | `ToolCall` | A tool call by name. `callId` and `status` are required but may be `null` |
 | `Usage` | Tokens for one turn, added to the trial's total. `cacheReadTokens` and `cacheWriteTokens` default to 0, `totalTokens` to input plus output |
-| `Finished` | Ends the journal with a reason |
+| `Finished` | Ends the journal with a reason. A reason that starts with `failed:` ends the trial unscored, with the rest of the reason as why |
 
 ## Exit
 
-A non-zero exit does not fail the trial or discard earlier events. If the process never prints `Finished`, Sphynx records one with the reason `exit N`. The trial is scored either way.
+A non-zero exit does not fail the trial or discard earlier events. If the process never prints `Finished`, Sphynx records one with the reason `exit N`, and the trial is scored. A `Finished` reason that starts with `failed:` is the one exception. The trial is not scored, and the CLI and the trial page show the reason, so a refused model or a missing key reads as what it is.
 
 The process shares the case's [time limit](/evals/cases#limits) with every other turn of the trial, 15 minutes by default. If it is still running when the limit runs out, it is stopped and the trial ends as timed out.
 

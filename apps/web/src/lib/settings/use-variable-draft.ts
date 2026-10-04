@@ -1,5 +1,5 @@
+import type { EnvFile } from "@sphynx/schema/domain/env-file";
 import { useState } from "react";
-import type { EnvEntry } from "@/lib/settings/env-lines";
 import {
   type DraftRow,
   draftRow,
@@ -8,39 +8,55 @@ import {
 } from "@/lib/settings/variable-draft";
 
 interface Pasted {
-  readonly before: readonly DraftRow[];
+  readonly before: readonly DraftRow[] | null;
   readonly count: number;
+  readonly skipped: readonly string[];
 }
 
 export function useVariableDraft() {
   const [rows, setRows] = useState<readonly DraftRow[]>(() => [draftRow()]);
   const [pasted, setPasted] = useState<Pasted | null>(null);
 
-  const update = (id: string, patch: Partial<Omit<DraftRow, "id">>) =>
+  const settle = () =>
+    setPasted((current) =>
+      current === null ? null : { ...current, before: null }
+    );
+
+  const update = (id: string, patch: Partial<Omit<DraftRow, "id">>) => {
+    settle();
     setRows((current) =>
       withTrailingRow(
         current.map((row) => (row.id === id ? { ...row, ...patch } : row))
       )
     );
+  };
 
-  const remove = (id: string) =>
+  const remove = (id: string) => {
+    settle();
     setRows((current) =>
       withTrailingRow(current.filter((row) => row.id !== id))
     );
+  };
 
-  const paste = (id: string, entries: readonly EnvEntry[]) => {
-    setPasted({ before: rows, count: entries.length });
-    setRows(
-      pasteInto(
-        rows,
-        rows.findIndex((row) => row.id === id),
-        entries
-      )
-    );
+  const paste = (id: string, file: EnvFile) => {
+    setPasted({
+      before: file.entries.length > 0 ? rows : null,
+      count: file.entries.length,
+      skipped: file.empty,
+    });
+    if (file.entries.length > 0) {
+      setRows(
+        pasteInto(
+          rows,
+          rows.findIndex((row) => row.id === id),
+          file.entries
+        )
+      );
+    }
   };
 
   const undo = () => {
-    if (pasted !== null) {
+    if (pasted?.before) {
       setRows(pasted.before);
       setPasted(null);
     }

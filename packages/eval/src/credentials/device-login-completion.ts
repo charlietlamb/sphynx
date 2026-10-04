@@ -26,7 +26,7 @@ export const completeDeviceLogin = (
     ),
     Effect.flatMap((subscription) =>
       sealAttemptState(cipher, actor.organizationId, attemptId, {
-        connectionId: subscription.id,
+        subscriptionId: subscription.id,
       }).pipe(
         Effect.flatMap((state) =>
           attempts.finish(attemptId, {

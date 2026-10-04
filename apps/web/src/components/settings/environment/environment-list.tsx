@@ -18,6 +18,7 @@ export function EnvironmentList({
   loading,
   onDisconnect,
   onEdit,
+  onReconnect,
   onRemove,
   rows,
 }: {
@@ -25,6 +26,7 @@ export function EnvironmentList({
   readonly loading: boolean;
   readonly onDisconnect: (subscription: Subscription) => void;
   readonly onEdit: (variable: EnvironmentVariable) => void;
+  readonly onReconnect: (subscription: Subscription) => void;
   readonly onRemove: (variable: EnvironmentVariable) => void;
   readonly rows: readonly EnvironmentRow[];
 }) {
@@ -49,6 +51,7 @@ export function EnvironmentList({
                 <SubscriptionRow
                   key={row.subscription.id}
                   onDisconnect={() => onDisconnect(row.subscription)}
+                  onReconnect={() => onReconnect(row.subscription)}
                   subscription={row.subscription}
                 />
               ) : (

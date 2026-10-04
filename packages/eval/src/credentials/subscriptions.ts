@@ -76,30 +76,26 @@ export const SubscriptionsLive = Layer.effect(
         }
         yield* parsesAsJson(input.authJson);
         const id = yield* ids.generate("credentialConnection");
-        const inserted = yield* repository.insert(
-          actor,
-          {
-            authMethodId: input.authMethodId,
-            createdBy: actor.isUser ? actor.id : null,
-            id,
-            integrationId: input.integrationId,
-            name: id,
-            organizationId: actor.organizationId,
-            ownerUserId: input.scope === "personal" ? actor.id : null,
-            scope: input.scope,
-            sealedPayload: yield* sealValues(
-              cipher,
-              { authJson: input.authJson.trim() },
-              {
-                id,
-                integrationId: input.integrationId,
-                organizationId: actor.organizationId,
-              }
-            ),
-            status: "active",
-          },
-          true
-        );
+        const inserted = yield* repository.insert(actor, {
+          authMethodId: input.authMethodId,
+          createdBy: actor.isUser ? actor.id : null,
+          id,
+          integrationId: input.integrationId,
+          name: id,
+          organizationId: actor.organizationId,
+          ownerUserId: input.scope === "personal" ? actor.id : null,
+          scope: input.scope,
+          sealedPayload: yield* sealValues(
+            cipher,
+            { authJson: input.authJson.trim() },
+            {
+              id,
+              integrationId: input.integrationId,
+              organizationId: actor.organizationId,
+            }
+          ),
+          status: "active",
+        });
         return yield* Option.match(subscriptionOf(inserted), {
           onNone: () =>
             Effect.fail(

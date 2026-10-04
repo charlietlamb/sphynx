@@ -16,7 +16,10 @@ export const Route = createFileRoute("/_authed/settings/environment")({
 function EnvironmentPage() {
   const variables = useQuery(environmentQueries.variables());
   const subscriptions = useQuery(environmentQueries.subscriptions());
-  const actions = useEnvironmentActions(variables.data ?? []);
+  const actions = useEnvironmentActions(
+    variables.data ?? [],
+    subscriptions.data ?? []
+  );
 
   return (
     <>
@@ -44,6 +47,7 @@ function EnvironmentPage() {
         loading={variables.isLoading || subscriptions.isLoading}
         onDisconnect={actions.onDisconnect}
         onEdit={actions.onEdit}
+        onReconnect={actions.onReconnect}
         onRemove={actions.onRemove}
         rows={environmentRows(subscriptions.data ?? [], variables.data ?? [])}
       />

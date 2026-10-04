@@ -8,7 +8,8 @@ import { PLANS } from "@/lib/settings/subscription-plans";
 import { useEnvironmentMutation } from "@/lib/settings/use-environment-mutation";
 
 export const useEnvironmentActions = (
-  variables: readonly EnvironmentVariable[]
+  variables: readonly EnvironmentVariable[],
+  subscriptions: readonly Subscription[]
 ) => {
   const { open } = useDialog();
   const removeVariable = useEnvironmentMutation({
@@ -24,12 +25,15 @@ export const useEnvironmentActions = (
 
   const onAddSubscription = () => open("addSubscription", {});
 
+  const onReconnect = (subscription: Subscription) =>
+    open("addSubscription", { replacing: subscription });
+
   const onEdit = (variable: EnvironmentVariable) =>
     open("editVariable", { variable });
 
   const onRemove = (variable: EnvironmentVariable) =>
     open("confirm", {
-      ...removeVariableCopy(variable, variables),
+      ...removeVariableCopy(variable, variables, subscriptions),
       onConfirm: () =>
         removeVariable.mutateAsync(variable.id).then(
           () => {
@@ -45,7 +49,7 @@ export const useEnvironmentActions = (
     open("confirm", {
       confirmLabel: "Disconnect",
       description:
-        "Agents stop running on this plan. Runs already going finish first.",
+        "Agents stop running on this plan. Runs already in progress finish first.",
       destructive: true,
       onConfirm: () =>
         removeSubscription.mutateAsync(subscription.id).then(
@@ -58,5 +62,12 @@ export const useEnvironmentActions = (
     });
   };
 
-  return { onAddSubscription, onAddVariables, onDisconnect, onEdit, onRemove };
+  return {
+    onAddSubscription,
+    onAddVariables,
+    onDisconnect,
+    onEdit,
+    onReconnect,
+    onRemove,
+  };
 };

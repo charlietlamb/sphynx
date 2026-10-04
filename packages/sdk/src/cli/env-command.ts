@@ -1,11 +1,11 @@
 import { Args, Command, Options, Prompt } from "@effect/cli";
 import { FileSystem } from "@effect/platform";
+import { parseEnvFile } from "@sphynx/schema/domain/env-file";
 import { secretByDefault } from "@sphynx/schema/domain/environment";
 import { knownVariable } from "@sphynx/schema/domain/known-variables";
 import { SphynxApi } from "@sphynx/schema/public/client";
 import { Effect, Option, Redacted } from "effect";
-import { parseEnvFile } from "./env-file";
-import { attended, json, note, row } from "./render";
+import { json, note, row, stdinIsTerminal } from "./render";
 
 const asJson = Options.boolean("json").pipe(
   Options.withDescription("Print the result as JSON")
@@ -45,7 +45,7 @@ const readStdin = Effect.promise(async () => {
 
 const readValue = (label: string) =>
   Effect.gen(function* () {
-    if (yield* attended) {
+    if (yield* stdinIsTerminal) {
       return Redacted.value(yield* Prompt.password({ message: label }));
     }
     return (yield* readStdin).replace(TRAILING_NEWLINE, "");
@@ -113,7 +113,10 @@ const importFile = Command.make(
         onNone: () => readStdin,
         onSome: (found) => fs.readFileString(found),
       });
-      const entries = parseEnvFile(text);
+      const { empty, entries } = parseEnvFile(text);
+      if (empty.length > 0) {
+        yield* note(`Skipped ${empty.join(", ")}, which had no value.`);
+      }
       if (entries.length === 0) {
         return yield* note("No KEY=value lines found.");
       }

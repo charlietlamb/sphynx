@@ -2210,6 +2210,7 @@
         "required": [
           "createdAt",
           "id",
+          "isDefault",
           "lastUsedAt",
           "plan",
           "renews",
@@ -2222,6 +2223,9 @@
           },
           "id": {
             "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
           },
           "lastUsedAt": {
             "anyOf": [
@@ -2320,7 +2324,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "A variable runs read. Secret values are never returned."
+        "description": "A variable as list and read return it. Secret values are never returned."
       },
       "Int": {
         "type": "integer",
@@ -3508,7 +3512,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "Configuration layered on a harness: files written under the sandbox home and workspace, a system prompt, environment, an install command run before the harness, and for the command harness the run command."
+        "description": "Configuration layered on a harness: files written under the sandbox home and workspace, a system prompt, environment, the names of Settings > Environment variables to pass in, an install command run before the harness, and for the command harness the run command."
       },
       "EnvName": {
         "type": "string",

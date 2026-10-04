@@ -71,7 +71,8 @@ export const commandSession = (request: RunHarness, command: string) =>
         { exit: "report", timeout: request.timeout }
       ).pipe(
         Stream.mapConcatEffect(journalled),
-        Stream.concat(traceFold(request, reported))
+        Stream.concat(traceFold(request, reported)),
+        Stream.concat(Stream.drain(Stream.fromEffect(session.settled)))
       ),
       harness: request.harness,
       usage: session.usage,

@@ -8,6 +8,7 @@ import { tryStore } from "../repositories/query";
 import {
   insertClaimingDefault,
   type NewConnection,
+  removeHandingOnDefault,
 } from "./connection-default";
 import {
   selectActive,
@@ -16,7 +17,6 @@ import {
   selectVisible,
 } from "./connection-lookup";
 import type { ConnectionRow } from "./connection-row";
-import { visibleTo } from "./connection-scope";
 import {
   type CredentialError,
   connectionNotFound,
@@ -39,8 +39,7 @@ export interface CredentialConnectionRepositoryShape {
   ) => Effect.Effect<ConnectionRow, CredentialError>;
   readonly insert: (
     actor: Actor,
-    row: NewConnection,
-    wantsDefault: boolean
+    row: NewConnection
   ) => Effect.Effect<ConnectionRow, CredentialError>;
   readonly list: (
     actor: Actor
@@ -93,25 +92,17 @@ export const CredentialConnectionRepositoryLive = Layer.effect(
         stored("findBound", () =>
           selectBound(db, organizationId, connectionId)
         ).pipe(Effect.flatMap(firstOrNotFound)),
-      insert: (actor, row, wantsDefault) =>
-        stored("insert", () =>
-          insertClaimingDefault(db, actor, row, wantsDefault)
-        ).pipe(Effect.flatMap(firstOrNotFound)),
+      insert: (actor, row) =>
+        stored("insert", () => insertClaimingDefault(db, actor, row)).pipe(
+          Effect.flatMap(firstOrNotFound)
+        ),
       list: (actor) => stored("list", () => selectAllVisible(db, actor)),
       remove: (actor, id) =>
-        stored("remove", () =>
-          db
-            .delete(credentialConnection)
-            .where(
-              and(
-                visibleTo(actor.organizationId, actor.id),
-                eq(credentialConnection.id, id)
-              )
-            )
-            .returning({ id: credentialConnection.id })
-        ).pipe(
-          Effect.flatMap((rows) =>
-            rows.length === 0 ? Effect.fail(connectionNotFound()) : Effect.void
+        stored("remove", () => removeHandingOnDefault(db, actor, id)).pipe(
+          Effect.flatMap((removed) =>
+            removed === undefined
+              ? Effect.fail(connectionNotFound())
+              : Effect.void
           )
         ),
       reseal: (organizationId, id, sealedPayload, now) =>

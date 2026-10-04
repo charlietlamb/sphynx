@@ -105,12 +105,13 @@ describe("a keyless local run", () => {
           integrationId: "claude",
         })
       ).pipe(Effect.provide(CredentialResolverFromEnv))
-    );
-    if (previous === undefined) {
-      delete process.env.ANTHROPIC_API_KEY;
-    } else {
-      process.env.ANTHROPIC_API_KEY = previous;
-    }
+    ).finally(() => {
+      if (previous === undefined) {
+        delete process.env.ANTHROPIC_API_KEY;
+      } else {
+        process.env.ANTHROPIC_API_KEY = previous;
+      }
+    });
 
     expect(Redacted.value(found)).toMatchObject({
       authMethodId: "api-key",

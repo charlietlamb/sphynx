@@ -2,22 +2,24 @@ import { describe, expect, it } from "bun:test";
 import { usedBy } from "../../../src/lib/settings/variable-uses";
 
 describe("used by", () => {
-  it("lists the harness and the judges a known key runs", () => {
+  it("lists the harness, the judges and the simulated people a known key runs", () => {
     expect(usedBy("ANTHROPIC_API_KEY")).toEqual([
       { id: "claude", kind: "harness", label: "Claude Code" },
       { id: "anthropic", kind: "judge", label: "Judges" },
+      { id: "people", kind: "simulated", label: "Simulated people" },
     ]);
   });
 
-  it("shows a sandbox once even when the key names it twice", () => {
+  it("lists the sandbox a sandbox key runs", () => {
     expect(usedBy("MODAL_TOKEN_ID")).toEqual([
       { id: "modal", kind: "sandbox", label: "Modal" },
     ]);
   });
 
-  it("shows one judges badge for a judge only key", () => {
+  it("lists judges and simulated people for a provider only key", () => {
     expect(usedBy("XAI_API_KEY")).toEqual([
       { id: "xai", kind: "judge", label: "Judges" },
+      { id: "people", kind: "simulated", label: "Simulated people" },
     ]);
   });
 

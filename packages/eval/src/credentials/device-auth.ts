@@ -74,7 +74,7 @@ export const DeviceAuthLive = Layer.effect(
               cipher,
               actor.organizationId,
               attemptId,
-              { connectionId: null }
+              { subscriptionId: null }
             );
 
             yield* attempts.create({
@@ -126,7 +126,7 @@ export const DeviceAuthLive = Layer.effect(
                   ? "expired"
                   : row.status;
               return yield* decodeAttemptStatus({
-                connectionId: state.connectionId,
+                subscriptionId: state.subscriptionId,
                 status,
               });
             })

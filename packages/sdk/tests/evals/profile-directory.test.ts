@@ -101,6 +101,100 @@ describe("reading a profile directory", () => {
     );
   });
 
+  test("skips a folder the profile's .gitignore ignores", async () => {
+    const dir = await copyOfFixture();
+
+    await mkdir(join(dir, "workspace/.eve/cache"), { recursive: true });
+    await writeFile(join(dir, "workspace/.eve/cache/a.json"), "{}");
+    await writeFile(join(dir, ".gitignore"), ".eve/\n");
+
+    const outcome = await compiled(dir);
+
+    expect(
+      outcome._tag === "Right" &&
+        Object.keys(outcome.right.profile?.files ?? {})
+    ).toEqual(["home/.config/opencode/opencode.json", "workspace/AGENTS.md"]);
+  });
+
+  test("skips a folder the suite's .gitignore ignores above the profile", async () => {
+    const dir = await copyOfFixture();
+
+    await mkdir(join(dir, "../.git"), { recursive: true });
+    await mkdir(join(dir, "workspace/.eve/cache"), { recursive: true });
+    await writeFile(join(dir, "workspace/.eve/cache/a.json"), "{}");
+    await writeFile(join(dir, "../.gitignore"), "profile/workspace/.eve/\n");
+
+    const outcome = await compiled(dir);
+
+    expect(
+      outcome._tag === "Right" &&
+        Object.keys(outcome.right.profile?.files ?? {})
+    ).toEqual(["home/.config/opencode/opencode.json", "workspace/AGENTS.md"]);
+  });
+
+  test("still reads a profile that sits inside an ignored folder", async () => {
+    const dir = await copyOfFixture();
+
+    await mkdir(join(dir, "../.git"), { recursive: true });
+    await writeFile(join(dir, "workspace/.env"), "SECRET=1");
+    await writeFile(join(dir, "workspace/NOTES.md"), "kept");
+    await writeFile(join(dir, "../.gitignore"), "profile/\n.env\n*.MD\n");
+
+    const outcome = await compiled(dir);
+
+    expect(
+      outcome._tag === "Right" &&
+        Object.keys(outcome.right.profile?.files ?? {})
+    ).toEqual([
+      "home/.config/opencode/opencode.json",
+      "workspace/AGENTS.md",
+      "workspace/NOTES.md",
+    ]);
+  });
+
+  test("applies a nested .gitignore to its own subtree only", async () => {
+    const dir = await copyOfFixture();
+
+    await mkdir(join(dir, "workspace/pkg"), { recursive: true });
+    await writeFile(
+      join(dir, "workspace/pkg/.gitignore"),
+      "*.log\n!keep.log\n"
+    );
+    await writeFile(join(dir, "workspace/pkg/a.log"), "a");
+    await writeFile(join(dir, "workspace/pkg/keep.log"), "k");
+    await writeFile(join(dir, "workspace/b.log"), "b");
+
+    const outcome = await compiled(dir);
+
+    expect(
+      outcome._tag === "Right" &&
+        Object.keys(outcome.right.profile?.files ?? {})
+    ).toEqual([
+      "home/.config/opencode/opencode.json",
+      "workspace/AGENTS.md",
+      "workspace/b.log",
+      "workspace/pkg/.gitignore",
+      "workspace/pkg/keep.log",
+    ]);
+  });
+
+  test("names the biggest folders when there are too many files", async () => {
+    const dir = await copyOfFixture();
+
+    await mkdir(join(dir, "workspace/cache"), { recursive: true });
+    await Promise.all(
+      Array.from({ length: PROFILE_LIMITS.files }, (_, index) =>
+        writeFile(join(dir, `workspace/cache/${index}.txt`), "x")
+      )
+    );
+
+    const outcome = await compiled(dir);
+
+    expect(outcome._tag === "Left" && outcome.left.message).toBe(
+      `The profile has ${PROFILE_LIMITS.files + 3} files; at most ${PROFILE_LIMITS.files} fit. Biggest folders: workspace/cache (${PROFILE_LIMITS.files}), workspace (2), home/.config (1). Add what you do not need to a .gitignore`
+    );
+  });
+
   test("refuses a file over the per-file limit", async () => {
     const dir = await copyOfFixture();
 

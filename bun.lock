@@ -297,7 +297,7 @@
     },
     "packages/sdk": {
       "name": "sphynx-sh",
-      "version": "0.1.31",
+      "version": "0.1.32",
       "bin": {
         "sphynx": "./dist/bin.mjs",
         "sphynx-eve": "./dist/runner-eve-bin.mjs",
@@ -311,6 +311,7 @@
         "@trigger.dev/sdk": "^4.5.15",
         "effect": "^3.21.2",
         "esbuild": "^0.25.12",
+        "ignore": "^7.0.8",
         "smol-toml": "^1.8.0",
         "yaml": "^2.9.0",
       },

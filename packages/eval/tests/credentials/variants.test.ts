@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import { Effect, Redacted } from "effect";
-import { variablesRef } from "../../src/credentials/credential-ref";
 import { CredentialError } from "../../src/credentials/errors";
 import type {
   CredentialResolverShape,
@@ -12,7 +11,6 @@ import {
   KEYLESS_HARNESSES,
   unkeyed,
 } from "../../src/credentials/variants";
-import { ownerOf } from "../../src/environment/variable-repository";
 import { actorOf } from "../fixtures/eval-stack";
 
 const actor = actorOf("organization", true);
@@ -120,7 +118,7 @@ describe("binding credentials to variants", () => {
     ]);
 
     expect(bound).toEqual({
-      harnessCredentialRef: variablesRef(ownerOf(actor)),
+      harnessCredentialRef: "variables:user_organization",
       harnessCredentialRevision: null,
       sandboxCredentialRef: null,
       sandboxCredentialRevision: null,

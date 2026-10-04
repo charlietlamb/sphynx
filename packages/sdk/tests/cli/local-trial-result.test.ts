@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { PrepareFailed, TrialTimedOut } from "@sphynx/eval/domain/errors";
+import {
+  HarnessUnavailable,
+  PrepareFailed,
+  TrialTimedOut,
+} from "@sphynx/eval/domain/errors";
 import { asEntries } from "@sphynx/eval/domain/journal-entries";
 import { Cause } from "effect";
 import {
@@ -23,6 +27,22 @@ const setupBroke = brokenBy(
   ),
   300,
   []
+);
+const agentFailed = brokenBy(
+  Cause.fail(
+    new HarnessUnavailable({
+      harness: "command",
+      reason: "The agent failed: Free tier users do not have access",
+    })
+  ),
+  900,
+  [
+    {
+      _tag: "Finished",
+      at: 5,
+      reason: "failed: Free tier users do not have access",
+    },
+  ]
 );
 const trial = { name: "retries", ordinal: 2, variant: "codex/luna" };
 
@@ -61,6 +81,17 @@ describe("a local trial that could not finish", () => {
         usage: null,
       },
     });
+  });
+});
+
+describe("a local trial whose agent failed", () => {
+  it("is reported with the agent's reason, never as an unexplained void", () => {
+    expect(reportRequest(agentFailed, 1, "run_1").payload).toMatchObject({
+      failure: "The agent failed: Free tier users do not have access",
+    });
+    expect(verdictLines(verdictOf(agentFailed), writerFor(PLAIN)).at(-1)).toBe(
+      "  ○ void · The agent failed: Free tier users do not have access"
+    );
   });
 });
 

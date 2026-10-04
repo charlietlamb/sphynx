@@ -121,7 +121,10 @@ export const CredentialResolverLive = Layer.effect(
       return ref.kind === "connection"
         ? connections
             .findActive(actor, integrationId, ref.connectionId)
-            .pipe(Effect.flatMap(openRow))
+            .pipe(
+              Effect.tap(touch(actor.organizationId)),
+              Effect.flatMap(openRow)
+            )
         : fromVariables(ownerOf(actor), integrationId);
     };
 

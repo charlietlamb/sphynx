@@ -3,11 +3,12 @@ import { Database } from "@sphynx/db/client";
 import { organization } from "@sphynx/db/schema/auth/organizations";
 import { user } from "@sphynx/db/schema/auth/users";
 import { credentialAuthAttempt } from "@sphynx/db/schema/credentials/auth-attempts";
+import { credentialConnection } from "@sphynx/db/schema/credentials/connections";
 import { environmentVariable } from "@sphynx/db/schema/credentials/environment-variables";
 import { skipWithoutDatabase, testDatabase } from "@sphynx/db/test-database";
 import { IdGeneratorLive } from "@sphynx/ids/layer";
 import { Actor, OrganizationId, UserId } from "@sphynx/schema/domain/actor";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   Clock,
   ConfigProvider,
@@ -33,6 +34,10 @@ import {
   EnvironmentVariables,
   EnvironmentVariablesLive,
 } from "../../src/environment/environment-variables";
+import {
+  VariableRepository,
+  VariableRepositoryLive,
+} from "../../src/environment/variable-repository";
 
 const database = testDatabase({
   poolMax: 2,
@@ -53,6 +58,7 @@ const TestLayer = Layer.mergeAll(
     Layer.provide(subscriptions),
     Layer.provide(dependencies)
   ),
+  VariableRepositoryLive.pipe(Layer.provide(dependencies)),
   database
 );
 const suffix = Date.now();
@@ -79,6 +85,7 @@ const run = <A, E>(
     | DeviceAuth
     | EnvironmentVariables
     | Subscriptions
+    | VariableRepository
   >
 ) =>
   Effect.runPromise(
@@ -150,6 +157,7 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
             },
           ],
         });
+        const before = yield* valuesOf("claude", actor);
         const [second] = yield* variables.add(actor, {
           scope: "organization",
           variables: [
@@ -168,7 +176,7 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
             .where(eq(environmentVariable.organizationId, organizationId))
         );
         const resolved = yield* valuesOf("claude", actor);
-        return { first, resolved, row, second };
+        return { before, first, resolved, row, second };
       })
     );
 
@@ -181,9 +189,124 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
       authMethodId: "api-key",
       connectionId: variablesRef({ organizationId, userId }),
       integrationId: "claude",
-      revision: 2,
       values: { apiKey: "sk-ant-second-0002" },
     });
+    expect(result.resolved.revision).not.toBe(result.before.revision);
+  });
+
+  it("counts every replacement when two land at once", async () => {
+    const revision = await run(
+      Effect.gen(function* () {
+        const variables = yield* EnvironmentVariables;
+        const replace = (value: string) =>
+          variables.add(actor, {
+            scope: "organization",
+            variables: [{ name: "RACED_VALUE", secret: true, value }],
+          });
+        yield* replace("first");
+        yield* Effect.all([replace("second"), replace("third")], {
+          concurrency: "unbounded",
+        });
+        const db = yield* Database;
+        const [row] = yield* Effect.promise(() =>
+          db
+            .select({ revision: environmentVariable.revision })
+            .from(environmentVariable)
+            .where(
+              and(
+                eq(environmentVariable.organizationId, organizationId),
+                eq(environmentVariable.name, "RACED_VALUE")
+              )
+            )
+        );
+        return row?.revision;
+      })
+    );
+
+    expect(revision).toBe(3);
+  });
+
+  it("saves nothing from a batch that fails part way", async () => {
+    const result = await run(
+      Effect.gen(function* () {
+        const [kept] = yield* (yield* EnvironmentVariables).add(actor, {
+          scope: "organization",
+          variables: [{ name: "KEPT_WHOLE", secret: true, value: "before" }],
+        });
+        const repository = yield* VariableRepository;
+        const owner = { organizationId, userId };
+        const now = new Date();
+        const fresh = (id: string) => ({
+          createdAt: now,
+          id,
+          name: "FRESH_IN_BATCH",
+          organizationId,
+          preview: "••••••••",
+          scope: "organization",
+          sealedValue: "sealed",
+          secret: true,
+          updatedAt: now,
+        });
+        const failed = yield* Effect.either(
+          repository.save(
+            owner,
+            {
+              inserts: [
+                fresh(`environmentVariable_a_${suffix}`),
+                fresh(`environmentVariable_b_${suffix}`),
+              ],
+              replacements: [
+                {
+                  change: { preview: "changed", sealedValue: "changed" },
+                  id: kept?.id ?? "",
+                },
+              ],
+            },
+            now
+          )
+        );
+        const rows = yield* repository.named(owner, [
+          "KEPT_WHOLE",
+          "FRESH_IN_BATCH",
+        ]);
+        return {
+          failed: failed._tag,
+          rows: rows.map(({ name, preview, revision }) => ({
+            name,
+            preview,
+            revision,
+          })),
+        };
+      })
+    );
+
+    expect(result).toEqual({
+      failed: "Left",
+      rows: [{ name: "KEPT_WHOLE", preview: "••••••••", revision: 1 }],
+    });
+  });
+
+  it("changes a multi variable credential's revision when its lower field changes", async () => {
+    const result = await run(
+      Effect.gen(function* () {
+        const variables = yield* EnvironmentVariables;
+        const set = (name: string, value: string) =>
+          variables.add(actor, {
+            scope: "organization",
+            variables: [{ name, secret: true, value }],
+          });
+        yield* set("MODAL_TOKEN_ID", "id-1");
+        yield* set("MODAL_TOKEN_SECRET", "secret-1");
+        yield* set("MODAL_TOKEN_SECRET", "secret-2");
+        const before = (yield* valuesOf("modal", actor)).revision;
+        yield* set("MODAL_TOKEN_ID", "id-2");
+        const after = (yield* valuesOf("modal", actor)).revision;
+        return { after, before };
+      })
+    );
+
+    expect(result.after).not.toBe(result.before);
+    expect(result.before).toBeGreaterThan(0);
   });
 
   it("keeps a plain value readable", async () => {
@@ -301,12 +424,116 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
     expect(result.refused._tag).toBe("Left");
   });
 
+  it("keeps the first subscription as the default and lets a reconnect take over", async () => {
+    const result = await run(
+      Effect.gen(function* () {
+        const subscriptions = yield* Subscriptions;
+        const db = yield* Database;
+        const first = yield* subscriptions.add(actor, {
+          authJson: '{"first":true}',
+          plan: "pi",
+          scope: "organization",
+        });
+        const second = yield* subscriptions.add(actor, {
+          authJson: '{"second":true}',
+          plan: "pi",
+          scope: "organization",
+        });
+        const byDefault = yield* valuesOf("pi", actor);
+        yield* Effect.promise(() =>
+          db
+            .update(credentialConnection)
+            .set({ status: "invalid" })
+            .where(eq(credentialConnection.id, first.id))
+        );
+        const third = yield* subscriptions.add(actor, {
+          authJson: '{"third":true}',
+          plan: "pi",
+          scope: "organization",
+        });
+        const afterReconnect = yield* valuesOf("pi", actor);
+        return {
+          afterReconnect: afterReconnect.connectionId === third.id,
+          byDefault: byDefault.connectionId === first.id,
+          second: second.id === byDefault.connectionId,
+        };
+      })
+    );
+
+    expect(result).toEqual({
+      afterReconnect: true,
+      byDefault: true,
+      second: false,
+    });
+  });
+
+  it("hands the default on when the default subscription is removed", async () => {
+    const result = await run(
+      Effect.gen(function* () {
+        const subscriptions = yield* Subscriptions;
+        const db = yield* Database;
+        const old = yield* subscriptions.add(actor, {
+          authJson: '{"old":true}',
+          plan: "pi",
+          scope: "personal",
+        });
+        const fresh = yield* subscriptions.add(actor, {
+          authJson: '{"fresh":true}',
+          plan: "pi",
+          scope: "personal",
+        });
+        yield* subscriptions.remove(actor, old.id);
+        const [row] = yield* Effect.promise(() =>
+          db
+            .select({ isDefault: credentialConnection.isDefault })
+            .from(credentialConnection)
+            .where(eq(credentialConnection.id, fresh.id))
+        );
+        return row?.isDefault ?? null;
+      })
+    );
+
+    expect(result).toBe(true);
+  });
+
+  it("stamps a subscription used through an explicit ref", async () => {
+    const lastUsedAt = await run(
+      Effect.gen(function* () {
+        const subscription = yield* (yield* Subscriptions).add(actor, {
+          authJson: '{"explicit":true}',
+          plan: "opencode",
+          scope: "organization",
+        });
+        yield* Effect.flatMap(CredentialResolver, (resolver) =>
+          resolver.resolve({
+            actor,
+            credentialRef: subscription.id,
+            integrationId: "opencode",
+          })
+        );
+        const db = yield* Database;
+        const [row] = yield* Effect.promise(() =>
+          db
+            .select({ lastUsedAt: credentialConnection.lastUsedAt })
+            .from(credentialConnection)
+            .where(eq(credentialConnection.id, subscription.id))
+        );
+        return row?.lastUsedAt ?? null;
+      })
+    );
+
+    expect(lastUsedAt).toBeInstanceOf(Date);
+  });
+
   it("hands a profile only the variables it names, from the bound owner", async () => {
     const result = await run(
       Effect.gen(function* () {
         yield* (yield* EnvironmentVariables).add(actor, {
           scope: "organization",
-          variables: [{ name: "SEARCH_API_KEY", secret: true, value: "exa-1" }],
+          variables: [
+            { name: "SEARCH_API_KEY", secret: true, value: "exa-1" },
+            { name: "APP_BASE_URL", secret: false, value: "staging.acme.dev" },
+          ],
         });
         const resolver = yield* CredentialResolver;
         const found = yield* resolver.variables({
@@ -485,7 +712,7 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
         const id = `credentialAuthAttempt_${suffix}`;
         const now = yield* Clock.currentTimeMillis;
         const sealedState = yield* cipher.seal(
-          Redacted.make(JSON.stringify({ connectionId: null })),
+          Redacted.make(JSON.stringify({ subscriptionId: null })),
           `${organizationId}\0${id}\0codex-device`
         );
         yield* Effect.promise(() =>
@@ -504,6 +731,6 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
       })
     );
 
-    expect(status).toEqual({ connectionId: null, status: "expired" });
+    expect(status).toEqual({ subscriptionId: null, status: "expired" });
   });
 });

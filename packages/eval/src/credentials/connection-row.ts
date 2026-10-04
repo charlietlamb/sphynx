@@ -25,6 +25,7 @@ export const subscriptionOf = (
     Schema.validateSync(Subscription)({
       createdAt: timestamp(row.createdAt),
       id: row.id,
+      isDefault: row.isDefault,
       lastUsedAt: timestamp(row.lastUsedAt),
       plan,
       renews: plan === "chatgpt",

@@ -1,4 +1,5 @@
 import { XIcon } from "@phosphor-icons/react";
+import { type EnvFile, parseEnvFile } from "@sphynx/schema/domain/env-file";
 import { secretByDefault } from "@sphynx/schema/domain/environment";
 import { knownVariable } from "@sphynx/schema/domain/known-variables";
 import { Button } from "@sphynx/ui/components/button";
@@ -8,11 +9,10 @@ import type { ClipboardEvent } from "react";
 import { UsedByBadges } from "@/components/settings/environment/used-by-badges";
 import { VariableKeyInput } from "@/components/settings/environment/variable-key-input";
 import {
-  type EnvEntry,
+  type DraftRow,
   looksLikeEnv,
-  parseEnvLines,
-} from "@/lib/settings/env-lines";
-import type { DraftRow, RowProblem } from "@/lib/settings/variable-draft";
+  type RowProblem,
+} from "@/lib/settings/variable-draft";
 import { usedBy } from "@/lib/settings/variable-uses";
 
 export const DRAFT_GRID =
@@ -29,7 +29,7 @@ export function DraftVariableRow({
   trailing,
 }: {
   readonly onChange: (patch: Partial<Omit<DraftRow, "id">>) => void;
-  readonly onPasteEnv: (entries: readonly EnvEntry[]) => void;
+  readonly onPasteEnv: (file: EnvFile) => void;
   readonly onRemove: () => void;
   readonly problem: RowProblem | null;
   readonly row: DraftRow;
@@ -40,11 +40,15 @@ export function DraftVariableRow({
 
   const pasteEnv = (event: ClipboardEvent<HTMLInputElement>) => {
     const text = event.clipboardData.getData("text");
-    const entries = looksLikeEnv(text) ? parseEnvLines(text) : [];
+    if (!looksLikeEnv(text)) {
+      return;
+    }
 
-    if (entries.length > 0) {
+    const file = parseEnvFile(text);
+
+    if (file.entries.length > 0 || file.empty.length > 0) {
       event.preventDefault();
-      onPasteEnv(entries);
+      onPasteEnv(file);
     }
   };
 

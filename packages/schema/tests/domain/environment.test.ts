@@ -11,8 +11,18 @@ describe("whether a value starts out secret", () => {
     ["MODE", "staging", true],
     ["APP_BASE_URL", "staging.acme.dev", false],
     ["API_BASE", "http://localhost:3005", false],
+    ["DEPLOY_API_TOKEN", "https://cdn.example.com", true],
   ])("%s=%s is secret: %p", (name, value, secret) => {
     expect(secretByDefault(name, value, undefined)).toBe(secret);
+  });
+
+  it("follows the known variable over the name and the value", () => {
+    expect(
+      secretByDefault("QWEN_BASE_URL", "not an address", { secret: false })
+    ).toBe(false);
+    expect(
+      secretByDefault("APP_BASE_URL", "staging.acme.dev", { secret: true })
+    ).toBe(true);
   });
 });
 

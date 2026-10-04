@@ -1,10 +1,10 @@
-import { CodeIcon, ScalesIcon } from "@phosphor-icons/react";
+import { CodeIcon, ScalesIcon, UsersIcon } from "@phosphor-icons/react";
 import {
   harnessPresentation,
   sandboxPresentation,
 } from "@sphynx/ui/components/evals/variant-presentation";
 import { Badge } from "@sphynx/ui/components/ui/badge";
-import type { UsedBy } from "@/lib/settings/variable-uses";
+import { keyOf, type UsedBy } from "@/lib/settings/variable-uses";
 
 const iconOf = (use: UsedBy) => {
   if (use.kind === "code") {
@@ -13,6 +13,10 @@ const iconOf = (use: UsedBy) => {
 
   if (use.kind === "judge") {
     return ScalesIcon;
+  }
+
+  if (use.kind === "simulated") {
+    return UsersIcon;
   }
 
   return use.kind === "harness"
@@ -33,7 +37,7 @@ export function UsedByBadges({ uses }: { readonly uses: readonly UsedBy[] }) {
         const Icon = iconOf(use);
 
         return (
-          <Badge key={use.label} size="sm" variant="secondary">
+          <Badge key={keyOf(use)} size="sm" variant="secondary">
             <Icon aria-hidden="true" />
             <span
               className={use.kind === "code" ? "text-muted-foreground" : ""}

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
-import { PROFILE_LIMITS, ProfilePath } from "../../src/domain/harness-profile";
+import {
+  HarnessProfile,
+  PROFILE_LIMITS,
+  ProfilePath,
+} from "../../src/domain/harness-profile";
 import { SuiteBatchRequest } from "../../src/public/evals-api";
 
 const path = Schema.decodeUnknownSync(ProfilePath);
@@ -122,5 +126,29 @@ describe("a profile's limits", () => {
     expect(() =>
       decode({ ...opencode, profile: { files: {}, name: "Sample Profile" } })
     ).toThrow();
+  });
+});
+
+describe("a profile's env and variables", () => {
+  it("refuses a name set in env and also declared as a variable", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(HarnessProfile)({
+        env: { SEARCH_API_KEY: "literal" },
+        files: {},
+        name: "sample",
+        variables: ["SEARCH_API_KEY"],
+      })
+    ).toThrow("SEARCH_API_KEY is in both env and variables. Keep it in one.");
+  });
+
+  it("takes distinct names in env and variables", () => {
+    const profile = {
+      env: { LOG_LEVEL: "debug" },
+      files: {},
+      name: "sample",
+      variables: ["SEARCH_API_KEY"],
+    };
+
+    expect(Schema.decodeUnknownSync(HarnessProfile)(profile)).toEqual(profile);
   });
 });

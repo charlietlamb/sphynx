@@ -1,7 +1,7 @@
 import { Database } from "@sphynx/db/client";
-import { head } from "@sphynx/db/query";
+import { type Db, head, type Tx } from "@sphynx/db/query";
 import { environmentVariable } from "@sphynx/db/schema/credentials/environment-variables";
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { Context, Effect, Layer } from "effect";
 import { CredentialError, storeUnavailable } from "../credentials/errors";
 import { tryStore } from "../repositories/query";
@@ -21,14 +21,19 @@ interface VariableChange {
   readonly secret?: boolean;
 }
 
+interface VariableBatch {
+  readonly inserts: readonly NewVariableRow[];
+  readonly replacements: readonly {
+    readonly change: VariableChange;
+    readonly id: string;
+  }[];
+}
+
 export interface VariableRepositoryShape {
   readonly find: (
     owner: VariableOwner,
     id: string
   ) => Effect.Effect<VariableRow, CredentialError>;
-  readonly insert: (
-    rows: readonly NewVariableRow[]
-  ) => Effect.Effect<readonly VariableRow[], CredentialError>;
   readonly list: (
     owner: VariableOwner
   ) => Effect.Effect<readonly VariableRow[], CredentialError>;
@@ -40,13 +45,18 @@ export interface VariableRepositoryShape {
     owner: VariableOwner,
     id: string
   ) => Effect.Effect<void, CredentialError>;
+  readonly save: (
+    owner: VariableOwner,
+    batch: VariableBatch,
+    now: Date
+  ) => Effect.Effect<readonly VariableRow[], CredentialError>;
   readonly touch: (
     ids: readonly string[],
     now: Date
   ) => Effect.Effect<void, CredentialError>;
   readonly update: (
     owner: VariableOwner,
-    row: VariableRow,
+    id: string,
     change: VariableChange,
     now: Date
   ) => Effect.Effect<VariableRow, CredentialError>;
@@ -82,6 +92,37 @@ const stored = <A>(method: string, run: () => Promise<A>) =>
 const firstOrNotFound = (rows: readonly VariableRow[]) =>
   Effect.mapError(head(rows), variableNotFound);
 
+const updateRow = (
+  db: Db | Tx,
+  owner: VariableOwner,
+  id: string,
+  change: VariableChange,
+  now: Date
+) =>
+  db
+    .update(environmentVariable)
+    .set({
+      ...(change.sealedValue === undefined
+        ? {}
+        : {
+            preview: change.preview,
+            revision: sql`${environmentVariable.revision} + 1`,
+            sealedValue: change.sealedValue,
+          }),
+      ...(change.secret === undefined
+        ? {}
+        : { preview: change.preview, secret: change.secret }),
+      ...(change.scope === undefined
+        ? {}
+        : {
+            ownerUserId: change.scope === "personal" ? owner.userId : null,
+            scope: change.scope,
+          }),
+      updatedAt: now,
+    })
+    .where(and(visibleTo(owner), eq(environmentVariable.id, id)))
+    .returning();
+
 export const VariableRepositoryLive = Layer.effect(
   VariableRepository,
   Effect.gen(function* () {
@@ -95,15 +136,6 @@ export const VariableRepositoryLive = Layer.effect(
             .from(environmentVariable)
             .where(and(visibleTo(owner), eq(environmentVariable.id, id)))
         ).pipe(Effect.flatMap(firstOrNotFound)),
-      insert: (rows) =>
-        rows.length === 0
-          ? Effect.succeed([])
-          : stored("insert", () =>
-              db
-                .insert(environmentVariable)
-                .values([...rows])
-                .returning()
-            ),
       list: (owner) =>
         stored("list", () =>
           db
@@ -140,6 +172,32 @@ export const VariableRepositoryLive = Layer.effect(
             rows.length === 0 ? Effect.fail(variableNotFound()) : Effect.void
           )
         ),
+      save: (owner, batch, now) =>
+        tryStore("VariableRepository.save", () =>
+          db.transaction(async (tx) => {
+            const replaced: VariableRow[] = [];
+            for (const { change, id } of batch.replacements) {
+              const [row] = await updateRow(tx, owner, id, change, now);
+              if (row === undefined) {
+                throw variableNotFound();
+              }
+              replaced.push(row);
+            }
+            const inserted =
+              batch.inserts.length === 0
+                ? []
+                : await tx
+                    .insert(environmentVariable)
+                    .values([...batch.inserts])
+                    .returning();
+            return [...replaced, ...inserted];
+          })
+        ).pipe(
+          Effect.mapError(({ cause }) =>
+            cause instanceof CredentialError ? cause : storeUnavailable()
+          ),
+          Effect.withSpan("VariableRepository.save")
+        ),
       touch: (ids, now) =>
         ids.length === 0
           ? Effect.void
@@ -149,33 +207,10 @@ export const VariableRepositoryLive = Layer.effect(
                 .set({ lastUsedAt: now })
                 .where(inArray(environmentVariable.id, [...ids]))
             ).pipe(Effect.asVoid),
-      update: (owner, row, change, now) =>
-        stored("update", () =>
-          db
-            .update(environmentVariable)
-            .set({
-              ...(change.sealedValue === undefined
-                ? {}
-                : {
-                    preview: change.preview,
-                    revision: row.revision + 1,
-                    sealedValue: change.sealedValue,
-                  }),
-              ...(change.secret === undefined
-                ? {}
-                : { preview: change.preview, secret: change.secret }),
-              ...(change.scope === undefined
-                ? {}
-                : {
-                    ownerUserId:
-                      change.scope === "personal" ? owner.userId : null,
-                    scope: change.scope,
-                  }),
-              updatedAt: now,
-            })
-            .where(and(visibleTo(owner), eq(environmentVariable.id, row.id)))
-            .returning()
-        ).pipe(Effect.flatMap(firstOrNotFound)),
+      update: (owner, id, change, now) =>
+        stored("update", () => updateRow(db, owner, id, change, now)).pipe(
+          Effect.flatMap(firstOrNotFound)
+        ),
     });
   })
 );

@@ -23,7 +23,11 @@ import { asSphynxError } from "../../src/client/errors";
 import { compileFixture } from "../fixtures/compile-eval";
 import { createBatch, createRun } from "../fixtures/eval-run";
 
-const requestWith = (run: string, timeoutMs: number | null = null) =>
+const requestWith = (
+  run: string,
+  timeoutMs: number | null = null,
+  variables: readonly string[] = []
+) =>
   Schema.decodeUnknownSync(StartBatchRequest)({
     cases: [{ id: "fixture", timeoutMs, verify: "test -f done.txt" }],
     suite: { id: "flaky-network", prompt: "write done.txt" },
@@ -32,7 +36,12 @@ const requestWith = (run: string, timeoutMs: number | null = null) =>
       {
         harness: "command",
         model: "none",
-        profile: { files: {}, name: "writes-done", run },
+        profile: {
+          files: {},
+          name: "writes-done",
+          run,
+          ...(variables.length === 0 ? {} : { variables }),
+        },
       },
     ],
   });
@@ -63,6 +72,8 @@ const PRICED: EvalCosts = {
 const CLOSED =
   "Sphynx closed this run after it stopped hearing from this machine, so it no longer takes results. Run the eval again.";
 
+const UNSET = "Set SEARCH_API_KEY in Settings > Environment";
+
 const GATEWAY_PAGE =
   "<html><body><h1>503 Service Temporarily Unavailable</h1></body></html>";
 
@@ -70,6 +81,7 @@ interface Api {
   readonly calls: Map<string, number>;
   readonly finished: string[];
   readonly journals: number[];
+  readonly leasedNames: string[][];
   readonly reported: {
     readonly failure?: string;
     readonly ordinal: number;
@@ -115,6 +127,7 @@ const fakeApi = (
   const calls = new Map<string, number>();
   const finished: string[] = [];
   const journals: number[] = [];
+  const leasedNames: string[][] = [];
   const reported: { failure?: string; ordinal: number; runId: string }[] = [];
   const started = Promise.withResolvers<void>();
   const startKeys: (string | null)[] = [];
@@ -158,6 +171,12 @@ const fakeApi = (
         startKeys.push(incoming.headers.get("idempotency-key"));
       }
       const failure = failures[path]?.[attempt - 1];
+      if (failure === 404) {
+        return Response.json(
+          { _tag: "NotFound", message: UNSET },
+          { status: 404 }
+        );
+      }
       if (failure === 409) {
         return Response.json(
           { _tag: "Conflict", message: CLOSED },
@@ -208,6 +227,16 @@ const fakeApi = (
           });
           return new Response(null, { status: 204 });
         }
+        case "runner.leaseVariables": {
+          const names = body.names as string[];
+          leasedNames.push(names);
+          return Response.json({
+            expiresAt: "2030-01-01T00:00:00.000Z",
+            values: Object.fromEntries(
+              names.map((name) => [name, `leased-${name}`])
+            ),
+          });
+        }
         case "runner.beat":
           return new Response(null, { status: knowsBeat ? 204 : 404 });
         case "runner.finish":
@@ -224,6 +253,7 @@ const fakeApi = (
     calls,
     finished,
     journals,
+    leasedNames,
     reported,
     started: started.promise,
     startKeys,
@@ -537,5 +567,82 @@ describe("a local trial still too large without its journal", () => {
       reported: [{ ordinal: 1, runId: "run_1" }],
       statuses: ["passed"],
     });
+  }, 60_000);
+});
+
+const withVariable = async <A>(
+  name: string,
+  value: string | undefined,
+  run: () => Promise<A>
+) => {
+  const prior = process.env[name];
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
+  try {
+    return await run();
+  } finally {
+    if (prior === undefined) {
+      delete process.env[name];
+    } else {
+      process.env[name] = prior;
+    }
+  }
+};
+
+describe("a local run whose profile names variables", () => {
+  const names = Array.from(
+    { length: 150 },
+    (_, index) => `LEASED_VARIABLE_${index}`
+  );
+
+  it("leases more names than one request takes, in batches, and hands every one to the agent", async () => {
+    const request = requestWith(
+      'test "$LEASED_VARIABLE_149" = leased-LEASED_VARIABLE_149 && test "$LEASED_VARIABLE_0" = leased-LEASED_VARIABLE_0 && touch done.txt',
+      null,
+      names
+    );
+    const api = fakeApi(request, {});
+
+    const { cases } = await Effect.runPromise(recorded(api, request));
+
+    expect(cases.map((one) => one.status)).toEqual(["passed"]);
+    expect(api.leasedNames.map((chunk) => chunk.length)).toEqual([100, 50]);
+    expect(api.leasedNames.flat()).toEqual(names);
+  }, 60_000);
+
+  it("fails the run with the server's reason when a lease is refused", async () => {
+    const request = requestWith("touch done.txt", null, ["SEARCH_API_KEY"]);
+    const api = fakeApi(request, { "runner.leaseVariables": [404] });
+
+    const exit = await withVariable("SEARCH_API_KEY", undefined, () =>
+      Effect.runPromiseExit(recorded(api, request))
+    );
+
+    expect({
+      failure: Exit.isFailure(exit)
+        ? asSphynxError(Cause.squash(exit.cause)).message
+        : null,
+      finished: api.finished,
+      reported: api.reported,
+    }).toEqual({ failure: UNSET, finished: ["batch_1"], reported: [] });
+  }, 60_000);
+
+  it("takes an empty shell value as set, without leasing it", async () => {
+    const request = requestWith(
+      'test -z "$BLANK_ON_PURPOSE" && touch done.txt',
+      null,
+      ["BLANK_ON_PURPOSE"]
+    );
+    const api = fakeApi(request, {});
+
+    const { cases } = await withVariable("BLANK_ON_PURPOSE", "", () =>
+      Effect.runPromise(recorded(api, request))
+    );
+
+    expect(cases.map((one) => one.status)).toEqual(["passed"]);
+    expect(api.leasedNames).toEqual([]);
   }, 60_000);
 });
