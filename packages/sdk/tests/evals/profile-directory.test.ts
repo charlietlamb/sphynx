@@ -136,14 +136,20 @@ describe("reading a profile directory", () => {
     const dir = await copyOfFixture();
 
     await mkdir(join(dir, "../.git"), { recursive: true });
-    await writeFile(join(dir, "../.gitignore"), "profile/\n");
+    await writeFile(join(dir, "workspace/.env"), "SECRET=1");
+    await writeFile(join(dir, "workspace/NOTES.md"), "kept");
+    await writeFile(join(dir, "../.gitignore"), "profile/\n.env\n*.MD\n");
 
     const outcome = await compiled(dir);
 
     expect(
       outcome._tag === "Right" &&
         Object.keys(outcome.right.profile?.files ?? {})
-    ).toEqual(["home/.config/opencode/opencode.json", "workspace/AGENTS.md"]);
+    ).toEqual([
+      "home/.config/opencode/opencode.json",
+      "workspace/AGENTS.md",
+      "workspace/NOTES.md",
+    ]);
   });
 
   test("applies a nested .gitignore to its own subtree only", async () => {

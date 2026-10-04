@@ -32,7 +32,29 @@ interface IgnoreScope {
   readonly matcher: Ignore;
 }
 
-const readScope = async (current: string): Promise<IgnoreScope[]> => {
+const LINE_BREAK = /\r?\n/;
+
+const posix = (path: string) => path.split(sep).join("/");
+
+const matcherOf = (rules: string | readonly string[]) =>
+  ignore({ ignorecase: false }).add(rules);
+
+const sparing = (rules: string, base: string, profile: string) => {
+  const lines = rules.split(LINE_BREAK);
+
+  if (base === profile) {
+    return lines;
+  }
+
+  const shipped = `${posix(relative(base, profile))}/`;
+
+  return lines.filter((line) => !matcherOf(line).test(shipped).ignored);
+};
+
+const readScope = async (
+  current: string,
+  profile = current
+): Promise<IgnoreScope[]> => {
   const text = await readFile(join(current, ".gitignore"), "utf8").catch(
     (cause: unknown) => {
       if (isMissing(cause)) {
@@ -48,7 +70,7 @@ const readScope = async (current: string): Promise<IgnoreScope[]> => {
     : [
         {
           base: current,
-          matcher: ignore().add(text),
+          matcher: matcherOf(sparing(text, current, profile)),
         },
       ];
 };
@@ -75,15 +97,11 @@ const fromRoot = (root: string, dir: string): string[] =>
 
 const enclosingScopes = async (dir: string) => {
   const root = (await repositoryRoot(dir)) ?? dir;
-  const scopes = await Promise.all(fromRoot(root, dir).map(readScope));
+  const scopes = await Promise.all(
+    fromRoot(root, dir).map((base) => readScope(base, dir))
+  );
 
-  return scopes
-    .flat()
-    .filter(
-      ({ base, matcher }) =>
-        base === dir ||
-        !matcher.test(`${relative(base, dir).split(sep).join("/")}/`).ignored
-    );
+  return scopes.flat();
 };
 
 const isIgnored = (
@@ -92,7 +110,7 @@ const isIgnored = (
   isDirectory: boolean
 ) =>
   scopes.reduce((ignored, { base, matcher }) => {
-    const local = relative(base, path).split(sep).join("/");
+    const local = posix(relative(base, path));
     const verdict = matcher.test(isDirectory ? `${local}/` : local);
 
     if (verdict.ignored) {
