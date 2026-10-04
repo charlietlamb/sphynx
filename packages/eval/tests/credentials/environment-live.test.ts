@@ -485,7 +485,7 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
         const id = `credentialAuthAttempt_${suffix}`;
         const now = yield* Clock.currentTimeMillis;
         const sealedState = yield* cipher.seal(
-          Redacted.make(JSON.stringify({ connectionId: null })),
+          Redacted.make(JSON.stringify({ subscriptionId: null })),
           `${organizationId}\0${id}\0codex-device`
         );
         yield* Effect.promise(() =>
@@ -504,6 +504,6 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
       })
     );
 
-    expect(status).toEqual({ connectionId: null, status: "expired" });
+    expect(status).toEqual({ subscriptionId: null, status: "expired" });
   });
 });

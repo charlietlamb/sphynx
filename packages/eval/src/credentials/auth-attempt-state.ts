@@ -4,7 +4,7 @@ import type { CredentialCipherShape } from "./cipher";
 import { CredentialError } from "./errors";
 
 const AttemptState = Schema.Struct({
-  connectionId: Schema.NullOr(Schema.String),
+  subscriptionId: Schema.NullOr(Schema.String),
 });
 
 type AttemptState = typeof AttemptState.Type;
@@ -46,7 +46,7 @@ export const openAttemptState = (
     );
 
 export const decodeAttemptStatus = (input: {
-  readonly connectionId: string | null;
+  readonly subscriptionId: string | null;
   readonly status: string;
 }) =>
   Schema.decodeUnknown(DeviceAuthStatus)(input).pipe(

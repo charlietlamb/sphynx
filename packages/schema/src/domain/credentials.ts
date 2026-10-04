@@ -65,7 +65,7 @@ export const DeviceAuthChallenge = Schema.Struct({
 export type DeviceAuthChallenge = typeof DeviceAuthChallenge.Type;
 
 export const DeviceAuthStatus = Schema.Struct({
-  connectionId: Schema.NullOr(Schema.String),
+  subscriptionId: Schema.NullOr(Schema.String),
   status: Schema.Literal("pending", "complete", "failed", "expired"),
 });
 export type DeviceAuthStatus = typeof DeviceAuthStatus.Type;
