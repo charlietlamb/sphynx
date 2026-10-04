@@ -33,6 +33,7 @@ export type SubscriptionPlan = typeof SubscriptionPlan.Type;
 export const Subscription = Schema.Struct({
   createdAt: Schema.DateTimeUtc,
   id: Schema.String,
+  isDefault: Schema.Boolean,
   lastUsedAt: Schema.NullOr(Schema.DateTimeUtc),
   plan: SubscriptionPlan,
   renews: Schema.Boolean,

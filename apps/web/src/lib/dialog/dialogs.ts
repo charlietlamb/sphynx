@@ -1,14 +1,13 @@
 import type { ChannelColor } from "@sphynx/schema/domain/channels";
-import type {
-  CredentialScope,
-  SubscriptionPlan,
-} from "@sphynx/schema/domain/credentials";
+import type { Subscription } from "@sphynx/schema/domain/credentials";
 import type { EnvironmentVariable } from "@sphynx/schema/domain/environment";
 import type { ConfirmDialogProps } from "@sphynx/ui/components/dialog/confirm-dialog";
 import { createDialogSystem } from "@sphynx/ui/components/dialog/create-dialog-system";
 
 export interface DialogMap {
-  addSubscription: { plan?: SubscriptionPlan; scope?: CredentialScope };
+  addSubscription: {
+    replacing?: Pick<Subscription, "id" | "plan" | "scope">;
+  };
   addVariables: { existing: readonly EnvironmentVariable[] };
   apiKeyCreated: { apiKey: string; name: string };
   channel: {

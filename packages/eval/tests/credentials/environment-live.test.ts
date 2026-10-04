@@ -157,6 +157,7 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
             },
           ],
         });
+        const before = yield* valuesOf("claude", actor);
         const [second] = yield* variables.add(actor, {
           scope: "organization",
           variables: [
@@ -175,7 +176,7 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
             .where(eq(environmentVariable.organizationId, organizationId))
         );
         const resolved = yield* valuesOf("claude", actor);
-        return { first, resolved, row, second };
+        return { before, first, resolved, row, second };
       })
     );
 
@@ -188,9 +189,9 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
       authMethodId: "api-key",
       connectionId: variablesRef({ organizationId, userId }),
       integrationId: "claude",
-      revision: 2,
       values: { apiKey: "sk-ant-second-0002" },
     });
+    expect(result.resolved.revision).not.toBe(result.before.revision);
   });
 
   it("counts every replacement when two land at once", async () => {
@@ -304,7 +305,8 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
       })
     );
 
-    expect(result).toEqual({ after: 4, before: 3 });
+    expect(result.after).not.toBe(result.before);
+    expect(result.before).toBeGreaterThan(0);
   });
 
   it("keeps a plain value readable", async () => {

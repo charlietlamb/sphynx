@@ -4,6 +4,7 @@ import { removeVariableCopy } from "../../../src/lib/settings/remove-variable-co
 const describedFor = (
   name: string,
   subscriptions: readonly {
+    readonly isDefault: boolean;
     readonly plan: "chatgpt" | "opencode" | "pi";
     readonly status: "active" | "invalid";
   }[] = []
@@ -26,7 +27,9 @@ describe("remove variable copy", () => {
 
   it("keeps Codex on an active ChatGPT plan", () => {
     expect(
-      describedFor("OPENAI_API_KEY", [{ plan: "chatgpt", status: "active" }])
+      describedFor("OPENAI_API_KEY", [
+        { isDefault: true, plan: "chatgpt", status: "active" },
+      ])
     ).toBe(
       "OpenAI judges and simulated people stop running until you add it again. Codex keeps running on your ChatGPT plan. This cannot be undone."
     );
@@ -34,9 +37,28 @@ describe("remove variable copy", () => {
 
   it("does not count on a ChatGPT plan that needs reconnecting", () => {
     expect(
-      describedFor("OPENAI_API_KEY", [{ plan: "chatgpt", status: "invalid" }])
+      describedFor("OPENAI_API_KEY", [
+        { isDefault: true, plan: "chatgpt", status: "invalid" },
+      ])
     ).toBe(
       "Codex, OpenAI judges and simulated people stop running until you add it again. This cannot be undone."
+    );
+  });
+
+  it("does not count on an active ChatGPT plan that is not the default", () => {
+    expect(
+      describedFor("OPENAI_API_KEY", [
+        { isDefault: true, plan: "chatgpt", status: "invalid" },
+        { isDefault: false, plan: "chatgpt", status: "active" },
+      ])
+    ).toBe(
+      "Codex, OpenAI judges and simulated people stop running until you add it again. This cannot be undone."
+    );
+  });
+
+  it("leaves simulated people out of a key they never use", () => {
+    expect(describedFor("TYPESAFE_API_KEY")).toBe(
+      "TypeSafe judges stop running until you add it again. This cannot be undone."
     );
   });
 

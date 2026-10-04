@@ -36,7 +36,8 @@ export const EnvironmentVariable = Schema.Struct({
   secret: Schema.Boolean,
   updatedAt: Schema.DateTimeUtc,
 }).annotations({
-  description: "A variable that runs read. Secret values are never returned.",
+  description:
+    "A variable as list and read return it. Secret values are never returned.",
   identifier: "EnvironmentVariable",
 });
 export type EnvironmentVariable = typeof EnvironmentVariable.Type;

@@ -85,7 +85,7 @@ export const KNOWN_VARIABLES: readonly KnownVariable[] = [
     "Scores with OpenRouter judges",
     judges("openrouter")
   ),
-  key("TYPESAFE_API_KEY", "Scores with TypeSafe judges", judges("typesafe")),
+  key("TYPESAFE_API_KEY", "Scores with TypeSafe judges", [judge("typesafe")]),
   key("DAYTONA_API_KEY", "Runs sandboxes on your Daytona account", [
     sandbox("daytona", "Daytona"),
   ]),

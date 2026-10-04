@@ -1,6 +1,6 @@
 import { CircleNotchIcon } from "@phosphor-icons/react";
 import type {
-  CredentialScope,
+  Subscription,
   SubscriptionPlan,
 } from "@sphynx/schema/domain/credentials";
 import { BaseDialog } from "@sphynx/ui/components/dialog/base-dialog";
@@ -22,19 +22,31 @@ import { useEnvironmentMutation } from "@/lib/settings/use-environment-mutation"
 type Step = "authFile" | "choose" | "connected";
 
 export function AddSubscriptionDialog({
-  plan: reconnecting,
-  scope: initialScope,
+  replacing,
 }: {
-  readonly plan?: SubscriptionPlan;
-  readonly scope?: CredentialScope;
+  readonly replacing?: Pick<Subscription, "id" | "plan" | "scope">;
 }) {
   const { close } = useDialog();
   const open = useDialogOpen("addSubscription");
-  const [plan, setPlan] = useState<SubscriptionPlan>(reconnecting ?? "chatgpt");
-  const [scope, setScope] = useState<string>(initialScope ?? "organization");
+  const [plan, setPlan] = useState<SubscriptionPlan>(
+    replacing?.plan ?? "chatgpt"
+  );
+  const [scope, setScope] = useState<string>(
+    replacing?.scope ?? "organization"
+  );
   const [step, setStep] = useState<Step>("choose");
   const [authJson, setAuthJson] = useState("");
-  const login = useChatGptLogin(() => setStep("connected"));
+  const removeStale = useEnvironmentMutation({
+    failure: "Couldn't remove the signed out subscription",
+    mutationFn: environmentClient.removeSubscription,
+  });
+  const connected = () => {
+    if (replacing !== undefined && removeStale.isIdle) {
+      removeStale.mutate(replacing.id);
+    }
+    setStep("connected");
+  };
+  const login = useChatGptLogin(connected);
   const add = useEnvironmentMutation({
     failure: "Couldn't add the subscription",
     mutationFn: environmentClient.addSubscription,
@@ -50,7 +62,7 @@ export function AddSubscriptionDialog({
     if (plan !== "chatgpt") {
       add.mutate(
         { authJson: authJson.trim(), plan, scope: scopeOf(scope) },
-        { onSuccess: () => setStep("connected") }
+        { onSuccess: connected }
       );
     }
   };
@@ -109,26 +121,30 @@ export function AddSubscriptionDialog({
   return (
     <BaseDialog
       description={
-        reconnecting === undefined
+        replacing === undefined
           ? "Run agents on a plan you already pay for."
           : "Sign in again so agents can keep running on this plan."
       }
       onClose={close}
       open={open}
       title={
-        reconnecting === undefined
+        replacing === undefined
           ? "Add subscription"
-          : `Reconnect ${PLANS[reconnecting].label}`
+          : `Reconnect ${PLANS[replacing.plan].label}`
       }
     >
-      <PlanPicker onChange={setPlan} value={plan} />
-      <LabelledSelect
-        id="subscription-scope"
-        label="Available to"
-        onChange={setScope}
-        options={SCOPE_OPTIONS}
-        value={scope}
-      />
+      {replacing === undefined && (
+        <>
+          <PlanPicker onChange={setPlan} value={plan} />
+          <LabelledSelect
+            id="subscription-scope"
+            label="Available to"
+            onChange={setScope}
+            options={SCOPE_OPTIONS}
+            value={scope}
+          />
+        </>
+      )}
       <ShortcutButton
         disabled={login.starting}
         metaShortcut="enter"

@@ -16,6 +16,7 @@ const SUBSCRIPTIONS: readonly Subscription[] = [
   {
     createdAt: at(20),
     id: "sub_1",
+    isDefault: true,
     lastUsedAt: at(1),
     plan: "chatgpt",
     renews: true,
@@ -25,6 +26,7 @@ const SUBSCRIPTIONS: readonly Subscription[] = [
   {
     createdAt: at(12),
     id: "sub_2",
+    isDefault: true,
     lastUsedAt: at(9),
     plan: "opencode",
     renews: false,

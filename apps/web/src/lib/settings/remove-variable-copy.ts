@@ -20,7 +20,7 @@ const JUDGE_VENDORS: Readonly<Record<string, string>> = {
 
 const FINAL = "This cannot be undone.";
 
-type HeldSubscription = Pick<Subscription, "plan" | "status">;
+type HeldSubscription = Pick<Subscription, "isDefault" | "plan" | "status">;
 
 type Impact = "hosted" | "optional" | "stops";
 
@@ -83,7 +83,8 @@ const planFor = (
         (plan) =>
           PLANS[plan].harness === use.id &&
           subscriptions.some(
-            (held) => held.plan === plan && held.status === "active"
+            (held) =>
+              held.plan === plan && held.isDefault && held.status === "active"
           )
       )
     : undefined;

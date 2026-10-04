@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Clock, Effect, Redacted } from "effect";
 import type { CredentialCipherShape } from "../credentials/cipher";
 import type { CredentialError } from "../credentials/errors";
@@ -52,8 +53,12 @@ export const namedValues = (
 export const valuesOf = (named: ReadonlyMap<string, NamedValue>) =>
   new Map([...named].map(([name, { value }]) => [name, value]));
 
-export const revisionOf = (named: ReadonlyMap<string, NamedValue>) =>
-  Math.max(
-    1,
-    [...named.values()].reduce((total, { row }) => total + row.revision, 0)
-  );
+const LARGEST_REVISION = 0x7f_ff_ff_ff;
+
+export const revisionOf = (named: ReadonlyMap<string, NamedValue>) => {
+  const snapshot = [...named.values()]
+    .map(({ row }) => [row.name, row.id, row.revision] as const)
+    .toSorted(([left], [right]) => left.localeCompare(right));
+  const digest = createHash("sha256").update(JSON.stringify(snapshot)).digest();
+  return (digest.readUInt32BE(0) % LARGEST_REVISION) + 1;
+};

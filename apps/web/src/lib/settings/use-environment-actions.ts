@@ -26,10 +26,7 @@ export const useEnvironmentActions = (
   const onAddSubscription = () => open("addSubscription", {});
 
   const onReconnect = (subscription: Subscription) =>
-    open("addSubscription", {
-      plan: subscription.plan,
-      scope: subscription.scope,
-    });
+    open("addSubscription", { replacing: subscription });
 
   const onEdit = (variable: EnvironmentVariable) =>
     open("editVariable", { variable });

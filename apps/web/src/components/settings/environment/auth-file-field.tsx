@@ -17,7 +17,7 @@ export function AuthFileField({
   return (
     <LabelledField htmlFor={id} label="Auth file">
       <div className="flex items-center gap-2 text-muted-foreground text-xs">
-        <span className="shrink-0">Copy it with</span>
+        <span className="shrink-0">Get it with</span>
         <code className="min-w-0 truncate font-mono text-foreground">
           {command}
         </code>

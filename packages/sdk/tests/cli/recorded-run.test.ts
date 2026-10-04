@@ -570,6 +570,28 @@ describe("a local trial still too large without its journal", () => {
   }, 60_000);
 });
 
+const withVariable = async <A>(
+  name: string,
+  value: string | undefined,
+  run: () => Promise<A>
+) => {
+  const prior = process.env[name];
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
+  try {
+    return await run();
+  } finally {
+    if (prior === undefined) {
+      delete process.env[name];
+    } else {
+      process.env[name] = prior;
+    }
+  }
+};
+
 describe("a local run whose profile names variables", () => {
   const names = Array.from(
     { length: 150 },
@@ -595,7 +617,9 @@ describe("a local run whose profile names variables", () => {
     const request = requestWith("touch done.txt", null, ["SEARCH_API_KEY"]);
     const api = fakeApi(request, { "runner.leaseVariables": [404] });
 
-    const exit = await Effect.runPromiseExit(recorded(api, request));
+    const exit = await withVariable("SEARCH_API_KEY", undefined, () =>
+      Effect.runPromiseExit(recorded(api, request))
+    );
 
     expect({
       failure: Exit.isFailure(exit)
@@ -613,14 +637,12 @@ describe("a local run whose profile names variables", () => {
       ["BLANK_ON_PURPOSE"]
     );
     const api = fakeApi(request, {});
-    process.env.BLANK_ON_PURPOSE = "";
 
-    try {
-      const { cases } = await Effect.runPromise(recorded(api, request));
-      expect(cases.map((one) => one.status)).toEqual(["passed"]);
-    } finally {
-      delete process.env.BLANK_ON_PURPOSE;
-    }
+    const { cases } = await withVariable("BLANK_ON_PURPOSE", "", () =>
+      Effect.runPromise(recorded(api, request))
+    );
+
+    expect(cases.map((one) => one.status)).toEqual(["passed"]);
     expect(api.leasedNames).toEqual([]);
   }, 60_000);
 });

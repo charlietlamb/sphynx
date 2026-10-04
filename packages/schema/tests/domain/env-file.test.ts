@@ -20,9 +20,11 @@ describe("reading a .env file", () => {
   });
 
   it("unwraps quoted values and keeps what is inside them", () => {
-    expect(entriesOf(`A="hello # world"\nB='it''s'\nC="line\\nnext"`)).toEqual([
+    expect(
+      entriesOf(`A="hello # world"\nB='no \\n escape'\nC="line\\nnext"`)
+    ).toEqual([
       { name: "A", value: "hello # world" },
-      { name: "B", value: "it''s" },
+      { name: "B", value: "no \\n escape" },
       { name: "C", value: "line\nnext" },
     ]);
   });
@@ -99,6 +101,30 @@ describe("reading a .env file", () => {
   it("skips lines without a name and value separator", () => {
     expect(entriesOf("just words\n=nothing\nA=1")).toEqual([
       { name: "A", value: "1" },
+    ]);
+  });
+
+  it("skips lines whose name is not a variable name", () => {
+    expect(
+      entriesOf("A # note=1\nMY-VAR=1\n1ST=x\nexport GOOD_1=yes\n_HIDDEN=2")
+    ).toEqual([
+      { name: "GOOD_1", value: "yes" },
+      { name: "_HIDDEN", value: "2" },
+    ]);
+  });
+
+  it("keeps the quoted value and drops text after its closing quote", () => {
+    expect(entriesOf(`A="value" junk\nB='x'y\nC=1`)).toEqual([
+      { name: "A", value: "value" },
+      { name: "B", value: "x" },
+      { name: "C", value: "1" },
+    ]);
+  });
+
+  it("keeps every line of a multi line value followed by junk", () => {
+    expect(entriesOf(`A="abc\ndef" junk\nB=2`)).toEqual([
+      { name: "A", value: "abc\ndef" },
+      { name: "B", value: "2" },
     ]);
   });
 

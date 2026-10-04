@@ -14,7 +14,7 @@ interface Read {
 }
 
 const LINE_BREAK = /\r?\n/;
-const ASSIGNMENT = /^(?:export\s+)?([^\s=#][^=]*?)\s*=\s*(.*)$/;
+const ASSIGNMENT = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/;
 const TRAILING_COMMENT = /(?:^|\s+)#.*$/;
 const WRAPPED = /^(["'])([\s\S]*)\1$/;
 const DOUBLE_ESCAPE = /\\(["\\nrt])/g;
@@ -40,37 +40,30 @@ const closingQuote = (text: string, quote: string) => {
   return -1;
 };
 
-const onlyComment = (rest: string) => {
-  const trimmed = rest.trim();
-  return trimmed === "" || trimmed.startsWith("#");
-};
-
 const quoted = (
   raw: string,
-  following: readonly string[]
+  source: readonly string[],
+  next: number
 ): Read | undefined => {
   const quote = raw[0];
   if (quote !== '"' && quote !== "'") {
     return;
   }
   let text = raw;
-  for (let lines = 1; lines <= following.length + 1; lines++) {
+  for (let lines = 1; ; lines++) {
     const end = closingQuote(text, quote);
     if (end !== -1) {
-      if (!onlyComment(text.slice(end + 1))) {
-        return;
-      }
       const inner = text.slice(1, end);
       return {
         lines,
         value: quote === '"' ? unescapeDouble(inner) : inner,
       };
     }
-    const next = following[lines - 1];
-    if (next === undefined) {
+    const line = source[next + lines - 1];
+    if (line === undefined) {
       return;
     }
-    text = `${text}\n${next}`;
+    text = `${text}\n${line}`;
   }
 };
 
@@ -91,7 +84,7 @@ export const parseEnvFile = (text: string): EnvFile => {
       continue;
     }
     const [, name = "", raw = ""] = match;
-    const read = quoted(raw, lines.slice(index + 1)) ?? unquoted(raw);
+    const read = quoted(raw, lines, index + 1) ?? unquoted(raw);
     values.delete(name);
     values.set(name, read.value);
     index += read.lines;

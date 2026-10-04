@@ -2210,6 +2210,7 @@
         "required": [
           "createdAt",
           "id",
+          "isDefault",
           "lastUsedAt",
           "plan",
           "renews",
@@ -2222,6 +2223,9 @@
           },
           "id": {
             "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
           },
           "lastUsedAt": {
             "anyOf": [
@@ -2320,7 +2324,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "A variable that runs read. Secret values are never returned."
+        "description": "A variable as list and read return it. Secret values are never returned."
       },
       "Int": {
         "type": "integer",
