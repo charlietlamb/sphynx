@@ -2,6 +2,7 @@ import { Chunk, Effect, Option, Redacted, Stream } from "effect";
 import { keepTagged } from "../adapters/keep-tagged";
 import { CredentialResolver } from "../credentials/resolver";
 import { systemActor } from "../credentials/system-actor";
+import { describeError } from "../domain/failure";
 import { readAnswer, sessionIdOf } from "../domain/journal";
 import { Harnesses } from "../ports/harness";
 import { SandboxProvider } from "../ports/sandbox";
@@ -94,7 +95,10 @@ export const makeAgentJudge = Effect.gen(function* () {
       Effect.scoped,
       keepTagged(
         "JudgeFailed",
-        () => new JudgeFailed({ message: "The agent judge could not complete" })
+        (error) =>
+          new JudgeFailed({
+            message: `The agent judge could not complete: ${describeError(error)}`,
+          })
       ),
       Effect.withSpan("AgentJudge.complete")
     );

@@ -51,7 +51,7 @@ describe("credentials lent to a local run", () => {
   it("refuses any integration it holds no lease for", async () => {
     expect(await resolving("opencode")).toEqual(
       Either.left(
-        "this run holds credentials for codex, claude, not one for opencode"
+        "this run holds credentials for codex, claude, not one for opencode."
       )
     );
   });

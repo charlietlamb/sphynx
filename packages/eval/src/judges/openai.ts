@@ -7,6 +7,7 @@ import { Effect, Option, Redacted, Schema } from "effect";
 import { keepTagged } from "../adapters/keep-tagged";
 import { modelAccessFor } from "../credentials/model-key";
 import { CredentialResolver } from "../credentials/resolver";
+import { describeError } from "../domain/failure";
 import { promptInclusiveUsage } from "../domain/prompt-inclusive-usage";
 import { JudgeFailed, type JudgeRequest } from "./model";
 import { judgeEvidence, judgeInstructions, judgmentJsonSchema } from "./prompt";
@@ -118,8 +119,10 @@ export const makeOpenAIJudge = Effect.gen(function* () {
       Effect.scoped,
       keepTagged(
         "JudgeFailed",
-        () =>
-          new JudgeFailed({ message: "The OpenAI judge could not complete" })
+        (error) =>
+          new JudgeFailed({
+            message: `The OpenAI judge could not complete: ${describeError(error)}`,
+          })
       ),
       Effect.withSpan("OpenAIJudge.complete")
     );
