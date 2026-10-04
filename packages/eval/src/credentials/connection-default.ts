@@ -1,5 +1,6 @@
 import type { Db } from "@sphynx/db/query";
 import { credentialConnection } from "@sphynx/db/schema/credentials/connections";
+import { and, eq } from "drizzle-orm";
 import { defaultScope } from "./connection-scope";
 
 interface Owner {
@@ -15,36 +16,27 @@ export type NewConnection = Omit<
 export const insertClaimingDefault = (
   db: Db,
   actor: Owner,
-  row: NewConnection,
-  wantsDefault: boolean
+  row: NewConnection
 ) =>
   db.transaction(async (tx) => {
-    const existing = await tx
-      .select({ id: credentialConnection.id })
+    const scope = defaultScope(
+      actor.organizationId,
+      actor.id,
+      row.integrationId,
+      row.scope
+    );
+    const [held] = await tx
+      .select({ status: credentialConnection.status })
       .from(credentialConnection)
-      .where(
-        defaultScope(
-          actor.organizationId,
-          actor.id,
-          row.integrationId,
-          row.scope
-        )
-      )
+      .where(and(scope, eq(credentialConnection.isDefault, true)))
       .limit(1);
-    const isDefault = wantsDefault || existing.length === 0;
+    const isDefault = held?.status !== "active";
 
-    if (isDefault) {
+    if (isDefault && held !== undefined) {
       await tx
         .update(credentialConnection)
         .set({ isDefault: false })
-        .where(
-          defaultScope(
-            actor.organizationId,
-            actor.id,
-            row.integrationId,
-            row.scope
-          )
-        );
+        .where(and(scope, eq(credentialConnection.isDefault, true)));
     }
     return tx
       .insert(credentialConnection)

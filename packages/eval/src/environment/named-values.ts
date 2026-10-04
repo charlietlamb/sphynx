@@ -53,7 +53,7 @@ export const valuesOf = (named: ReadonlyMap<string, NamedValue>) =>
   new Map([...named].map(([name, { value }]) => [name, value]));
 
 export const revisionOf = (named: ReadonlyMap<string, NamedValue>) =>
-  [...named.values()].reduce(
-    (highest, { row }) => Math.max(highest, row.revision),
-    1
+  Math.max(
+    1,
+    [...named.values()].reduce((total, { row }) => total + row.revision, 0)
   );

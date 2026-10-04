@@ -1,5 +1,8 @@
 import { CircleNotchIcon } from "@phosphor-icons/react";
-import type { SubscriptionPlan } from "@sphynx/schema/domain/credentials";
+import type {
+  CredentialScope,
+  SubscriptionPlan,
+} from "@sphynx/schema/domain/credentials";
 import { BaseDialog } from "@sphynx/ui/components/dialog/base-dialog";
 import { LabelledSelect } from "@sphynx/ui/components/form/labelled-select";
 import { ShortcutButton } from "@sphynx/ui/components/ui/shortcut-button";
@@ -18,11 +21,17 @@ import { useEnvironmentMutation } from "@/lib/settings/use-environment-mutation"
 
 type Step = "authFile" | "choose" | "connected";
 
-export function AddSubscriptionDialog() {
+export function AddSubscriptionDialog({
+  plan: reconnecting,
+  scope: initialScope,
+}: {
+  readonly plan?: SubscriptionPlan;
+  readonly scope?: CredentialScope;
+}) {
   const { close } = useDialog();
   const open = useDialogOpen("addSubscription");
-  const [plan, setPlan] = useState<SubscriptionPlan>("chatgpt");
-  const [scope, setScope] = useState<string>("organization");
+  const [plan, setPlan] = useState<SubscriptionPlan>(reconnecting ?? "chatgpt");
+  const [scope, setScope] = useState<string>(initialScope ?? "organization");
   const [step, setStep] = useState<Step>("choose");
   const [authJson, setAuthJson] = useState("");
   const login = useChatGptLogin(() => setStep("connected"));
@@ -99,10 +108,18 @@ export function AddSubscriptionDialog() {
 
   return (
     <BaseDialog
-      description="Run agents on a plan you already pay for."
+      description={
+        reconnecting === undefined
+          ? "Run agents on a plan you already pay for."
+          : "Sign in again so agents can keep running on this plan."
+      }
       onClose={close}
       open={open}
-      title="Add subscription"
+      title={
+        reconnecting === undefined
+          ? "Add subscription"
+          : `Reconnect ${PLANS[reconnecting].label}`
+      }
     >
       <PlanPicker onChange={setPlan} value={plan} />
       <LabelledSelect

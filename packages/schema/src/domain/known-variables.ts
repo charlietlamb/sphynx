@@ -11,6 +11,7 @@ export type VariableUse =
 export interface KnownVariable {
   readonly description: string;
   readonly name: string;
+  readonly optional: boolean;
   readonly secret: boolean;
   readonly uses: readonly VariableUse[];
 }
@@ -40,14 +41,16 @@ const sandbox = (id: string, label: string): VariableUse => ({
 const key = (
   name: string,
   description: string,
-  uses: readonly VariableUse[]
-): KnownVariable => ({ description, name, secret: true, uses });
+  uses: readonly VariableUse[],
+  optional = false
+): KnownVariable => ({ description, name, optional, secret: true, uses });
 
 const plain = (
   name: string,
   description: string,
-  uses: readonly VariableUse[]
-): KnownVariable => ({ description, name, secret: false, uses });
+  uses: readonly VariableUse[],
+  optional = false
+): KnownVariable => ({ description, name, optional, secret: false, uses });
 
 export const KNOWN_VARIABLES: readonly KnownVariable[] = [
   key("ANTHROPIC_API_KEY", "Runs Claude Code, scores with Anthropic judges", [
@@ -67,9 +70,12 @@ export const KNOWN_VARIABLES: readonly KnownVariable[] = [
   ]),
   key("CURSOR_API_KEY", "Runs Cursor Agent", [harness("cursor", "Cursor")]),
   key("DASHSCOPE_API_KEY", "Runs Qwen Code", [harness("qwen", "Qwen Code")]),
-  plain("QWEN_BASE_URL", "Points Qwen Code at another endpoint", [
-    harness("qwen", "Qwen Code"),
-  ]),
+  plain(
+    "QWEN_BASE_URL",
+    "Points Qwen Code at another endpoint",
+    [harness("qwen", "Qwen Code")],
+    true
+  ),
   key("XAI_API_KEY", "Scores with xAI judges", judges("xai")),
   key("MOONSHOT_API_KEY", "Scores with Moonshot judges", judges("moonshotai")),
   key("DEEPSEEK_API_KEY", "Scores with DeepSeek judges", judges("deepseek")),
@@ -98,15 +104,24 @@ export const KNOWN_VARIABLES: readonly KnownVariable[] = [
   key("CLOUDFLARE_API_TOKEN", "Runs sandboxes on your Cloudflare account", [
     sandbox("cloudflare", "Cloudflare"),
   ]),
-  plain("CLOUDFLARE_ACCOUNT_ID", "The Cloudflare account sandboxes run in", [
-    sandbox("cloudflare", "Cloudflare"),
-  ]),
-  key("CLOUDFLARE_SANDBOX_API_KEY", "Signs requests to your sandbox bridge", [
-    sandbox("cloudflare", "Cloudflare"),
-  ]),
-  plain("CLOUDFLARE_SANDBOX_URL", "Where your sandbox bridge runs", [
-    sandbox("cloudflare", "Cloudflare"),
-  ]),
+  plain(
+    "CLOUDFLARE_ACCOUNT_ID",
+    "The Cloudflare account sandboxes run in",
+    [sandbox("cloudflare", "Cloudflare")],
+    true
+  ),
+  key(
+    "CLOUDFLARE_SANDBOX_API_KEY",
+    "Signs requests to your sandbox bridge",
+    [sandbox("cloudflare", "Cloudflare")],
+    true
+  ),
+  plain(
+    "CLOUDFLARE_SANDBOX_URL",
+    "Where your sandbox bridge runs",
+    [sandbox("cloudflare", "Cloudflare")],
+    true
+  ),
   key("VERCEL_TOKEN", "Runs sandboxes on your Vercel account", [
     sandbox("vercel", "Vercel"),
   ]),

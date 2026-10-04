@@ -4,6 +4,7 @@ import { CredentialScope, Subscription } from "../domain/credentials";
 import {
   EnvironmentVariable,
   NewVariable,
+  VARIABLE_LIMITS,
   VariableName,
 } from "../domain/environment";
 import { BadRequest, Forbidden, NotFound } from "../domain/errors";
@@ -26,7 +27,7 @@ const SetVariablesRequest = Schema.Struct({
   }),
   variables: Schema.Array(NewVariable).pipe(
     Schema.minItems(1),
-    Schema.maxItems(100)
+    Schema.maxItems(VARIABLE_LIMITS.perRequest)
   ),
 }).annotations({
   description:

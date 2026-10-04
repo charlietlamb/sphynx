@@ -74,11 +74,23 @@ export const HarnessProfile = Schema.Struct({
   run: Schema.optional(Schema.String),
   systemPrompt: Schema.optional(Schema.String),
   variables: Schema.optional(Schema.Array(ProfileVariableName)),
-}).annotations({
-  description:
-    "Configuration layered on a harness: files written under the sandbox home and workspace, a system prompt, environment, the names of Settings > Environment variables to pass in, an install command run before the harness, and for the command harness the run command.",
-  identifier: "HarnessProfile",
-});
+})
+  .pipe(
+    Schema.filter((profile) => {
+      const clash = (profile.variables ?? []).find(
+        (name) => profile.env?.[name] !== undefined
+      );
+      return (
+        clash === undefined ||
+        `${clash} is in both env and variables. Keep it in one.`
+      );
+    })
+  )
+  .annotations({
+    description:
+      "Configuration layered on a harness: files written under the sandbox home and workspace, a system prompt, environment, the names of Settings > Environment variables to pass in, an install command run before the harness, and for the command harness the run command.",
+    identifier: "HarnessProfile",
+  });
 export type HarnessProfile = typeof HarnessProfile.Type;
 
 /* Cannot be expressed in JSON Schema, so every tool description repeats it. */

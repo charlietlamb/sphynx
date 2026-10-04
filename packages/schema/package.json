@@ -9,6 +9,7 @@
     "./domain/channels": "./src/domain/channels.ts",
     "./domain/codebase": "./src/domain/codebase.ts",
     "./domain/credentials": "./src/domain/credentials.ts",
+    "./domain/env-file": "./src/domain/env-file.ts",
     "./domain/environment": "./src/domain/environment.ts",
     "./domain/known-variables": "./src/domain/known-variables.ts",
     "./domain/errors": "./src/domain/errors.ts",

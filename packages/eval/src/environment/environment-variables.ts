@@ -78,28 +78,25 @@ export const EnvironmentVariablesLive = Layer.effect(
           input.variables.map(({ name }) => name)
         )).filter((row) => row.scope === input.scope);
 
-        const replaced = yield* Effect.forEach(input.variables, (variable) => {
-          const row = existing.find(({ name }) => name === variable.name);
-          if (row === undefined) {
-            return Effect.succeed(undefined);
-          }
-          return sealVariable(cipher, variable.value, row).pipe(
-            Effect.flatMap((sealedValue) =>
-              repository.update(
-                owner,
-                row,
-                {
+        const replacements = yield* Effect.forEach(
+          input.variables.flatMap((variable) => {
+            const row = existing.find(({ name }) => name === variable.name);
+            return row === undefined ? [] : [{ row, variable }];
+          }),
+          ({ row, variable }) =>
+            sealVariable(cipher, variable.value, row).pipe(
+              Effect.map((sealedValue) => ({
+                change: {
                   preview: previewOf(variable.value, variable.secret),
                   sealedValue,
                   secret: variable.secret,
                 },
-                at
-              )
+                id: row.id,
+              }))
             )
-          );
-        });
+        );
 
-        const fresh = yield* Effect.forEach(
+        const inserts = yield* Effect.forEach(
           input.variables.filter(
             (variable) => !existing.some(({ name }) => name === variable.name)
           ),
@@ -126,12 +123,12 @@ export const EnvironmentVariablesLive = Layer.effect(
               };
             })
         );
-        const inserted = yield* repository.insert(fresh);
-
-        return [
-          ...replaced.flatMap((row) => (row === undefined ? [] : [row])),
-          ...inserted,
-        ].map(summaryOfVariable);
+        const saved = yield* repository.save(
+          owner,
+          { inserts, replacements },
+          at
+        );
+        return saved.map(summaryOfVariable);
       }).pipe(
         Effect.withSpan("EnvironmentVariables.add"),
         Effect.annotateLogs({ organizationId: actor.organizationId })
@@ -190,7 +187,7 @@ export const EnvironmentVariablesLive = Layer.effect(
             : yield* sealVariable(cipher, change.value, row);
         const updated = yield* repository.update(
           owner,
-          row,
+          row.id,
           {
             ...(change.scope === undefined ? {} : { scope: change.scope }),
             ...shown,

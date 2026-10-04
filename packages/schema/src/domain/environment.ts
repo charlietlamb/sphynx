@@ -3,6 +3,16 @@ import { CredentialScope } from "./credentials";
 
 export const RESERVED_VARIABLE_PREFIX = "SPHYNX_";
 
+export const VARIABLE_LIMITS = {
+  perRequest: 100,
+  valueChars: 32_768,
+} as const;
+
+const VariableValue = Schema.String.pipe(
+  Schema.minLength(1),
+  Schema.maxLength(VARIABLE_LIMITS.valueChars)
+);
+
 export const VariableName = Schema.String.pipe(
   Schema.pattern(/^[A-Z_][A-Z0-9_]*$/, {
     message: () => "Use capital letters, digits and underscores",
@@ -34,7 +44,7 @@ export type EnvironmentVariable = typeof EnvironmentVariable.Type;
 export const NewVariable = Schema.Struct({
   name: VariableName,
   secret: Schema.optionalWith(Schema.Boolean, { default: () => true }),
-  value: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(32_768)),
+  value: VariableValue,
 });
 export type NewVariable = typeof NewVariable.Type;
 
@@ -42,7 +52,7 @@ export const AddVariables = Schema.Struct({
   scope: CredentialScope,
   variables: Schema.Array(NewVariable).pipe(
     Schema.minItems(1),
-    Schema.maxItems(100)
+    Schema.maxItems(VARIABLE_LIMITS.perRequest)
   ),
 });
 export type AddVariables = typeof AddVariables.Type;
@@ -50,9 +60,7 @@ export type AddVariables = typeof AddVariables.Type;
 export const UpdateVariable = Schema.Struct({
   scope: Schema.optional(CredentialScope),
   secret: Schema.optional(Schema.Boolean),
-  value: Schema.optional(
-    Schema.String.pipe(Schema.minLength(1), Schema.maxLength(32_768))
-  ),
+  value: Schema.optional(VariableValue),
 });
 export type UpdateVariable = typeof UpdateVariable.Type;
 

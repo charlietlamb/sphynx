@@ -141,6 +141,7 @@ function SkeletonsPreview() {
               loading={false}
               onDisconnect={NOTHING}
               onEdit={NOTHING}
+              onReconnect={NOTHING}
               onRemove={NOTHING}
               rows={ENVIRONMENT}
             />

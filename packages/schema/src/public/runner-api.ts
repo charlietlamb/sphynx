@@ -1,6 +1,6 @@
 import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform";
 import { Schema } from "effect";
-import { VariableName } from "../domain/environment";
+import { VARIABLE_LIMITS, VariableName } from "../domain/environment";
 import { BadRequest, Conflict, Forbidden, NotFound } from "../domain/errors";
 import { BatchSubscription } from "../domain/eval-batch-subscription";
 import { StartBatchRequest } from "../domain/eval-definition";
@@ -42,7 +42,7 @@ export const VariableLeaseRequest = Schema.Struct({
   id: Schema.String,
   names: Schema.Array(VariableName).pipe(
     Schema.minItems(1),
-    Schema.maxItems(100)
+    Schema.maxItems(VARIABLE_LIMITS.perRequest)
   ),
 }).annotations({
   description:

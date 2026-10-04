@@ -2,8 +2,10 @@ import { describe, expect, it } from "bun:test";
 import {
   completeRows,
   type DraftRow,
+  looksLikeEnv,
   pasteInto,
   rowProblem,
+  tooMany,
 } from "../../../src/lib/settings/variable-draft";
 
 const row = (name: string, value = "v"): DraftRow => ({
@@ -58,5 +60,34 @@ describe("variable draft", () => {
     expect(completeRows([row("A"), row("B", ""), row("", "x")])).toEqual([
       { name: "A", value: "v" },
     ]);
+  });
+
+  it("refuses a value longer than the API takes", () => {
+    expect(
+      rowProblem([row("A", "x".repeat(32_769))], 0, [], "organization")
+    ).toEqual({
+      field: "value",
+      message: "Values hold at most 32,768 characters",
+      tone: "error",
+    });
+    expect(
+      rowProblem([row("A", "x".repeat(32_768))], 0, [], "organization")
+    ).toBeNull();
+  });
+
+  it("asks to remove rows past one hundred", () => {
+    const rows = (count: number) =>
+      Array.from({ length: count }, (_, index) => row(`V_${index}`));
+
+    expect(tooMany(rows(100))).toBeNull();
+    expect(tooMany(rows(103))).toBe(
+      "Add up to 100 at a time. Remove 3 to continue."
+    );
+  });
+
+  it("treats multi line text or text with = as an env paste", () => {
+    expect(looksLikeEnv("A=1")).toBe(true);
+    expect(looksLikeEnv("one\ntwo")).toBe(true);
+    expect(looksLikeEnv("ANTHROPIC")).toBe(false);
   });
 });

@@ -18,7 +18,11 @@ import { environmentClient } from "@/lib/environment-client";
 import { SCOPE_OPTIONS, scopeOf } from "@/lib/settings/scopes";
 import { useEnvironmentMutation } from "@/lib/settings/use-environment-mutation";
 import { useVariableDraft } from "@/lib/settings/use-variable-draft";
-import { completeRows, rowProblem } from "@/lib/settings/variable-draft";
+import {
+  completeRows,
+  rowProblem,
+  tooMany,
+} from "@/lib/settings/variable-draft";
 
 interface AddVariablesDialogProps {
   readonly existing: readonly EnvironmentVariable[];
@@ -41,7 +45,9 @@ export function AddVariablesDialog({ existing }: AddVariablesDialogProps) {
     rowProblem(draft.rows, index, existing, scope)
   );
   const complete = completeRows(draft.rows);
-  const blocked = problems.some((problem) => problem?.tone === "error");
+  const overLimit = tooMany(complete);
+  const blocked =
+    overLimit !== null || problems.some((problem) => problem?.tone === "error");
   const disabled = blocked || complete.length === 0 || add.isPending;
 
   const submit = () => {
@@ -76,7 +82,11 @@ export function AddVariablesDialog({ existing }: AddVariablesDialogProps) {
     >
       <div className="flex flex-col gap-2">
         {draft.pasted === null ? null : (
-          <PasteBanner count={draft.pasted.count} onUndo={draft.undo} />
+          <PasteBanner
+            count={draft.pasted.count}
+            onUndo={draft.pasted.before === null ? null : draft.undo}
+            skipped={draft.pasted.skipped}
+          />
         )}
         <div
           aria-hidden="true"
@@ -91,7 +101,7 @@ export function AddVariablesDialog({ existing }: AddVariablesDialogProps) {
             <DraftVariableRow
               key={row.id}
               onChange={(patch) => draft.update(row.id, patch)}
-              onPasteEnv={(entries) => draft.paste(row.id, entries)}
+              onPasteEnv={(file) => draft.paste(row.id, file)}
               onRemove={() => draft.remove(row.id)}
               problem={problems[index] ?? null}
               row={row}
@@ -100,6 +110,11 @@ export function AddVariablesDialog({ existing }: AddVariablesDialogProps) {
           ))}
         </ul>
       </div>
+      {overLimit === null ? null : (
+        <p className="text-destructive text-xs" role="alert">
+          {overLimit}
+        </p>
+      )}
       <div className="flex items-end justify-between gap-3">
         <LabelledSelect
           className="w-60"

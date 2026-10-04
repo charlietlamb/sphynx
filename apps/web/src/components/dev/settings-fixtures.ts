@@ -22,6 +22,15 @@ const SUBSCRIPTIONS: readonly Subscription[] = [
     scope: "organization",
     status: "active",
   },
+  {
+    createdAt: at(12),
+    id: "sub_2",
+    lastUsedAt: at(9),
+    plan: "opencode",
+    renews: false,
+    scope: "personal",
+    status: "invalid",
+  },
 ];
 
 const variable = (

@@ -8,7 +8,8 @@ import { PLANS } from "@/lib/settings/subscription-plans";
 import { useEnvironmentMutation } from "@/lib/settings/use-environment-mutation";
 
 export const useEnvironmentActions = (
-  variables: readonly EnvironmentVariable[]
+  variables: readonly EnvironmentVariable[],
+  subscriptions: readonly Subscription[]
 ) => {
   const { open } = useDialog();
   const removeVariable = useEnvironmentMutation({
@@ -24,12 +25,18 @@ export const useEnvironmentActions = (
 
   const onAddSubscription = () => open("addSubscription", {});
 
+  const onReconnect = (subscription: Subscription) =>
+    open("addSubscription", {
+      plan: subscription.plan,
+      scope: subscription.scope,
+    });
+
   const onEdit = (variable: EnvironmentVariable) =>
     open("editVariable", { variable });
 
   const onRemove = (variable: EnvironmentVariable) =>
     open("confirm", {
-      ...removeVariableCopy(variable, variables),
+      ...removeVariableCopy(variable, variables, subscriptions),
       onConfirm: () =>
         removeVariable.mutateAsync(variable.id).then(
           () => {
@@ -58,5 +65,12 @@ export const useEnvironmentActions = (
     });
   };
 
-  return { onAddSubscription, onAddVariables, onDisconnect, onEdit, onRemove };
+  return {
+    onAddSubscription,
+    onAddVariables,
+    onDisconnect,
+    onEdit,
+    onReconnect,
+    onRemove,
+  };
 };

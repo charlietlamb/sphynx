@@ -8,6 +8,7 @@ import {
   LOCAL_QUIET_AFTER,
 } from "@sphynx/eval/domain/local-heartbeat";
 import { harnessesNeeded } from "@sphynx/eval/domain/suite-harnesses";
+import { VARIABLE_LIMITS } from "@sphynx/schema/domain/environment";
 import type { StartBatchRequest } from "@sphynx/schema/domain/eval-definition";
 import type { EvalHarness } from "@sphynx/schema/domain/eval-trial";
 import type { StartedBatch } from "@sphynx/schema/domain/evals";
@@ -53,9 +54,7 @@ const fromShell = (names: readonly string[]) =>
   Object.fromEntries(
     names.flatMap((name) => {
       const value = process.env[name];
-      return value === undefined || value === ""
-        ? []
-        : [[name, value] as const];
+      return value === undefined ? [] : [[name, value] as const];
     })
   );
 
@@ -79,17 +78,14 @@ const leasesFor = (request: StartBatchRequest, batchId: string) =>
     const names = namedVariables(request);
     const shell = fromShell(names);
     const missing = names.filter((name) => shell[name] === undefined);
-    const variables =
-      missing.length === 0
-        ? {}
-        : yield* retryTransient(
-            api.runner.leaseVariables({
-              payload: { id: batchId, names: missing },
-            })
-          ).pipe(
-            Effect.map((lease) => lease.values),
-            Effect.orElseSucceed(() => ({}))
-          );
+    const leases = yield* Effect.forEach(
+      Arr.chunksOf(missing, VARIABLE_LIMITS.perRequest),
+      (chunk) =>
+        retryTransient(
+          api.runner.leaseVariables({ payload: { id: batchId, names: chunk } })
+        )
+    );
+    const variables = Object.assign({}, ...leases.map((lease) => lease.values));
 
     return {
       credentials: new Map<EvalHarness, LeasedCredential>(
