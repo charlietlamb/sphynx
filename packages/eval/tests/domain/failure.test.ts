@@ -1,7 +1,19 @@
 import { describe, expect, it } from "bun:test";
 import { Cause } from "effect";
 import { SandboxUnavailable } from "../../src/domain/errors";
-import { describeCause } from "../../src/domain/failure";
+import { describeCause, describeError } from "../../src/domain/failure";
+
+describe("describeError", () => {
+  it("keeps the connection error a wrapped failure hides", () => {
+    const refused = new Error("connect ECONNREFUSED 127.0.0.1:443");
+    const fetchFailed = new Error("fetch failed", { cause: refused });
+
+    expect(
+      describeError(new Error("request failed", { cause: fetchFailed }))
+    ).toBe("request failed: connect ECONNREFUSED 127.0.0.1:443");
+    expect(describeError(new Error("plain"))).toBe("plain");
+  });
+});
 
 describe("describeCause", () => {
   /** The case that prompted this: a provider limit stored as a thousand
@@ -70,5 +82,19 @@ describe("describeCause", () => {
     expect(failure).not.toContain("at TCPConnectWrap");
     expect(failure).not.toContain("/Users/");
     expect(failure.length).toBeLessThanOrEqual(241);
+  });
+});
+
+describe("describeError on errors with nothing beneath them", () => {
+  it("keeps what the error itself says", () => {
+    const blank = new Error("cleared below");
+    blank.message = "";
+
+    expect([
+      describeError(blank),
+      describeError(
+        new SandboxUnavailable({ provider: "e2b", reason: "quota reached" })
+      ),
+    ]).toEqual(["Error", "quota reached"]);
   });
 });

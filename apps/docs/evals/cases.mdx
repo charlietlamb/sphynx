@@ -119,6 +119,19 @@ The validator receives `answer`, `transcript`, `turns`, `readText`, `exists`, `e
 
 `answer()` is the agent's last message and `transcript()` is every agent message joined. `turns()` is the whole conversation, turn by turn, with the messages, commands, tool calls and file changes of each. A case without `user` has one turn. See [what a validator reads](/evals/conversations#what-a-validator-reads).
 
+A check takes its name from the function, so `hasHealthRoute` shows as hasHealthRoute in the transcript and the dashboard. A function built by another function has no name and shows as Validator 1. Give it one with `named`:
+
+```ts
+import { named, type Validator } from "sphynx-sh";
+
+const reports =
+  (status: string): Validator =>
+  async ({ answer }) =>
+    (await answer()).includes(status);
+
+validate: [named("reports created", reports("created"))]
+```
+
 Pass an array to combine validators and judges, up to 20 per case: `validate: [hasHealthRoute, correctness]`. A `command()` can't go in an array. Use [model judges](/evals/judges) for checks that need interpretation.
 
 Every code validator runs, even after an earlier one fails, so each one records its own result and pass rate. The trial passes only when all of them pass.

@@ -52,7 +52,8 @@ const run = async (
   const entry = join(workspace, "eval.ts");
   await writeFile(
     entry,
-    `import { suite, empty } from "sphynx-sh";
+    `import { suite, empty, named } from "sphynx-sh";
+const reports = (status) => ({ answer }) => answer().then((text) => text.includes(status));
 export default suite({ id: "fixture", name: "observability", source: empty, prompt: "Answer", trials: 1, captureValidation: ${capture},
 variants: [{ harness: "codex", model: "model", sandbox: "e2b" }], cases: [{ id: "check", name: "check", validate: ${checks} }] });`
   );
@@ -89,6 +90,20 @@ variants: [{ harness: "codex", model: "model", sandbox: "e2b" }], cases: [{ id: 
   ];
   return { validator, frames, latest, stdout, stderr, exitCode };
 };
+
+test("names a curried validator with named()", async () => {
+  const { validator, latest } = await run(
+    `[named("reports fixture", reports("Fixture")), reports("Fixture")]`
+  );
+  expect(validator.manifest).toEqual([
+    { index: 0, name: "reports fixture" },
+    { index: 1, name: "Validator 2" },
+  ]);
+  expect(latest.map((record) => [record.name, record.status])).toEqual([
+    ["reports fixture", "passed"],
+    ["Validator 2", "passed"],
+  ]);
+});
 
 test("captures each named function, context inputs, outputs, and logs", async () => {
   const { validator, latest } = await run(`[

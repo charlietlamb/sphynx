@@ -11,6 +11,7 @@ const authoringExports = [
   "export const suite = (definition) => definition;",
   `export { command } from "./command";`,
   `export { empty, files, repo } from "./source";`,
+  `export { named } from "./named";`,
 ].join("\n");
 
 const authoringDir = dirname(fileURLToPath(import.meta.url));

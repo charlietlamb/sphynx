@@ -79,7 +79,8 @@ export default suite({
 | --- | --- |
 | The session id | `Started`, with the variant's model |
 | `actions.requested` and its `action.result` | One `ToolCall` with the input, output, status and error, matched by call id |
-| The last `message.completed` that is not a tool call | The answer validators and judges read. With an output schema it is the JSON result |
+| `result.completed` | The answer validators and judges read, as JSON. Sent when the agent has an output schema, and it wins over any message text |
+| The last `message.completed` that is not a tool call | The answer when the agent has no output schema |
 | `step.completed` | `Usage` for that model call |
 | `session.waiting` or `session.completed` | `Finished` with `completed` |
 | `turn.failed` or `session.failed` | `Finished` with `failed:` and eve's message |

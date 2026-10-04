@@ -19,6 +19,95 @@ export interface EveServer {
 
 const READY_TIMEOUT_MS = 120_000;
 const HEALTH_POLL_MS = 200;
+const KEPT_LINES = 5;
+const DRAIN_MS = 2000;
+const STOP_GRACE_MS = 5000;
+const LINE_BREAK = /\r?\n/;
+const BANNER = /^\S*eve\s+v\d/;
+
+const shown = (line: string) => line !== "" && !BANNER.test(line);
+
+type Stream = "stderr" | "stdout";
+
+interface Written {
+  open: boolean;
+  readonly stream: Stream;
+  text: string;
+}
+
+const within = (work: Promise<unknown>, ms: number) =>
+  new Promise<boolean>((resolve) => {
+    const timer = setTimeout(() => resolve(false), ms);
+    work.then(() => {
+      clearTimeout(timer);
+      resolve(true);
+    });
+  });
+
+const prune = (written: Written[]) => {
+  let closed = written.filter(
+    (line) => !line.open && shown(line.text.trim())
+  ).length;
+  let index = 0;
+
+  while (index < written.length) {
+    const line = written[index];
+    const kept = shown(line?.text.trim() ?? "");
+
+    if (line?.open === false && (!kept || closed > KEPT_LINES)) {
+      written.splice(index, 1);
+      closed -= kept ? 1 : 0;
+    } else {
+      index += 1;
+    }
+  }
+};
+
+const tailOf = (child: ChildProcess) => {
+  const written: Written[] = [];
+  const keep = (stream: Stream) => (chunk: Buffer) => {
+    const text = chunk.toString();
+    process.stderr.write(text);
+    const [first = "", ...rest] = text.split(LINE_BREAK);
+    const open = written.findLast(
+      (line) => line.stream === stream && line.open
+    );
+
+    if (open === undefined) {
+      written.push({ open: true, stream, text: first });
+    } else {
+      open.text += first;
+    }
+
+    for (const line of rest) {
+      const last = written.findLast((each) => each.stream === stream);
+
+      if (last !== undefined) {
+        last.open = false;
+      }
+
+      written.push({ open: true, stream, text: line });
+    }
+
+    prune(written);
+  };
+
+  child.stdout?.on("data", keep("stdout"));
+  child.stderr?.on("data", keep("stderr"));
+  const drained = new Promise<void>((resolve) => {
+    child.once("close", () => resolve());
+  });
+
+  return async () => {
+    await within(drained, DRAIN_MS);
+
+    return written
+      .map(({ text }) => text.trim())
+      .filter(shown)
+      .slice(-KEPT_LINES)
+      .join(" ");
+  };
+};
 
 const freePort = () =>
   new Promise<number>((resolve, reject) => {
@@ -41,14 +130,6 @@ const exited = (child: ChildProcess) =>
     child.once("exit", () => resolve());
   });
 
-const killGroup = (child: ChildProcess) => {
-  try {
-    process.kill(-(child.pid ?? 0), "SIGTERM");
-  } catch {
-    child.kill("SIGTERM");
-  }
-};
-
 const healthy = async (client: Client) => {
   try {
     await client.health();
@@ -61,13 +142,19 @@ const healthy = async (client: Client) => {
 const awaitHealth = async (
   client: Client,
   child: ChildProcess,
-  timeoutMs: number
+  timeoutMs: number,
+  said: () => Promise<string>
 ) => {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
     if (child.exitCode !== null) {
-      throw new Error(`eve dev exited with code ${child.exitCode}`);
+      const output = await said();
+      throw new Error(
+        output === ""
+          ? `eve dev exited with code ${child.exitCode}`
+          : `eve dev exited with code ${child.exitCode}: ${output}`
+      );
     }
 
     if (await healthy(client)) {
@@ -99,18 +186,23 @@ export const serveEve = async ({
     ["dev", "--no-ui", "--logs", "none", "--port", String(listen)],
     {
       cwd,
-      detached: true,
       env: { ...process.env, EVE_TELEMETRY_DISABLED: "1", ...env },
-      stdio: ["ignore", process.stderr, process.stderr],
+      stdio: ["ignore", "pipe", "pipe"],
     }
   );
+  const said = tailOf(child);
   const close = async () => {
-    killGroup(child);
-    await exited(child);
+    child.kill("SIGTERM");
+    const stopped = await within(exited(child), STOP_GRACE_MS);
+
+    if (!stopped) {
+      child.kill("SIGKILL");
+      await exited(child);
+    }
   };
 
   try {
-    await awaitHealth(new Client({ host: url }), child, readyTimeoutMs);
+    await awaitHealth(new Client({ host: url }), child, readyTimeoutMs, said);
   } catch (error) {
     await close();
     throw error;

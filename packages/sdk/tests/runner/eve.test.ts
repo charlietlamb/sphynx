@@ -117,6 +117,50 @@ describe("reduceEve on a recorded eve session", () => {
   });
 });
 
+describe("the answer an eve session ends with", () => {
+  const result = {
+    posts: [{ postId: "post_1", title: "SSO sign in" }],
+    status: "created",
+  };
+  const answerOf = (
+    events: readonly { data?: unknown; type: string }[]
+  ): readonly EveEmit[] =>
+    reduceAll(
+      constructed([
+        ...events,
+        { data: { sessionId: "s1" }, type: "session.completed" },
+      ])
+    ).emits;
+  const said = (message: string) => ({
+    data: { ...turn, finishReason: "stop", message, stepIndex: 0 },
+    type: "message.completed",
+  });
+  const structured = {
+    data: { ...turn, result, stepIndex: 0 },
+    type: "result.completed",
+  };
+
+  test.each([
+    ["wrapped in final_output", JSON.stringify({ final_output: result })],
+    ["after a final_output label", `final_output:\n${JSON.stringify(result)}`],
+  ])("is the structured result when the text is %s", (_, text) => {
+    expect(answerOf([said(text), structured])).toEqual([
+      {
+        _tag: "message",
+        text: '{"posts":[{"postId":"post_1","title":"SSO sign in"}],"status":"created"}',
+      },
+      { _tag: "finished", reason: "completed" },
+    ]);
+  });
+
+  test("is the last message when the agent has no output schema", () => {
+    expect(answerOf([said("Posted the changelog.")])).toEqual([
+      { _tag: "message", text: "Posted the changelog." },
+      { _tag: "finished", reason: "completed" },
+    ]);
+  });
+});
+
 describe("reduceEve on constructed events", () => {
   test("constructed failed turn finishes failed and never emits the answer", () => {
     const { emits, state } = reduceAll(

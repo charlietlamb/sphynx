@@ -1,4 +1,4 @@
-import { access, readdir, readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import type { EvalHarness } from "@sphynx/schema/domain/eval-trial";
 import {
@@ -22,7 +22,7 @@ import { readProfileManifest } from "./profile-manifest";
 import type { ProfileRef, VariantInput } from "./types";
 
 const SHIPPED_ROOTS = ["home", "workspace"] as const;
-const SKIPPED_DIRECTORIES = new Set(["node_modules", ".git"]);
+const SKIPPED_DIRECTORIES = new Set([".eve", ".git", "node_modules"]);
 
 const isMissing = (cause: unknown) =>
   cause instanceof Error && "code" in cause && cause.code === "ENOENT";
@@ -32,29 +32,9 @@ interface IgnoreScope {
   readonly matcher: Ignore;
 }
 
-const LINE_BREAK = /\r?\n/;
-
 const posix = (path: string) => path.split(sep).join("/");
 
-const matcherOf = (rules: string | readonly string[]) =>
-  ignore({ ignorecase: false }).add(rules);
-
-const sparing = (rules: string, base: string, profile: string) => {
-  const lines = rules.split(LINE_BREAK);
-
-  if (base === profile) {
-    return lines;
-  }
-
-  const shipped = `${posix(relative(base, profile))}/`;
-
-  return lines.filter((line) => !matcherOf(line).test(shipped).ignored);
-};
-
-const readScope = async (
-  current: string,
-  profile = current
-): Promise<IgnoreScope[]> => {
+const readScope = async (current: string): Promise<IgnoreScope[]> => {
   const text = await readFile(join(current, ".gitignore"), "utf8").catch(
     (cause: unknown) => {
       if (isMissing(cause)) {
@@ -67,41 +47,7 @@ const readScope = async (
 
   return text === undefined
     ? []
-    : [
-        {
-          base: current,
-          matcher: matcherOf(sparing(text, current, profile)),
-        },
-      ];
-};
-
-const repositoryRoot = async (current: string): Promise<string | null> => {
-  if (
-    await access(join(current, ".git")).then(
-      () => true,
-      () => false
-    )
-  ) {
-    return current;
-  }
-
-  const parent = dirname(current);
-
-  return parent === current ? null : repositoryRoot(parent);
-};
-
-const fromRoot = (root: string, dir: string): string[] =>
-  dir === root || dirname(dir) === dir
-    ? [dir]
-    : [...fromRoot(root, dirname(dir)), dir];
-
-const enclosingScopes = async (dir: string) => {
-  const root = (await repositoryRoot(dir)) ?? dir;
-  const scopes = await Promise.all(
-    fromRoot(root, dir).map((base) => readScope(base, dir))
-  );
-
-  return scopes.flat();
+    : [{ base: current, matcher: ignore({ ignorecase: false }).add(text) }];
 };
 
 const isIgnored = (
@@ -164,7 +110,7 @@ const shippedPaths = (dir: string) =>
   Effect.tryPromise({
     catch: (cause) => new ProfileDirectoryUnreadable({ cause, dir }),
     try: async () => {
-      const inherited = await enclosingScopes(dir);
+      const inherited = await readScope(dir);
       const roots = await Promise.all(
         SHIPPED_ROOTS.map((root) => walkRoot(dir, root, inherited))
       );
