@@ -7,6 +7,7 @@ import { pruneLocal } from "./local-prune";
 export interface LocalRoots {
   readonly cache: string;
   readonly installs: string;
+  readonly packages: string;
   readonly staging: string;
 }
 
@@ -26,6 +27,7 @@ export const localRoots: Effect.Effect<LocalRoots> = Effect.gen(function* () {
   const roots = {
     cache: yield* ensure(join(base, "cache")),
     installs: yield* ensure(join(base, "harness")),
+    packages: yield* ensure(join(base, "packages")),
     staging: yield* ensure(join(base, "staging")),
   };
 

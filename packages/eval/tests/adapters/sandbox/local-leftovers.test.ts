@@ -100,13 +100,17 @@ describe("what a local run leaves on disk", () => {
     ]);
   });
 
-  it("clears the old shared home, crashed staging and stale entries, and keeps what is in use", async () => {
+  it("clears the old shared home, crashed staging, stale entries and unused package caches, and keeps what is in use", async () => {
     const base = await freshRoot();
     const installs = join(base, "harness");
     const cache = join(base, "cache");
     const staging = join(base, "staging");
+    const packages = join(base, "packages");
 
     await made(join(base, "home/Library"));
+    await made(join(packages, "npm"));
+    await aged(join(packages, "npm"), 45);
+    await made(join(packages, "bun"));
     await made(join(installs, "codex_40.1.0/.local"));
     await made(join(installs, "codex_40.1.0/.npm"));
     await aged(join(installs, "codex_40.1.0"), 45);
@@ -119,9 +123,17 @@ describe("what a local run leaves on disk", () => {
     await aged(join(staging, "entry-crashed"), 1);
     await made(join(staging, "entry-installing"));
 
-    await Effect.runPromise(pruneLocal(base, { cache, installs, staging }));
+    await Effect.runPromise(
+      pruneLocal(base, { cache, installs, packages, staging })
+    );
 
-    expect(await listed(base)).toEqual(["cache", "harness", "staging"]);
+    expect(await listed(base)).toEqual([
+      "cache",
+      "harness",
+      "packages",
+      "staging",
+    ]);
+    expect(await listed(packages)).toEqual(["bun"]);
     expect(await listed(installs)).toEqual(["codex_40.2.0"]);
     expect(await listed(join(installs, "codex_40.2.0"))).toEqual([".local"]);
     expect(await listed(cache)).toEqual(["fresh-case"]);

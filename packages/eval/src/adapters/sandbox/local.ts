@@ -9,6 +9,7 @@ import { execStream } from "./exec-stream";
 import { localCache } from "./local-cache";
 import { localDetached } from "./local-detached";
 import { localInstalls } from "./local-installs";
+import { markUsed } from "./local-prune";
 import { localRoots } from "./local-roots";
 import {
   DEFAULT_TIMEOUT_MS,
@@ -100,11 +101,20 @@ export const makeLocalAdapter: Effect.Effect<SandboxAdapterShape> = Effect.gen(
           );
 
           const home = join(root, "home");
+          const temp = join(root, "tmp");
+          const packages = {
+            BUN_INSTALL_CACHE_DIR: join(roots.packages, "bun"),
+            npm_config_cache: join(roots.packages, "npm"),
+          };
 
           yield* call(() => mkdir(home));
+          yield* call(() => mkdir(temp));
+          yield* Effect.forEach(Object.values(packages), markUsed, {
+            discard: true,
+          });
           yield* call(() => mkdir(request.workspace, { recursive: true }));
 
-          const base = { HOME: home, PATH: path };
+          const base = { ...packages, HOME: home, PATH: path, TMPDIR: temp };
 
           return {
             cache:

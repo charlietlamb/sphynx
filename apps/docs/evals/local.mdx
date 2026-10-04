@@ -92,7 +92,7 @@ While it runs, the CLI checks in with Sphynx every minute. If the machine goes q
 
 The agent runs as you, in a temporary workspace with its own `HOME`. It is not a container: a case can read and write anything you can. Only run evals you wrote or trust.
 
-Each harness version installs once into `~/.sphynx/local/harness` and is shared by every run after, so the first time you use a harness version locally is slower. Local runs can go side by side: each trial gets its own `HOME`, and a failed install says what went wrong.
+Each harness version installs once into `~/.sphynx/local/harness` and is shared by every run after, so the first time you use a harness version locally is slower. Local runs can go side by side: each trial gets its own `HOME` and temp folder, and a failed install says what went wrong. bun and npm in a profile's `install` share one download cache, so a package fetched once is not fetched again by later trials.
 
 ## Disk space
 
@@ -102,8 +102,9 @@ Local runs keep their files in `~/.sphynx/local`, or wherever `SPHYNX_LOCAL_ROOT
 | --- | --- |
 | `harness` | One install per harness version, a few hundred MB each |
 | `cache` | What a case's `cache` keeps between runs |
+| `packages` | The bun and npm download caches profile installs share |
 | `staging` | Installs and cache entries being written |
 
-Each run tidies up as it starts. It removes installs and cache entries unused for 30 days, staging left by a run that crashed, and the shared `home` folder older CLIs used. Installs no longer keep the npm cache they were built with. Nothing a run is using is touched.
+Each run tidies up as it starts. It removes installs, cache entries and package caches unused for 30 days, staging left by a run that crashed, and the shared `home` folder older CLIs used. Installs no longer keep the npm cache they were built with. Nothing a run is using is touched.
 
 To see how much space local runs take, run `du -sh ~/.sphynx/local/*`. To reclaim all of it, delete `~/.sphynx/local` while no local run is going. The next run installs what it needs again.
