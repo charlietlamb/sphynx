@@ -29,6 +29,8 @@ const copyOfFixture = async () => {
   });
   await mkdir(join(dir, "workspace/.git"), { recursive: true });
   await writeFile(join(dir, "workspace/node_modules/ignored/index.js"), "x");
+  await mkdir(join(dir, "workspace/.eve/cache"), { recursive: true });
+  await writeFile(join(dir, "workspace/.eve/cache/model-catalog.json"), "{}");
   await writeFile(join(dir, "workspace/.git/HEAD"), "ref: refs/heads/main");
 
   return dir;
@@ -116,29 +118,15 @@ describe("reading a profile directory", () => {
     ).toEqual(["home/.config/opencode/opencode.json", "workspace/AGENTS.md"]);
   });
 
-  test("skips a folder the suite's .gitignore ignores above the profile", async () => {
+  test("ships what a .gitignore above the profile ignores", async () => {
     const dir = await copyOfFixture();
 
     await mkdir(join(dir, "../.git"), { recursive: true });
-    await mkdir(join(dir, "workspace/.eve/cache"), { recursive: true });
-    await writeFile(join(dir, "workspace/.eve/cache/a.json"), "{}");
-    await writeFile(join(dir, "../.gitignore"), "profile/workspace/.eve/\n");
-
-    const outcome = await compiled(dir);
-
-    expect(
-      outcome._tag === "Right" &&
-        Object.keys(outcome.right.profile?.files ?? {})
-    ).toEqual(["home/.config/opencode/opencode.json", "workspace/AGENTS.md"]);
-  });
-
-  test("still reads a profile that sits inside an ignored folder", async () => {
-    const dir = await copyOfFixture();
-
-    await mkdir(join(dir, "../.git"), { recursive: true });
-    await writeFile(join(dir, "workspace/.env"), "SECRET=1");
-    await writeFile(join(dir, "workspace/NOTES.md"), "kept");
-    await writeFile(join(dir, "../.gitignore"), "profile/\n.env\n*.MD\n");
+    await writeFile(join(dir, "workspace/output-schema.json"), "{}");
+    await writeFile(
+      join(dir, "../.gitignore"),
+      "profile/\nprofile/workspace/output-schema.json\n"
+    );
 
     const outcome = await compiled(dir);
 
@@ -148,7 +136,7 @@ describe("reading a profile directory", () => {
     ).toEqual([
       "home/.config/opencode/opencode.json",
       "workspace/AGENTS.md",
-      "workspace/NOTES.md",
+      "workspace/output-schema.json",
     ]);
   });
 
