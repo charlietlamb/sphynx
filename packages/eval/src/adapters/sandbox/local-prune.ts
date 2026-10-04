@@ -90,6 +90,7 @@ export const pruneLocal = (base: string, roots: LocalRoots) =>
     yield* retire(join(base, "home"), roots.staging);
     yield* retireUnused(roots.installs, roots.staging, now);
     yield* retireUnused(roots.cache, roots.staging, now);
+    yield* retireUnused(roots.packages, roots.staging, now);
     yield* dropNpmCaches(roots.installs);
     yield* sweepStaging(roots.staging, now);
   }).pipe(Effect.withSpan("LocalSandbox.prune"));
