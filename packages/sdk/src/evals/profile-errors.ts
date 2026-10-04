@@ -35,9 +35,9 @@ export class ProfileTooLarge extends Data.TaggedError("ProfileTooLarge")<{
 
 export class ProfileTooManyFiles extends Data.TaggedError(
   "ProfileTooManyFiles"
-)<{ readonly count: number }> {
+)<{ readonly count: number; readonly largest: readonly string[] }> {
   override get message() {
-    return `The profile has ${this.count} files; at most ${PROFILE_LIMITS.files} fit`;
+    return `The profile has ${this.count} files; at most ${PROFILE_LIMITS.files} fit. Biggest folders: ${this.largest.join(", ")}. Add what you do not need to a .gitignore`;
   }
 }
 

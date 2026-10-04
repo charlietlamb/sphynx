@@ -1,5 +1,5 @@
-import { readdir, readFile } from "node:fs/promises";
-import { dirname, join, resolve, sep } from "node:path";
+import { access, readdir, readFile } from "node:fs/promises";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import type { EvalHarness } from "@sphynx/schema/domain/eval-trial";
 import {
   type HarnessProfile,
@@ -8,6 +8,7 @@ import {
   profileFitsHarness,
 } from "@sphynx/schema/domain/harness-profile";
 import { Effect, Schema } from "effect";
+import ignore, { type Ignore } from "ignore";
 import {
   CommandProfileNeedsRun,
   ProfileDirectoryUnreadable,
@@ -26,23 +27,105 @@ const SKIPPED_DIRECTORIES = new Set(["node_modules", ".git"]);
 const isMissing = (cause: unknown) =>
   cause instanceof Error && "code" in cause && cause.code === "ENOENT";
 
-const walk = async (dir: string, current: string): Promise<string[]> => {
+interface IgnoreScope {
+  readonly base: string;
+  readonly matcher: Ignore;
+}
+
+const readScope = async (current: string): Promise<IgnoreScope[]> => {
+  const text = await readFile(join(current, ".gitignore"), "utf8").catch(
+    (cause: unknown) => {
+      if (isMissing(cause)) {
+        return;
+      }
+
+      throw cause;
+    }
+  );
+
+  return text === undefined
+    ? []
+    : [
+        {
+          base: current,
+          matcher: ignore().add(text),
+        },
+      ];
+};
+
+const repositoryRoot = async (current: string): Promise<string | null> => {
+  if (
+    await access(join(current, ".git")).then(
+      () => true,
+      () => false
+    )
+  ) {
+    return current;
+  }
+
+  const parent = dirname(current);
+
+  return parent === current ? null : repositoryRoot(parent);
+};
+
+const fromRoot = (root: string, dir: string): string[] =>
+  dir === root || dirname(dir) === dir
+    ? [dir]
+    : [...fromRoot(root, dirname(dir)), dir];
+
+const enclosingScopes = async (dir: string) => {
+  const root = (await repositoryRoot(dir)) ?? dir;
+  const scopes = await Promise.all(fromRoot(root, dir).map(readScope));
+
+  return scopes
+    .flat()
+    .filter(
+      ({ base, matcher }) =>
+        base === dir ||
+        !matcher.test(`${relative(base, dir).split(sep).join("/")}/`).ignored
+    );
+};
+
+const isIgnored = (
+  scopes: readonly IgnoreScope[],
+  path: string,
+  isDirectory: boolean
+) =>
+  scopes.reduce((ignored, { base, matcher }) => {
+    const local = relative(base, path).split(sep).join("/");
+    const verdict = matcher.test(isDirectory ? `${local}/` : local);
+
+    if (verdict.ignored) {
+      return true;
+    }
+
+    return verdict.unignored ? false : ignored;
+  }, false);
+
+const walk = async (
+  dir: string,
+  current: string,
+  inherited: readonly IgnoreScope[]
+): Promise<string[]> => {
+  const scopes = [...inherited, ...(await readScope(current))];
   const entries = await readdir(current, { withFileTypes: true });
   const found = await Promise.all(
     entries.map((entry) => {
       const path = join(current, entry.name);
+      const relativePath = path
+        .slice(dir.length + 1)
+        .split(sep)
+        .join("/");
 
       if (entry.isDirectory()) {
-        return SKIPPED_DIRECTORIES.has(entry.name) ? [] : walk(dir, path);
+        return SKIPPED_DIRECTORIES.has(entry.name) ||
+          isIgnored(scopes, path, true)
+          ? []
+          : walk(dir, path, scopes);
       }
 
-      return entry.isFile()
-        ? [
-            path
-              .slice(dir.length + 1)
-              .split(sep)
-              .join("/"),
-          ]
+      return entry.isFile() && !isIgnored(scopes, path, false)
+        ? [relativePath]
         : [];
     })
   );
@@ -50,8 +133,8 @@ const walk = async (dir: string, current: string): Promise<string[]> => {
   return found.flat();
 };
 
-const walkRoot = (dir: string, root: string) =>
-  walk(dir, join(dir, root)).catch((cause: unknown) => {
+const walkRoot = (dir: string, root: string, inherited: IgnoreScope[]) =>
+  walk(dir, join(dir, root), inherited).catch((cause: unknown) => {
     if (isMissing(cause)) {
       return [];
     }
@@ -63,8 +146,9 @@ const shippedPaths = (dir: string) =>
   Effect.tryPromise({
     catch: (cause) => new ProfileDirectoryUnreadable({ cause, dir }),
     try: async () => {
+      const inherited = await enclosingScopes(dir);
       const roots = await Promise.all(
-        SHIPPED_ROOTS.map((root) => walkRoot(dir, root))
+        SHIPPED_ROOTS.map((root) => walkRoot(dir, root, inherited))
       );
 
       return roots.flat().sort();
@@ -96,12 +180,37 @@ const readShipped = (dir: string, path: string) =>
     return [[yield* validPath(path), content] as const];
   });
 
+const LARGEST_SHOWN = 3;
+
+const directoryOf = (path: string) => {
+  const segments = path.split("/");
+
+  return segments.length > 2 ? segments.slice(0, 2).join("/") : segments[0];
+};
+
+const largestDirectories = (paths: readonly string[]) => {
+  const counts = new Map<string, number>();
+
+  for (const path of paths) {
+    const directory = directoryOf(path);
+    counts.set(directory, (counts.get(directory) ?? 0) + 1);
+  }
+
+  return [...counts]
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, LARGEST_SHOWN)
+    .map(([directory, count]) => `${directory} (${count})`);
+};
+
 const shippedFiles = (dir: string) =>
   Effect.gen(function* () {
     const paths = yield* shippedPaths(dir);
 
     if (paths.length > PROFILE_LIMITS.files) {
-      return yield* new ProfileTooManyFiles({ count: paths.length });
+      return yield* new ProfileTooManyFiles({
+        count: paths.length,
+        largest: largestDirectories(paths),
+      });
     }
 
     const entries = yield* Effect.forEach(
