@@ -67,14 +67,6 @@ const exited = (child: ChildProcess) =>
     child.once("exit", () => resolve());
   });
 
-const killGroup = (child: ChildProcess) => {
-  try {
-    process.kill(-(child.pid ?? 0), "SIGTERM");
-  } catch {
-    child.kill("SIGTERM");
-  }
-};
-
 const healthy = async (client: Client) => {
   try {
     await client.health();
@@ -131,14 +123,13 @@ export const serveEve = async ({
     ["dev", "--no-ui", "--logs", "none", "--port", String(listen)],
     {
       cwd,
-      detached: true,
       env: { ...process.env, EVE_TELEMETRY_DISABLED: "1", ...env },
       stdio: ["ignore", "pipe", "pipe"],
     }
   );
   const said = tailOf(child);
   const close = async () => {
-    killGroup(child);
+    child.kill("SIGTERM");
     await exited(child);
   };
 
