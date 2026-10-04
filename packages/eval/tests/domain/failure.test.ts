@@ -1,7 +1,19 @@
 import { describe, expect, it } from "bun:test";
 import { Cause } from "effect";
 import { SandboxUnavailable } from "../../src/domain/errors";
-import { describeCause } from "../../src/domain/failure";
+import { describeCause, describeError } from "../../src/domain/failure";
+
+describe("describeError", () => {
+  it("keeps the connection error a wrapped failure hides", () => {
+    const refused = new Error("connect ECONNREFUSED 127.0.0.1:443");
+    const fetchFailed = new Error("fetch failed", { cause: refused });
+
+    expect(
+      describeError(new Error("request failed", { cause: fetchFailed }))
+    ).toBe("request failed: connect ECONNREFUSED 127.0.0.1:443");
+    expect(describeError(new Error("plain"))).toBe("plain");
+  });
+});
 
 describe("describeCause", () => {
   /** The case that prompted this: a provider limit stored as a thousand

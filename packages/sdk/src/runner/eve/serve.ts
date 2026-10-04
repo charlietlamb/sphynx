@@ -20,30 +20,38 @@ export interface EveServer {
 const READY_TIMEOUT_MS = 120_000;
 const HEALTH_POLL_MS = 200;
 const KEPT_LINES = 5;
+const DRAIN_MS = 2000;
 const LINE_BREAK = /\r?\n/;
 const BANNER = /^\S*eve\s+v\d/;
 
+const shown = (line: string) => line !== "" && !BANNER.test(line);
+
 const tailOf = (child: ChildProcess) => {
   const kept: string[] = [];
-  const keep = (chunk: Buffer) => {
+  const partial = { stderr: "", stdout: "" };
+  const keep = (stream: keyof typeof partial) => (chunk: Buffer) => {
     const text = chunk.toString();
     process.stderr.write(text);
-    kept.push(
-      ...text
-        .split(LINE_BREAK)
-        .map((line) => line.trim())
-        .filter((line) => line !== "" && !BANNER.test(line))
-    );
+    const lines = `${partial[stream]}${text}`.split(LINE_BREAK);
+    partial[stream] = lines.pop() ?? "";
+    kept.push(...lines.map((line) => line.trim()).filter(shown));
     kept.splice(0, Math.max(0, kept.length - KEPT_LINES));
   };
 
-  child.stdout?.on("data", keep);
-  child.stderr?.on("data", keep);
+  child.stdout?.on("data", keep("stdout"));
+  child.stderr?.on("data", keep("stderr"));
   const drained = new Promise<void>((resolve) => {
     child.once("close", () => resolve());
   });
 
-  return () => drained.then(() => kept.join(" "));
+  return async () => {
+    await Promise.race([drained, sleep(DRAIN_MS)]);
+    const unfinished = [partial.stdout, partial.stderr]
+      .map((line) => line.trim())
+      .filter(shown);
+
+    return [...kept, ...unfinished].slice(-KEPT_LINES).join(" ");
+  };
 };
 
 const freePort = () =>

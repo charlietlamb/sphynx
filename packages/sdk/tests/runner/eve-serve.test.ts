@@ -82,3 +82,21 @@ test("eve dev goes down with the process group a timed out trial loses", async (
 
   expect(isAlive(eve)).toBe(false);
 });
+
+test("keeps a line eve wrote in two pieces whole", async () => {
+  const dir = await fakeEve([
+    "printf 'Failed to evaluate auth' >&2",
+    "sleep 0.2",
+    "printf 'ored module: agent/agent.ts\\n' >&2",
+    "exit 1",
+  ]);
+
+  const failure = await serveEve({ cwd: dir }).then(
+    () => "served",
+    (error: Error) => error.message
+  );
+
+  expect(failure).toBe(
+    "eve dev exited with code 1: Failed to evaluate authored module: agent/agent.ts"
+  );
+});

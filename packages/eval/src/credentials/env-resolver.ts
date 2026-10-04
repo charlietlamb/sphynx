@@ -2,7 +2,7 @@ import { keptOnServer } from "@sphynx/schema/domain/known-variables";
 import { Effect, Layer, Redacted } from "effect";
 import {
   credentialFromVariables,
-  variablesFor,
+  requiredVariablesFor,
 } from "../environment/variable-credentials";
 import { CredentialError } from "./errors";
 import { CredentialResolver } from "./resolver";
@@ -37,10 +37,10 @@ const resolved = (integrationId: string, credential: LeasedCredential) =>
 const notHeld = (message: string) =>
   new CredentialError({ code: "not-found", message });
 
-const toSet = (integrationId: string) => {
-  const names = variablesFor(integrationId);
+const toSet = (integrationId: string, where: string) => {
+  const names = requiredVariablesFor(integrationId);
 
-  return names.length === 0 ? "" : ` Set ${names.join(" and ")}.`;
+  return names.length === 0 ? "" : ` Set ${names.join(" and ")}${where}.`;
 };
 
 const answering = (
@@ -98,7 +98,7 @@ export const credentialResolverFrom = (local: LocalCredentials) =>
     return held === undefined
       ? Effect.fail(
           notHeld(
-            `this run holds credentials for ${[...local.credentials.keys()].join(", ")}, not one for ${integrationId}.${toSet(integrationId)}`
+            `this run holds credentials for ${[...local.credentials.keys()].join(", ")}, not one for ${integrationId}.${toSet(integrationId, " in Settings > Environment")}`
           )
         )
       : Effect.succeed(held);
@@ -115,7 +115,7 @@ export const CredentialResolverFromEnv = Layer.suspend(() => {
     return credential === undefined
       ? Effect.fail(
           notHeld(
-            `Nothing in this shell runs ${integrationId}.${toSet(integrationId)}`
+            `Nothing in this shell runs ${integrationId}.${toSet(integrationId, "")}`
           )
         )
       : Effect.succeed(credential);

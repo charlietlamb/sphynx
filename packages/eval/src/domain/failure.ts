@@ -1,4 +1,5 @@
 import { Cause } from "effect";
+import { describeFailure } from "./errors";
 
 const LIMIT = 240;
 
@@ -23,8 +24,17 @@ const reasonOf = (held: unknown): string | undefined => {
   return;
 };
 
+const withCause = (held: unknown) => {
+  const outer = reasonOf(held);
+  const inner = firstLine(describeFailure(held));
+
+  return outer === undefined || outer === inner ? inner : `${outer}: ${inner}`;
+};
+
 export const describeError = (held: unknown): string =>
-  reasonOf(held) ?? firstLine(String(held));
+  held instanceof Error
+    ? withCause(held)
+    : (reasonOf(held) ?? firstLine(String(held)));
 
 export const describeCause = (cause: Cause.Cause<unknown>): string => {
   const error = Cause.failureOption(cause);

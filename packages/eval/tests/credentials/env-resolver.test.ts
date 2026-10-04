@@ -48,6 +48,14 @@ describe("credentials lent to a local run", () => {
     );
   });
 
+  it("names only the variables a missing harness needs", async () => {
+    expect(await resolving("qwen")).toEqual(
+      Either.left(
+        "this run holds credentials for codex, claude, not one for qwen. Set DASHSCOPE_API_KEY in Settings > Environment."
+      )
+    );
+  });
+
   it("refuses any integration it holds no lease for", async () => {
     expect(await resolving("opencode")).toEqual(
       Either.left(

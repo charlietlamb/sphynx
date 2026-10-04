@@ -85,6 +85,13 @@ export const variablesFor = (integrationId: string): readonly string[] =>
   VARIABLE_CREDENTIALS[integrationId]?.fields.map(({ variable }) => variable) ??
   [];
 
+export const requiredVariablesFor = (
+  integrationId: string
+): readonly string[] =>
+  VARIABLE_CREDENTIALS[integrationId]?.fields.flatMap(
+    ({ optional, variable }) => (optional === true ? [] : [variable])
+  ) ?? [];
+
 export const credentialFromVariables = (
   integrationId: string,
   values: ReadonlyMap<string, string>

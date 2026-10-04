@@ -61,6 +61,6 @@ test("an agent judge without a credential names the one it needs", async () => {
   );
 
   expect(failed.message).toBe(
-    "The agent judge could not complete: this run holds credentials for command, not one for codex. Set OPENAI_API_KEY."
+    "The agent judge could not complete: this run holds credentials for command, not one for codex. Set OPENAI_API_KEY in Settings > Environment."
   );
 });
