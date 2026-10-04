@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "bun:test";
-import { mkdtemp, rm, stat } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ConfigProvider, Effect } from "effect";
@@ -13,7 +13,7 @@ afterAll(() =>
 );
 
 const PRINT_ENV =
-  'printf "%s\\n%s\\n%s\\n" "$BUN_INSTALL_CACHE_DIR" "$npm_config_cache" "$TMPDIR"';
+  'printf "%s\\n%s\\n%s\\n" "$BUN_INSTALL_CACHE_DIR" "$npm_config_cache" "$TMPDIR" && test -d "$TMPDIR" && echo exists';
 
 const envOfOneSandbox = (root: string, name: string) =>
   Effect.gen(function* () {
@@ -25,9 +25,11 @@ const envOfOneSandbox = (root: string, name: string) =>
     });
     const outcome = yield* runCommandForOutcome(sandbox, PRINT_ENV, {
       timeoutMs: 10_000,
-    });
-    const [bun = "", npm = "", temp = ""] = outcome.stdout.trim().split("\n");
-    return { bun, npm, temp };
+    }).pipe(Effect.ensuring(Effect.ignore(adapter.destroy(sandbox))));
+    const [bun = "", npm = "", temp = "", tempDir = ""] = outcome.stdout
+      .trim()
+      .split("\n");
+    return { bun, npm, temp, tempDir };
   }).pipe(
     Effect.withConfigProvider(
       ConfigProvider.fromMap(
@@ -53,6 +55,6 @@ describe("package caches in local sandboxes", () => {
     expect(second?.bun).toBe(first?.bun);
     expect(second?.npm).toBe(first?.npm);
     expect(first?.temp).not.toBe(second?.temp);
-    expect((await stat(first?.temp ?? "")).isDirectory()).toBe(true);
+    expect(first?.tempDir).toBe("exists");
   });
 });

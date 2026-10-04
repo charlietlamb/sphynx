@@ -92,7 +92,7 @@ While it runs, the CLI checks in with Sphynx every minute. If the machine goes q
 
 The agent runs as you, in a temporary workspace with its own `HOME`. It is not a container: a case can read and write anything you can. Only run evals you wrote or trust.
 
-Each harness version installs once into `~/.sphynx/local/harness` and is shared by every run after, so the first time you use a harness version locally is slower. Local runs can go side by side: each trial gets its own `HOME` and temp folder, and a failed install says what went wrong. A profile's `install` reuses one bun and npm download cache, so only the first trial fetches its packages.
+Each harness version installs once into `~/.sphynx/local/harness` and is shared by every run after, so the first time you use a harness version locally is slower. Local runs can go side by side: each trial gets its own `HOME` and temp folder, and a failed install says what went wrong. bun and npm in a profile's `install` share one download cache, so a package fetched once is not fetched again by later trials.
 
 ## Disk space
 
