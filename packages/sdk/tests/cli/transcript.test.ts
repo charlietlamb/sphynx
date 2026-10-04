@@ -195,6 +195,29 @@ describe("the transcript a reader follows", () => {
     expect(lines).toContain("    turn 1 · no reply");
   });
 
+  test("says why a turn ended when the agent failed", () => {
+    const opened = run([said("hey", 0)]);
+    const { lines } = settle(
+      opened.transcript,
+      [
+        {
+          speaker,
+          verdict: {
+            ...verdict("void"),
+            failure: "The agent failed: Free tier users do not have access",
+          },
+        },
+      ],
+      PLAIN
+    );
+
+    expect(lines).toEqual([
+      "    turn 1 · The agent failed: Free tier users do not have access",
+      "",
+      "  ○ void · The agent failed: Free tier users do not have access",
+    ]);
+  });
+
   test("names the trial again whenever the speaker changes", () => {
     const first = run([said("a", 0)]);
     const { lines } = transcribe(

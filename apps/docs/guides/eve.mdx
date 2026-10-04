@@ -89,7 +89,7 @@ Other events are ignored.
 
 ## A run that did not finish never passes
 
-A failed or parked session records no answer, so a check that reads the answer fails. The reason is on the `Finished` line in the journal. A tool that needs approval parks the session, because nobody is there to approve it. Turn approval off for the tools a case uses.
+A failed session ends the trial unscored, and the CLI and the trial page show eve's message as the reason. A parked session records no answer, so a check that reads the answer fails, and the reason is on the `Finished` line in the journal. A tool that needs approval parks the session, because nobody is there to approve it. Turn approval off for the tools a case uses.
 
 `sphynx-eve` exits 0 when the session completed, 1 when it failed, and 3 when it parked.
 

@@ -9,6 +9,11 @@ import type { DecodedOutput } from "./session";
 
 const decodeLine = Schema.decodeUnknownOption(Schema.parseJson(CommandLine));
 
+const FAILED = "failed:";
+
+const agentFailure = (reason: string) =>
+  `The agent failed: ${reason.slice(FAILED.length).trim()}`;
+
 const usageOf = (line: CommandUsageLine): HarnessUsage => ({
   cacheReadTokens: line.cacheReadTokens ?? 0,
   cacheWriteTokens: line.cacheWriteTokens ?? 0,
@@ -26,7 +31,11 @@ const outputOf = (decoded: CommandLine, at: number): DecodedOutput => {
     return { model: decoded.model, sessionId: decoded.sessionId };
   }
 
-  return { events: [{ ...decoded, at: decoded.at ?? at }] };
+  const event = { ...decoded, at: decoded.at ?? at };
+
+  return event._tag === "Finished" && event.reason.startsWith(FAILED)
+    ? { events: [event], failure: agentFailure(event.reason) }
+    : { events: [event] };
 };
 
 export const decodeCommandLine = (line: string, at: number): DecodedOutput =>

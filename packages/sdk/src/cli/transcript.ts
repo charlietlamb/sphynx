@@ -76,18 +76,17 @@ class Draft {
     this.turns.set(key, { ...turn, answering: true });
   }
 
-  closeTurn(key: string) {
+  closeTurn(key: string, failure: string | null = null) {
     const turn = this.turns.get(key);
 
     if (turn?.open === true) {
       const { close, nested, paint } = this.write;
       const facts = turn.replied
-        ? turnFacts(turn)
-        : `${turnFacts(turn)} · no reply`;
+        ? paint.dim(turnFacts(turn))
+        : paint.dim(`${turnFacts(turn)} · `) +
+          (failure === null ? paint.dim("no reply") : paint.red(failure));
 
-      this.lines.push(
-        turn.answering ? close(paint.dim(facts)) : nested(paint.dim(facts))
-      );
+      this.lines.push(turn.answering ? close(facts) : nested(facts));
       this.turns.set(key, { ...turn, open: false });
     }
   }
@@ -145,7 +144,7 @@ export const settle = (
   for (const { speaker, verdict } of settled) {
     if (!draft.closed.has(speaker.key)) {
       draft.enter(speaker);
-      draft.closeTurn(speaker.key);
+      draft.closeTurn(speaker.key, verdict.failure ?? null);
       draft.lines.push("", ...verdictLines(verdict, draft.write));
       draft.closed.add(speaker.key);
       draft.current = null;

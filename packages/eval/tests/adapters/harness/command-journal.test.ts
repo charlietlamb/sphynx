@@ -1,6 +1,16 @@
 import { describe, expect, it } from "bun:test";
 import type { HarnessEvent } from "@sphynx/schema/domain/harness-event";
-import { FINISHED, journal, line, WORKSPACE } from "./command-fake";
+import { Effect, Stream } from "effect";
+import { CommandDriver } from "../../../src/adapters/harness/command";
+import {
+  FINISHED,
+  fake,
+  journal,
+  line,
+  profile,
+  request,
+  WORKSPACE,
+} from "./command-fake";
 
 describe("a command harness process that exits non-zero", () => {
   it("keeps the journal it printed before Finished", async () => {
@@ -27,6 +37,44 @@ describe("a command harness process that exits non-zero", () => {
       at: 50,
       reason: "exit 7",
     });
+  });
+});
+
+describe("a command harness process that finishes failed", () => {
+  it("fails the session with the reason it printed", async () => {
+    const { sandbox } = fake({
+      exitCode: 1,
+      stdout: [
+        line({
+          _tag: "Finished",
+          reason: "failed: Free tier users do not have access to this model",
+        }),
+      ],
+    });
+    const failed = await Effect.runPromise(
+      CommandDriver.run(request(sandbox, profile())).pipe(
+        Effect.flatMap((session) => Stream.runDrain(session.events)),
+        Effect.flip,
+        Effect.scoped
+      )
+    );
+
+    expect(failed).toMatchObject({
+      _tag: "HarnessUnavailable",
+      harness: "command",
+      reason:
+        "The agent failed: Free tier users do not have access to this model",
+    });
+  });
+
+  it("still scores a run that finished for any other reason", async () => {
+    const { events } = await journal({
+      stdout: [line({ _tag: "Finished", reason: "parked: needs approval" })],
+    });
+
+    expect(events).toEqual([
+      { _tag: "Finished", at: 10, reason: "parked: needs approval" },
+    ]);
   });
 });
 

@@ -106,8 +106,18 @@ export const decoding = (
         )
       );
 
+    const settled = Ref.get(failure).pipe(
+      Effect.flatMap(
+        Option.match({
+          onNone: () => Effect.void,
+          onSome: (found) => Effect.fail(unavailable(request, found)),
+        })
+      )
+    );
+
     return {
       failed,
+      settled,
       step,
       usage: Ref.get(usage).pipe(Effect.map(totalOf)),
     };
