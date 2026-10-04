@@ -8,15 +8,24 @@ export function CodeContent({
   code,
   lang,
   maxHeight = "max-h-[28rem]",
+  wrap = false,
 }: {
   readonly code: string;
   readonly lang: CodeLanguage;
   readonly maxHeight?: string;
+  readonly wrap?: boolean;
 }) {
   const html = useHighlighted(code, lang);
 
   return (
-    <div className={cn("overflow-auto", maxHeight)}>
+    <div
+      className={cn(
+        "overflow-auto",
+        wrap &&
+          "[&_pre]:whitespace-pre-wrap [&_pre]:[overflow-wrap:anywhere]",
+        maxHeight
+      )}
+    >
       {html === null ? (
         <pre className="p-4 font-mono text-label text-muted-foreground leading-[1.7] [font-variation-settings:'wght'_450]">
           {code}

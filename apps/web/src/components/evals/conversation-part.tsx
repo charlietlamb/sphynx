@@ -3,6 +3,9 @@ import {
   Message,
   MessageContent,
 } from "@sphynx/ui/components/ai-elements/message";
+import { CopyButton } from "@sphynx/ui/components/copy-button";
+import { CodeContent } from "@sphynx/ui/components/ui/code-content";
+import { SURFACE_BODY } from "@sphynx/ui/lib/surface";
 import { ConversationWork } from "@/components/evals/conversation-work";
 import {
   ConversationWrote,
@@ -14,6 +17,7 @@ import {
 } from "@/components/evals/markdown-prose";
 import { MessageTook } from "@/components/evals/message-took";
 import type { ConversationPart as Part } from "@/lib/evals/conversation";
+import { structuredReply } from "@/lib/evals/structured-reply";
 
 export interface Written {
   readonly artifacts: readonly EvalArtifactMetadata[];
@@ -47,6 +51,28 @@ export function ConversationPart({
   }
 
   if (part._tag === "replied") {
+    const structured = structuredReply(part.text);
+    if (structured !== null) {
+      return (
+        <Message from="assistant">
+          <div className={`group/answer relative w-full ${SURFACE_BODY}`}>
+            <CopyButton
+              className="absolute top-1.5 right-1.5 z-10 opacity-0 transition-opacity duration-150 ease-out focus-visible:opacity-100 group-hover/answer:opacity-100"
+              label="Copy answer"
+              size="inline"
+              value={part.text}
+            />
+            <CodeContent
+              code={structured}
+              lang="json"
+              maxHeight="max-h-96"
+              wrap
+            />
+          </div>
+          <MessageTook ms={took} />
+        </Message>
+      );
+    }
     return (
       <Message from="assistant">
         <MessageContent>

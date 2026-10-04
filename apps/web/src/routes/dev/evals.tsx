@@ -96,6 +96,29 @@ function EvalsPreview() {
           </div>
         </PreviewScreen>
 
+        <PreviewScreen name="Structured answer">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-5">
+            <Conversation
+              running={false}
+              trajectory={[
+                {
+                  _tag: "message",
+                  role: "user",
+                  text: "Write the changelog for the last 7 days.",
+                  finishedAtMillis: 1000,
+                },
+                {
+                  _tag: "message",
+                  role: "assistant",
+                  text: '{"status":"created","posts":[{"postId":"post_fixture_1","title":"Performance improvements: faster audit log and dashboard preload","recommendations":"- Post this to the product updates channel.\\n- Add a before and after screenshot of the audit log."}],"reason":null}',
+                  finishedAtMillis: 65_900,
+                },
+              ]}
+              written={{ artifacts: [], trial: { trialId: "trl_preview" } }}
+            />
+          </div>
+        </PreviewScreen>
+
         <PreviewScreen name="Validation and calls">
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 py-5">
             <TrialChecks setup={VALIDATED_SETUP} trial={VALIDATED_TRIAL} />
