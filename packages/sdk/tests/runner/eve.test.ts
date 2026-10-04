@@ -8,6 +8,7 @@ import {
   initialEveState,
   reduceEve,
 } from "../../src/runner/eve";
+import { turnFor } from "../../src/runner/eve/run";
 
 const recorded = (): MessageStreamEvent[] =>
   readFileSync(
@@ -265,5 +266,25 @@ describe("reduceEve on constructed events", () => {
     );
 
     expect(step).toEqual({ emits: [], state: initialEveState });
+  });
+});
+
+describe("the turn an eve agent is sent", () => {
+  const schema = {
+    properties: { status: { type: "string" } },
+    required: ["status"],
+    type: "object",
+  };
+
+  test("carries the agent's output schema, so eve returns a structured result", () => {
+    expect(
+      turnFor("Write it.", { agent: { outputSchema: schema } } as never)
+    ).toEqual({ message: "Write it.", outputSchema: schema });
+  });
+
+  test("is only the message for an agent without one", () => {
+    expect(turnFor("Write it.", { agent: {} } as never)).toEqual({
+      message: "Write it.",
+    });
   });
 });

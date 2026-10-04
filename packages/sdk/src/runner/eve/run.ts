@@ -1,4 +1,4 @@
-import { Client } from "eve/client";
+import { type AgentInfoResult, Client, type SendTurnInput } from "eve/client";
 import { createEmitter, type Emitter } from "../index";
 import { type EveOutcome, finishedReason } from "./outcome";
 import { type EveEmit, initialEveState, reduceEve } from "./reduce";
@@ -25,6 +25,19 @@ const applyEmit = (emitter: Emitter, emit: EveEmit) => {
   }
 };
 
+type OutputSchema = NonNullable<SendTurnInput["outputSchema"]>;
+
+const isSchema = (value: unknown): value is OutputSchema =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+export const turnFor = (
+  prompt: string,
+  info: Pick<AgentInfoResult, "agent">
+): SendTurnInput =>
+  isSchema(info.agent.outputSchema)
+    ? { message: prompt, outputSchema: info.agent.outputSchema }
+    : { message: prompt };
+
 const streamEnded: EveOutcome = {
   reason: "the eve stream ended before the session settled",
   status: "failed",
@@ -37,7 +50,9 @@ export const runEve = async ({
   url,
 }: RunEveOptions): Promise<EveOutcome> => {
   const client = new Client({ host: url });
-  const { response } = await client.sessions.create({ message: prompt });
+  const { response } = await client.sessions.create(
+    turnFor(prompt, await client.info())
+  );
 
   if (model !== undefined) {
     emitter.started({ model, sessionId: response.sessionId });
