@@ -467,6 +467,35 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
     });
   });
 
+  it("hands the default on when the default subscription is removed", async () => {
+    const result = await run(
+      Effect.gen(function* () {
+        const subscriptions = yield* Subscriptions;
+        const db = yield* Database;
+        const old = yield* subscriptions.add(actor, {
+          authJson: '{"old":true}',
+          plan: "pi",
+          scope: "personal",
+        });
+        const fresh = yield* subscriptions.add(actor, {
+          authJson: '{"fresh":true}',
+          plan: "pi",
+          scope: "personal",
+        });
+        yield* subscriptions.remove(actor, old.id);
+        const [row] = yield* Effect.promise(() =>
+          db
+            .select({ isDefault: credentialConnection.isDefault })
+            .from(credentialConnection)
+            .where(eq(credentialConnection.id, fresh.id))
+        );
+        return row?.isDefault ?? null;
+      })
+    );
+
+    expect(result).toBe(true);
+  });
+
   it("stamps a subscription used through an explicit ref", async () => {
     const lastUsedAt = await run(
       Effect.gen(function* () {

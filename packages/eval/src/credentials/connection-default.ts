@@ -1,7 +1,7 @@
 import type { Db } from "@sphynx/db/query";
 import { credentialConnection } from "@sphynx/db/schema/credentials/connections";
-import { and, eq } from "drizzle-orm";
-import { defaultScope } from "./connection-scope";
+import { and, desc, eq } from "drizzle-orm";
+import { defaultScope, visibleTo } from "./connection-scope";
 
 interface Owner {
   readonly id: string;
@@ -42,4 +42,43 @@ export const insertClaimingDefault = (
       .insert(credentialConnection)
       .values({ ...row, isDefault })
       .returning();
+  });
+
+export const removeHandingOnDefault = (db: Db, actor: Owner, id: string) =>
+  db.transaction(async (tx) => {
+    const [removed] = await tx
+      .delete(credentialConnection)
+      .where(
+        and(
+          visibleTo(actor.organizationId, actor.id),
+          eq(credentialConnection.id, id)
+        )
+      )
+      .returning();
+
+    if (removed?.isDefault !== true) {
+      return removed;
+    }
+
+    const scope = defaultScope(
+      removed.organizationId,
+      removed.ownerUserId ?? actor.id,
+      removed.integrationId,
+      removed.scope
+    );
+    const [heir] = await tx
+      .select({ id: credentialConnection.id })
+      .from(credentialConnection)
+      .where(and(scope, eq(credentialConnection.status, "active")))
+      .orderBy(desc(credentialConnection.createdAt))
+      .limit(1);
+
+    if (heir !== undefined) {
+      await tx
+        .update(credentialConnection)
+        .set({ isDefault: true })
+        .where(eq(credentialConnection.id, heir.id));
+    }
+
+    return removed;
   });

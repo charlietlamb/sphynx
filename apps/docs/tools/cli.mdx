@@ -86,7 +86,7 @@ Under every gate, a batch that fails to start, fails, or times out fails the com
 | `sphynx env import [file] [--personal]` | Set every variable in a `.env` file, or in stdin when the file is left out |
 | `sphynx env remove NAME [--personal]` | Remove a variable |
 
-`set` prompts for the value, or reads it from stdin when stdin is not a terminal (a pipe, a file or a heredoc), so the secret never appears in your shell history:
+`set` prompts for the value, or reads it from stdin when stdin is not a terminal (a pipe, a file or a heredoc), so the secret is never a command line argument. Pipe it from a variable or a file rather than typing it into a heredoc, which your shell may keep in its history:
 
 ```bash
 echo "$KEY" | sphynx env set ANTHROPIC_API_KEY
