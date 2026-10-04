@@ -84,3 +84,17 @@ describe("describeCause", () => {
     expect(failure.length).toBeLessThanOrEqual(241);
   });
 });
+
+describe("describeError on errors with nothing beneath them", () => {
+  it("keeps what the error itself says", () => {
+    const blank = new Error("cleared below");
+    blank.message = "";
+
+    expect([
+      describeError(blank),
+      describeError(
+        new SandboxUnavailable({ provider: "e2b", reason: "quota reached" })
+      ),
+    ]).toEqual(["Error", "quota reached"]);
+  });
+});

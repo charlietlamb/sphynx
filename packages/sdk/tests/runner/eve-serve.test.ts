@@ -31,6 +31,12 @@ const fakeEve = async (lines: readonly string[]) => {
   return dir;
 };
 
+const killGroup = (pid: number | undefined) => {
+  if (pid !== undefined && pid > 0) {
+    process.kill(-pid, "SIGKILL");
+  }
+};
+
 const isAlive = (pid: number) => {
   try {
     process.kill(pid, 0);
@@ -71,13 +77,18 @@ test("eve dev goes down with the process group a timed out trial loses", async (
     { detached: true, stdio: "ignore" }
   );
 
-  while (!existsSync(pidFile)) {
+  const deadline = Date.now() + 10_000;
+  while (!existsSync(pidFile) && Date.now() < deadline) {
     await Bun.sleep(50);
   }
+  if (!existsSync(pidFile)) {
+    killGroup(trial.pid);
+  }
+  expect(existsSync(pidFile)).toBe(true);
   const eve = Number((await readFile(pidFile, "utf8")).trim());
   await rm(pidFile, { force: true });
 
-  process.kill(-(trial.pid ?? 0), "SIGKILL");
+  killGroup(trial.pid);
   await Bun.sleep(300);
 
   expect(isAlive(eve)).toBe(false);
@@ -100,3 +111,42 @@ test("keeps a line eve wrote in two pieces whole", async () => {
     "eve dev exited with code 1: Failed to evaluate authored module: agent/agent.ts"
   );
 });
+
+test("keeps eve's lines in the order they were started", async () => {
+  const dir = await fakeEve([
+    "printf 'Loading agent ' ",
+    "sleep 0.1",
+    "echo 'Failed to evaluate authored module' >&2",
+    "sleep 0.1",
+    "echo 'agent/agent.ts'",
+    "exit 1",
+  ]);
+
+  const failure = await serveEve({ cwd: dir }).then(
+    () => "served",
+    (error: Error) => error.message
+  );
+
+  expect(failure).toBe(
+    "eve dev exited with code 1: Loading agent agent/agent.ts Failed to evaluate authored module"
+  );
+});
+
+test("kills an eve that will not stop when asked", async () => {
+  const pidFile = join(tmpdir(), `sphynx-eve-${process.pid}-${Date.now()}.pid`);
+  const dir = await fakeEve([
+    "trap '' TERM",
+    `echo $$ > "${pidFile}"`,
+    "while true; do sleep 1; done",
+  ]);
+
+  const failure = await serveEve({ cwd: dir, readyTimeoutMs: 300 }).then(
+    () => "served",
+    (error: Error) => error.message
+  );
+  const eve = Number((await readFile(pidFile, "utf8")).trim());
+  await rm(pidFile, { force: true });
+
+  expect(failure).toBe("eve dev did not answer health within 300ms");
+  expect(isAlive(eve)).toBe(false);
+}, 15_000);

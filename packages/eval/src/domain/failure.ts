@@ -24,17 +24,24 @@ const reasonOf = (held: unknown): string | undefined => {
   return;
 };
 
-const withCause = (held: unknown) => {
-  const outer = reasonOf(held);
-  const inner = firstLine(describeFailure(held));
+const causeOf = (held: unknown) => {
+  if (!(held instanceof Error) || held.cause === undefined) {
+    return;
+  }
 
-  return outer === undefined || outer === inner ? inner : `${outer}: ${inner}`;
+  const inner = describeFailure(held.cause).trim();
+
+  return inner === "" ? undefined : inner;
 };
 
-export const describeError = (held: unknown): string =>
-  held instanceof Error
-    ? withCause(held)
-    : (reasonOf(held) ?? firstLine(String(held)));
+export const describeError = (held: unknown): string => {
+  const outer = reasonOf(held) ?? firstLine(String(held));
+  const inner = causeOf(held);
+
+  return firstLine(
+    inner === undefined || inner === outer ? outer : `${outer}: ${inner}`
+  );
+};
 
 export const describeCause = (cause: Cause.Cause<unknown>): string => {
   const error = Cause.failureOption(cause);

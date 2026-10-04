@@ -21,21 +21,45 @@ const READY_TIMEOUT_MS = 120_000;
 const HEALTH_POLL_MS = 200;
 const KEPT_LINES = 5;
 const DRAIN_MS = 2000;
+const STOP_GRACE_MS = 5000;
 const LINE_BREAK = /\r?\n/;
 const BANNER = /^\S*eve\s+v\d/;
 
 const shown = (line: string) => line !== "" && !BANNER.test(line);
 
+type Stream = "stderr" | "stdout";
+
+interface Written {
+  open: boolean;
+  readonly stream: Stream;
+  text: string;
+}
+
 const tailOf = (child: ChildProcess) => {
-  const kept: string[] = [];
-  const partial = { stderr: "", stdout: "" };
-  const keep = (stream: keyof typeof partial) => (chunk: Buffer) => {
+  const written: Written[] = [];
+  const keep = (stream: Stream) => (chunk: Buffer) => {
     const text = chunk.toString();
     process.stderr.write(text);
-    const lines = `${partial[stream]}${text}`.split(LINE_BREAK);
-    partial[stream] = lines.pop() ?? "";
-    kept.push(...lines.map((line) => line.trim()).filter(shown));
-    kept.splice(0, Math.max(0, kept.length - KEPT_LINES));
+    const [first = "", ...rest] = text.split(LINE_BREAK);
+    const open = written.findLast(
+      (line) => line.stream === stream && line.open
+    );
+
+    if (open === undefined) {
+      written.push({ open: true, stream, text: first });
+    } else {
+      open.text += first;
+    }
+
+    for (const line of rest) {
+      const last = written.findLast((each) => each.stream === stream);
+
+      if (last !== undefined) {
+        last.open = false;
+      }
+
+      written.push({ open: true, stream, text: line });
+    }
   };
 
   child.stdout?.on("data", keep("stdout"));
@@ -45,12 +69,22 @@ const tailOf = (child: ChildProcess) => {
   });
 
   return async () => {
-    await Promise.race([drained, sleep(DRAIN_MS)]);
-    const unfinished = [partial.stdout, partial.stderr]
-      .map((line) => line.trim())
-      .filter(shown);
+    const giveUp = new AbortController();
 
-    return [...kept, ...unfinished].slice(-KEPT_LINES).join(" ");
+    try {
+      await Promise.race([
+        drained,
+        sleep(DRAIN_MS, undefined, { signal: giveUp.signal }),
+      ]);
+    } finally {
+      giveUp.abort();
+    }
+
+    return written
+      .map(({ text }) => text.trim())
+      .filter(shown)
+      .slice(-KEPT_LINES)
+      .join(" ");
   };
 };
 
@@ -138,7 +172,15 @@ export const serveEve = async ({
   const said = tailOf(child);
   const close = async () => {
     child.kill("SIGTERM");
-    await exited(child);
+    const stopped = await Promise.race([
+      exited(child).then(() => true),
+      sleep(STOP_GRACE_MS).then(() => false),
+    ]);
+
+    if (!stopped) {
+      child.kill("SIGKILL");
+      await exited(child);
+    }
   };
 
   try {
