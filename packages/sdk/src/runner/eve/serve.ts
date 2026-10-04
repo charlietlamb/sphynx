@@ -35,6 +35,34 @@ interface Written {
   text: string;
 }
 
+const within = (work: Promise<unknown>, ms: number) =>
+  new Promise<boolean>((resolve) => {
+    const timer = setTimeout(() => resolve(false), ms);
+    work.then(() => {
+      clearTimeout(timer);
+      resolve(true);
+    });
+  });
+
+const prune = (written: Written[]) => {
+  let closed = written.filter(
+    (line) => !line.open && shown(line.text.trim())
+  ).length;
+  let index = 0;
+
+  while (index < written.length) {
+    const line = written[index];
+    const kept = shown(line?.text.trim() ?? "");
+
+    if (line?.open === false && (!kept || closed > KEPT_LINES)) {
+      written.splice(index, 1);
+      closed -= kept ? 1 : 0;
+    } else {
+      index += 1;
+    }
+  }
+};
+
 const tailOf = (child: ChildProcess) => {
   const written: Written[] = [];
   const keep = (stream: Stream) => (chunk: Buffer) => {
@@ -60,6 +88,8 @@ const tailOf = (child: ChildProcess) => {
 
       written.push({ open: true, stream, text: line });
     }
+
+    prune(written);
   };
 
   child.stdout?.on("data", keep("stdout"));
@@ -69,16 +99,7 @@ const tailOf = (child: ChildProcess) => {
   });
 
   return async () => {
-    const giveUp = new AbortController();
-
-    try {
-      await Promise.race([
-        drained,
-        sleep(DRAIN_MS, undefined, { signal: giveUp.signal }),
-      ]);
-    } finally {
-      giveUp.abort();
-    }
+    await within(drained, DRAIN_MS);
 
     return written
       .map(({ text }) => text.trim())
@@ -172,10 +193,7 @@ export const serveEve = async ({
   const said = tailOf(child);
   const close = async () => {
     child.kill("SIGTERM");
-    const stopped = await Promise.race([
-      exited(child).then(() => true),
-      sleep(STOP_GRACE_MS).then(() => false),
-    ]);
+    const stopped = await within(exited(child), STOP_GRACE_MS);
 
     if (!stopped) {
       child.kill("SIGKILL");

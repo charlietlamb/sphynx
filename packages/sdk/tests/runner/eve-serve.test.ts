@@ -150,3 +150,21 @@ test("kills an eve that will not stop when asked", async () => {
   expect(failure).toBe("eve dev did not answer health within 300ms");
   expect(isAlive(eve)).toBe(false);
 }, 15_000);
+
+test("keeps only the last of a noisy eve's lines", async () => {
+  const dir = await fakeEve([
+    "i=0",
+    'while [ $i -lt 5000 ]; do echo "compiling $i"; i=$((i + 1)); done',
+    "echo 'Failed to evaluate authored module' >&2",
+    "exit 1",
+  ]);
+
+  const failure = await serveEve({ cwd: dir }).then(
+    () => "served",
+    (error: Error) => error.message
+  );
+
+  expect(failure).toBe(
+    "eve dev exited with code 1: compiling 4996 compiling 4997 compiling 4998 compiling 4999 Failed to evaluate authored module"
+  );
+});
