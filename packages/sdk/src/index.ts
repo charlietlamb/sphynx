@@ -69,6 +69,7 @@ export type { SphynxPromptVariables } from "./client/variables";
 export type { WaitOptions } from "./client/wait";
 export { type Command, command } from "./evals/command";
 export { suite } from "./evals/define";
+export { named } from "./evals/named";
 export { empty, files, repo } from "./evals/source";
 export type {
   CaseCache,

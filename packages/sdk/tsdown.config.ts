@@ -15,6 +15,7 @@ export default defineConfig({
     eval: "src/evals/index.ts",
     index: "src/index.ts",
     mcp: "src/mcp/index.ts",
+    named: "src/evals/named.ts",
     "mcp-runtime": "src/mcp/runtime.ts",
     runner: "src/runner/index.ts",
     "runner-eve": "src/runner/eve/index.ts",
