@@ -24,6 +24,7 @@ export interface EveState {
   readonly answer: string | undefined;
   readonly outcome: EveOutcome | undefined;
   readonly pending: ReadonlyMap<string, PendingCall>;
+  readonly result: string | undefined;
 }
 
 export interface EveStep {
@@ -35,6 +36,7 @@ export const initialEveState: EveState = {
   answer: undefined,
   outcome: undefined,
   pending: new Map(),
+  result: undefined,
 };
 
 const actionName = (action: ActionRequest): string => {
@@ -46,9 +48,10 @@ const actionName = (action: ActionRequest): string => {
 };
 
 const settle = (state: EveState, outcome: EveOutcome): EveStep => {
+  const text = state.result ?? state.answer;
   const answer: EveEmit[] =
-    outcome.status === "completed" && state.answer !== undefined
-      ? [{ _tag: "message", text: state.answer }]
+    outcome.status === "completed" && text !== undefined
+      ? [{ _tag: "message", text }]
       : [];
 
   return {
@@ -123,6 +126,8 @@ const handlers: Handlers = {
     data.finishReason === "tool-calls" || data.message === null
       ? unchanged(state)
       : unchanged({ ...state, answer: data.message }),
+  "result.completed": (state, { data }) =>
+    unchanged({ ...state, result: JSON.stringify(data.result) }),
   "session.completed": (state) => settle(state, { status: "completed" }),
   "session.failed": (state, { data }) =>
     settle(state, { reason: data.message, status: "failed" }),
