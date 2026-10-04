@@ -60,7 +60,7 @@ export function ConversationPart({
               className="absolute top-1.5 right-1.5 z-10 opacity-0 transition-opacity duration-150 ease-out focus-visible:opacity-100 group-hover/answer:opacity-100"
               label="Copy answer"
               size="inline"
-              value={structured}
+              value={part.text}
             />
             <CodeContent
               code={structured}

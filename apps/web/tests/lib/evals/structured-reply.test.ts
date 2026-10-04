@@ -8,6 +8,12 @@ describe("an agent reply that is structured data", () => {
     );
   });
 
+  test("includes a list", () => {
+    expect(structuredReply('[{"postId":"p1"}]')).toBe(
+      '[\n  {\n    "postId": "p1"\n  }\n]'
+    );
+  });
+
   test("is not a reply that only mentions JSON or is a bare value", () => {
     expect(structuredReply("Saved. Result: {status: created}")).toBeNull();
     expect(structuredReply('"created"')).toBeNull();
