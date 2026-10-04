@@ -5,7 +5,7 @@ import { knownVariable } from "@sphynx/schema/domain/known-variables";
 import { SphynxApi } from "@sphynx/schema/public/client";
 import { Effect, Option, Redacted } from "effect";
 import { parseEnvFile } from "./env-file";
-import { attended, json, note, row } from "./render";
+import { json, note, row, stdinIsTerminal } from "./render";
 
 const asJson = Options.boolean("json").pipe(
   Options.withDescription("Print the result as JSON")
@@ -45,7 +45,7 @@ const readStdin = Effect.promise(async () => {
 
 const readValue = (label: string) =>
   Effect.gen(function* () {
-    if (yield* attended) {
+    if (yield* stdinIsTerminal) {
       return Redacted.value(yield* Prompt.password({ message: label }));
     }
     return (yield* readStdin).replace(TRAILING_NEWLINE, "");

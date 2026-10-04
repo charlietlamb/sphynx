@@ -45,7 +45,7 @@ export const useEnvironmentActions = (
     open("confirm", {
       confirmLabel: "Disconnect",
       description:
-        "Agents stop running on this plan. Runs already going finish first.",
+        "Agents stop running on this plan. Runs already in progress finish first.",
       destructive: true,
       onConfirm: () =>
         removeSubscription.mutateAsync(subscription.id).then(

@@ -12,7 +12,7 @@ Sphynx runs the real Claude Code CLI in a sandbox. You don't install Claude loca
 3. Enter `ANTHROPIC_API_KEY` with your Anthropic API key and choose **Everyone in the organization**, so CLI, SDK and CI batches can use it.
 4. Save it.
 
-From a terminal, `sphynx env set ANTHROPIC_API_KEY` does the same.
+From a terminal, `sphynx env set ANTHROPIC_API_KEY` does the same. It needs an API key with `credentials:write`, as the [CLI guide](/tools/cli) describes.
 
 The key stays in Sphynx. A local Claude login or Claude subscription does not authenticate these trials: Sphynx uses [Claude Code's bare mode](https://code.claude.com/docs/en/headless#start-faster-with-bare-mode), which requires API credentials.
 

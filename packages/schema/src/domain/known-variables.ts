@@ -1,7 +1,12 @@
 export type VariableUse =
   | { readonly kind: "harness"; readonly id: string; readonly label: string }
   | { readonly kind: "judge"; readonly id: string; readonly label: string }
-  | { readonly kind: "sandbox"; readonly id: string; readonly label: string };
+  | { readonly kind: "sandbox"; readonly id: string; readonly label: string }
+  | {
+      readonly kind: "simulated";
+      readonly id: string;
+      readonly label: string;
+    };
 
 export interface KnownVariable {
   readonly description: string;
@@ -20,6 +25,12 @@ const judge = (id: string): VariableUse => ({
   kind: "judge",
   label: "Judges",
 });
+const simulated = (): VariableUse => ({
+  id: "people",
+  kind: "simulated",
+  label: "Simulated people",
+});
+const judges = (id: string): readonly VariableUse[] => [judge(id), simulated()];
 const sandbox = (id: string, label: string): VariableUse => ({
   id,
   kind: "sandbox",
@@ -41,32 +52,34 @@ const plain = (
 export const KNOWN_VARIABLES: readonly KnownVariable[] = [
   key("ANTHROPIC_API_KEY", "Runs Claude Code, scores with Anthropic judges", [
     harness("claude", "Claude Code"),
-    judge("anthropic"),
+    ...judges("anthropic"),
   ]),
   key("OPENAI_API_KEY", "Runs Codex by key, scores with OpenAI judges", [
     harness("codex", "Codex"),
-    judge("openai"),
+    ...judges("openai"),
   ]),
   key("AI_GATEWAY_API_KEY", "Runs FX through Vercel AI Gateway", [
     harness("fx", "FX"),
   ]),
   key("GEMINI_API_KEY", "Runs Gemini CLI, scores with Google judges", [
     harness("gemini", "Gemini CLI"),
-    judge("google"),
+    ...judges("google"),
   ]),
   key("CURSOR_API_KEY", "Runs Cursor Agent", [harness("cursor", "Cursor")]),
   key("DASHSCOPE_API_KEY", "Runs Qwen Code", [harness("qwen", "Qwen Code")]),
   plain("QWEN_BASE_URL", "Points Qwen Code at another endpoint", [
     harness("qwen", "Qwen Code"),
   ]),
-  key("XAI_API_KEY", "Scores with xAI judges", [judge("xai")]),
-  key("MOONSHOT_API_KEY", "Scores with Moonshot judges", [judge("moonshotai")]),
-  key("DEEPSEEK_API_KEY", "Scores with DeepSeek judges", [judge("deepseek")]),
-  key("GROQ_API_KEY", "Scores with Groq judges", [judge("groq")]),
-  key("OPENROUTER_API_KEY", "Scores with OpenRouter judges", [
-    judge("openrouter"),
-  ]),
-  key("TYPESAFE_API_KEY", "Scores with TypeSafe judges", [judge("typesafe")]),
+  key("XAI_API_KEY", "Scores with xAI judges", judges("xai")),
+  key("MOONSHOT_API_KEY", "Scores with Moonshot judges", judges("moonshotai")),
+  key("DEEPSEEK_API_KEY", "Scores with DeepSeek judges", judges("deepseek")),
+  key("GROQ_API_KEY", "Scores with Groq judges", judges("groq")),
+  key(
+    "OPENROUTER_API_KEY",
+    "Scores with OpenRouter judges",
+    judges("openrouter")
+  ),
+  key("TYPESAFE_API_KEY", "Scores with TypeSafe judges", judges("typesafe")),
   key("DAYTONA_API_KEY", "Runs sandboxes on your Daytona account", [
     sandbox("daytona", "Daytona"),
   ]),

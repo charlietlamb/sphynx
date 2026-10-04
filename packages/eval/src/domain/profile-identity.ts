@@ -2,7 +2,13 @@ import { createHash } from "node:crypto";
 import type { ProfileContent } from "./harness-profile";
 
 /* By code unit, not locale, so a version does not move with the machine's language. */
-const byCodeUnit = (left: string, right: string) => (left < right ? -1 : 1);
+const byCodeUnit = (left: string, right: string) => {
+  if (left === right) {
+    return 0;
+  }
+
+  return left < right ? -1 : 1;
+};
 
 const sortedEntries = (
   record: Readonly<Record<string, string>> | null | undefined

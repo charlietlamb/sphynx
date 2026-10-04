@@ -4,13 +4,13 @@ export type UsedBy =
   | { readonly kind: "code"; readonly label: string }
   | {
       readonly id: string;
-      readonly kind: "harness" | "judge" | "sandbox";
+      readonly kind: "harness" | "judge" | "sandbox" | "simulated";
       readonly label: string;
     };
 
 const YOUR_CODE: UsedBy = { kind: "code", label: "Your code" };
 
-const keyOf = (use: UsedBy) =>
+export const keyOf = (use: UsedBy) =>
   use.kind === "judge" || use.kind === "code"
     ? use.kind
     : `${use.kind}:${use.id}`;

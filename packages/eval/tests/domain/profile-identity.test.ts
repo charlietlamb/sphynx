@@ -30,6 +30,14 @@ describe("a profile's version", () => {
     ).toBe(profileVersionOf(profile));
   });
 
+  it("does not move with the order the variables were named in", () => {
+    const named = { ...profile, variables: ["B_KEY", "A_KEY", "B_KEY"] };
+
+    expect(
+      profileVersionOf({ ...named, variables: ["A_KEY", "B_KEY", "B_KEY"] })
+    ).toBe(profileVersionOf(named));
+  });
+
   it("is thirty-two hex characters", () => {
     expect(profileVersionOf(profile)).toMatch(HEX_32);
   });

@@ -24,6 +24,7 @@ import { profileVersionOf } from "../domain/profile-identity";
 import { startRequestHashOf } from "../domain/start-request-hash";
 import { userHarness } from "../domain/suite-harnesses";
 import { userModel, userModelOf, userModelRoute } from "../domain/variant";
+import { variablesFor } from "../environment/variable-credentials";
 import { ownerOf } from "../environment/variable-repository";
 import {
   BatchRepository,
@@ -114,15 +115,16 @@ const admit = (actor: Actor, request: StartBatchRequest) =>
           userHarness(subject).length === 0
       )
     ) {
+      const { providerId } = userModelRoute(yield* userModel);
       const access = yield* modelAccessFor(
         yield* CredentialResolver,
         actor.organizationId,
-        userModelRoute(yield* userModel).providerId
+        providerId
       );
       if (Option.isNone(access)) {
+        const names = variablesFor(providerId);
         return yield* new StartRefused({
-          reason:
-            "A case states a human, which needs a model to play them. Set OPENAI_API_KEY in Settings > Environment.",
+          reason: `A case states a human, which needs a model to play them. Set ${names.length === 0 ? `the ${providerId} key` : names.join(" and ")} in Settings > Environment.`,
           retryable: false,
         });
       }

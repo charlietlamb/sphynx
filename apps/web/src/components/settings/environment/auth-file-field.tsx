@@ -1,6 +1,7 @@
 import { CopyButton } from "@sphynx/ui/components/copy-button";
 import { LabelledField } from "@sphynx/ui/components/form/labelled-field";
 import { Textarea } from "@sphynx/ui/components/ui/textarea";
+import { useId } from "react";
 
 export function AuthFileField({
   command,
@@ -11,8 +12,10 @@ export function AuthFileField({
   readonly onChange: (value: string) => void;
   readonly value: string;
 }) {
+  const id = useId();
+
   return (
-    <LabelledField htmlFor="subscription-auth-file" label="Auth file">
+    <LabelledField htmlFor={id} label="Auth file">
       <div className="flex items-center gap-2 text-muted-foreground text-xs">
         <span className="shrink-0">Copy it with</span>
         <code className="min-w-0 truncate font-mono text-foreground">
@@ -22,7 +25,7 @@ export function AuthFileField({
       </div>
       <Textarea
         className="max-h-60 min-h-28 font-mono text-xs"
-        id="subscription-auth-file"
+        id={id}
         onChange={(event) => onChange(event.target.value)}
         placeholder="{ ... }"
         spellCheck={false}

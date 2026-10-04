@@ -23,6 +23,10 @@ export const note = (message: string) =>
     process.stderr.write(`${message}\n`);
   });
 
+export const stdinIsTerminal = Effect.sync(
+  () => globalThis.process?.stdin?.isTTY === true
+);
+
 export const attended = Effect.sync(
   () => globalThis.process?.stdout?.isTTY === true
 );

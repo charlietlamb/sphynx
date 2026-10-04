@@ -17,5 +17,5 @@ export const knownMatches = (query: string): readonly KnownVariable[] => {
     (known) => !known.name.startsWith(needle) && known.name.includes(needle)
   );
 
-  return [...prefixed, ...inside].filter((known) => known.name !== needle);
+  return [...prefixed, ...inside];
 };

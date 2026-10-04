@@ -306,7 +306,10 @@ describe.skipIf(skipWithoutDatabase())("the environment", () => {
       Effect.gen(function* () {
         yield* (yield* EnvironmentVariables).add(actor, {
           scope: "organization",
-          variables: [{ name: "SEARCH_API_KEY", secret: true, value: "exa-1" }],
+          variables: [
+            { name: "SEARCH_API_KEY", secret: true, value: "exa-1" },
+            { name: "APP_BASE_URL", secret: false, value: "staging.acme.dev" },
+          ],
         });
         const resolver = yield* CredentialResolver;
         const found = yield* resolver.variables({

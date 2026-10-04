@@ -9,7 +9,7 @@ describe("remove variable copy", () => {
         []
       ).description
     ).toBe(
-      "Claude Code and Anthropic judges stop running until you add it again. This cannot be undone."
+      "Claude Code, Anthropic judges and simulated people stop running until you add it again. This cannot be undone."
     );
   });
 

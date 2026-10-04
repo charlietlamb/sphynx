@@ -23,6 +23,10 @@ const phraseOf = (use: VariableUse) => {
     return `${JUDGE_VENDORS[use.id] ?? use.id} judges`;
   }
 
+  if (use.kind === "simulated") {
+    return "simulated people";
+  }
+
   return use.kind === "sandbox" ? `${use.label} sandboxes` : use.label;
 };
 

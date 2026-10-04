@@ -19,7 +19,7 @@ export const PLANS: Readonly<Record<SubscriptionPlan, PlanCopy>> = {
     ready: "Codex can run on your ChatGPT plan now.",
   },
   opencode: {
-    authFileCommand: "cat ~/.local/share/opencode/auth.json | pbcopy",
+    authFileCommand: "cat ~/.local/share/opencode/auth.json",
     blurb: "Paste your auth file",
     connected: "OpenCode added",
     harness: "opencode",
@@ -27,7 +27,7 @@ export const PLANS: Readonly<Record<SubscriptionPlan, PlanCopy>> = {
     ready: "OpenCode can run on your plan now.",
   },
   pi: {
-    authFileCommand: "cat ~/.pi/agent/auth.json | pbcopy",
+    authFileCommand: "cat ~/.pi/agent/auth.json",
     blurb: "Paste your auth file",
     connected: "Pi added",
     harness: "pi",

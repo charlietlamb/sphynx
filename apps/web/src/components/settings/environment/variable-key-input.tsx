@@ -22,6 +22,7 @@ import { usedBy } from "@/lib/settings/variable-uses";
 
 const CLOSING = new Set(["escape-key", "outside-press"]);
 const CARET_KEYS = new Set(["End", "Home"]);
+const LEAVING_KEYS = new Set(["Escape", "Tab"]);
 
 function KnownOption({ known }: { readonly known: KnownVariable }) {
   const [first] = usedBy(known.name);
@@ -66,6 +67,10 @@ export function VariableKeyInput({
   };
 
   const guardKeys = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (LEAVING_KEYS.has(event.key)) {
+      return;
+    }
+
     if (!showing || CARET_KEYS.has(event.key)) {
       event.stopPropagation();
     }
