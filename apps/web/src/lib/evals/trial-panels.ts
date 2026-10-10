@@ -20,6 +20,11 @@ export const StepPanePanel = preloadable(
   async () => (await import("@/components/evals/step-pane")).StepPane
 );
 
+export const ConversationPanePanel = preloadable(
+  async () =>
+    (await import("@/components/evals/conversation-pane")).ConversationPane
+);
+
 export const preloadTrialPanels = () => {
   for (const panel of [
     ConversationPanel,
@@ -27,6 +32,7 @@ export const preloadTrialPanels = () => {
     FilesPanel,
     CallsPanel,
     StepPanePanel,
+    ConversationPanePanel,
   ]) {
     panel.preload();
   }

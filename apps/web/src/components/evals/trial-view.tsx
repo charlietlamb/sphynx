@@ -15,6 +15,7 @@ import {
 } from "@sphynx/ui/components/ui/resizable";
 import { CaseSetup } from "@/components/evals/case-setup";
 import { RunCaseButton } from "@/components/evals/run-case-button";
+import { TrialConversationPane } from "@/components/evals/trial-conversation-pane";
 import { TrialDetails } from "@/components/evals/trial-details";
 import { TrialMeta } from "@/components/evals/trial-meta";
 import { TrialSections } from "@/components/evals/trial-sections";
@@ -137,6 +138,7 @@ export function TrialView({
           />
         </PageShell>
       </ResizablePanel>
+      <TrialConversationPane trial={trial} />
       <TrialStepPane trial={trial} />
     </ResizablePanelGroup>
   );

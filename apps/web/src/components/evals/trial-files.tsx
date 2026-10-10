@@ -11,6 +11,7 @@ import { useState } from "react";
 import { FileSheet } from "@/components/evals/file-sheet";
 import { TrialFileRow } from "@/components/evals/trial-file-row";
 import { FILES_TABLE } from "@/lib/evals/case-tables";
+import { writtenPaths } from "@/lib/evals/conversation-totals";
 
 export function TrialFiles({
   artifacts,
@@ -23,9 +24,7 @@ export function TrialFiles({
 }) {
   const [openPath, setOpenPath] = useState<string | null>(null);
   const captured = new Map(artifacts.map((file) => [file.path, file]));
-  const paths = [
-    ...new Set([...artifacts.map((file) => file.path), ...changed]),
-  ];
+  const paths = writtenPaths(artifacts, changed);
 
   return (
     <>
