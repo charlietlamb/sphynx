@@ -1,7 +1,5 @@
-/* The card and badge surfaces both carry a hairline plus a lit top edge, so
-   popovers use the same treatment rather than a shadow alone. */
 export const POPUP =
-  "rounded-lg border border-border bg-popover text-popover-foreground shadow-[inset_0_1px_0_0_rgb(255_255_255/0.06),var(--shadow-popover)] outline-none";
+  "rounded-lg border border-border bg-popover text-popover-foreground shadow-(--shadow-popover) outline-none";
 
 export const POPUP_MOTION =
   "origin-(--transform-origin) duration-100 data-open:fade-in-0 data-open:zoom-in-95 data-open:animate-in data-closed:fade-out-0 data-closed:zoom-out-95 data-closed:animate-out";

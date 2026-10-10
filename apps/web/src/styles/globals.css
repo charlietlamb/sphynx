@@ -220,8 +220,7 @@
   --trace-cached: oklch(0.78 0.06 285);
 
   --shadow-popover:
-    0 0 0 1px var(--border), 0 16px 32px oklch(0 0 0 / 10%),
-    0 4px 10px oklch(0 0 0 / 8%);
+    0 16px 32px oklch(0 0 0 / 10%), 0 4px 10px oklch(0 0 0 / 8%);
   --shadow-control: 0 0 0 0.5px oklch(0 0 0 / 14%), 0 1px 2px oklch(0 0 0 / 8%);
 }
 
@@ -264,7 +263,6 @@
   --trace-cached: oklch(0.45 0.06 285);
 
   --shadow-popover:
-    0 0 0 1px var(--border), 0 1px 0 oklch(1 0 0 / 6%) inset,
     0 16px 32px oklch(0 0 0 / 40%), 0 4px 10px oklch(0 0 0 / 30%);
   --shadow-control:
     inset 0 0 0 0.5px oklch(1 0 0 / 16%), 0 1px 2px 0.5px oklch(0 0 0 / 40%),
